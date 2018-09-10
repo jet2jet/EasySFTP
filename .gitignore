@@ -1,0 +1,15 @@
+*.old
+*.suo
+*.sdf
+*.ncb
+*.user
+*.aps
+*.VC.db
+*.VC.opendb
+.svn
+bin
+Common.user.props
+obj
+ipch
+ShellDLL/work
+EasySFTP/work

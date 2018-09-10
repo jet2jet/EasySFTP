@@ -1,0 +1,310 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug_VS14|Win32">
+      <Configuration>Debug_VS14</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_VS14|x64">
+      <Configuration>Debug_VS14</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release_VS14|Win32">
+      <Configuration>Release_VS14</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release_VS14|x64">
+      <Configuration>Release_VS14</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{09C3BA79-E5C0-4922-A0E5-DC9DD7242343}</ProjectGuid>
+    <RootNamespace>ShellDLL</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectName>ShellDLL</ProjectName>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_VS14|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_VS14|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_VS14|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_VS14|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|Win32'">$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|Win32'">obj\$(Platform)\$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|Win32'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|x64'">$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|x64'">obj\$(Platform)\$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|x64'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release_VS14|Win32'">$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VS14|Win32'">obj\$(Platform)\$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release_VS14|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release_VS14|x64'">$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release_VS14|x64'">obj\$(Platform)\$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release_VS14|x64'">false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|x64'">
+    <LibraryPath>F:\OpenSSL\lib\vc14\x64;$(LibraryPath)</LibraryPath>
+    <TargetName>EasySFTP</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_VS14|x64'">
+    <LibraryPath>F:\OpenSSL\lib\vc14\x64;$(LibraryPath)</LibraryPath>
+    <TargetName>EasySFTP</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|Win32'">
+    <TargetName>EasySFTP</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release_VS14|Win32'">
+    <TargetName>EasySFTP</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>..\Common;..\PuTTY;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;SHELLDLL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;libeay32.lib;ssleay32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <Version>0.9</Version>
+      <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+      <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>..\Common;..\PuTTY;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN64;_DEBUG;_WINDOWS;_USRDLL;SHELLDLL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;libeay32.lib;ssleay32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <Version>0.9</Version>
+      <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+      <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_VS14|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\Common;..\PuTTY;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;SHELLDLL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;libeay32.lib;ssleay32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <Version>0.9</Version>
+      <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release_VS14|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\Common;..\PuTTY;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN64;NDEBUG;_WINDOWS;_USRDLL;SHELLDLL_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;libeay32.lib;ssleay32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <Version>0.9</Version>
+      <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Auth.cpp" />
+    <ClCompile Include="CFactory.cpp" />
+    <ClCompile Include="Channel.cpp" />
+    <ClCompile Include="Cipher.cpp" />
+    <ClCompile Include="Connect.cpp" />
+    <ClCompile Include="CsetPage.cpp" />
+    <ClCompile Include="DIMalloc.cpp" />
+    <ClCompile Include="DragData.cpp" />
+    <ClCompile Include="ExBuffer.cpp" />
+    <ClCompile Include="FileList.cpp" />
+    <ClCompile Include="FileStrm.cpp" />
+    <ClCompile Include="FldrMenu.cpp" />
+    <ClCompile Include="FNameDlg.cpp" />
+    <ClCompile Include="FoldBase.cpp" />
+    <ClCompile Include="FoldDrop.cpp" />
+    <ClCompile Include="Folder.cpp" />
+    <ClCompile Include="FoldItem.cpp" />
+    <ClCompile Include="FTPConn.cpp" />
+    <ClCompile Include="FTPFldr.cpp" />
+    <ClCompile Include="FTPMsg.cpp" />
+    <ClCompile Include="Func.cpp" />
+    <ClCompile Include="HostPage.cpp" />
+    <ClCompile Include="KexCore.cpp" />
+    <ClCompile Include="LinkDlg.cpp" />
+    <ClCompile Include="MErrDlg.cpp" />
+    <ClCompile Include="MySocket.cpp" />
+    <ClCompile Include="OpenSSH.cpp" />
+    <ClCompile Include="RFolder.cpp" />
+    <ClCompile Include="SFilePrp.cpp" />
+    <ClCompile Include="SFTPChan.cpp" />
+    <ClCompile Include="SFTPFldr.cpp" />
+    <ClCompile Include="SFTPStrm.cpp" />
+    <ClCompile Include="ShellDLL.cpp" />
+    <ClCompile Include="SSHCli.cpp" />
+    <ClCompile Include="SSHSock.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_VS14|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_VS14|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_VS14|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="SvInfo.cpp" />
+    <ClCompile Include="TextStrm.cpp" />
+    <ClCompile Include="TferPage.cpp" />
+    <ClCompile Include="Transfer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="newhost.ico" />
+    <None Include="ShellDLL.def" />
+    <None Include="EasySFTP_2.ico" />
+    <None Include="netdrive.ico" />
+    <None Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Auth.h" />
+    <ClInclude Include="CFactory.h" />
+    <ClInclude Include="Channel.h" />
+    <ClInclude Include="Cipher.h" />
+    <ClInclude Include="Connect.h" />
+    <ClInclude Include="DIMalloc.h" />
+    <ClInclude Include="DragData.h" />
+    <ClInclude Include="ExBuffer.h" />
+    <ClInclude Include="FileList.h" />
+    <ClInclude Include="FileStrm.h" />
+    <ClInclude Include="FldrMenu.h" />
+    <ClInclude Include="FNameDlg.h" />
+    <ClInclude Include="FoldDrop.h" />
+    <ClInclude Include="Folder.h" />
+    <ClInclude Include="FoldItem.h" />
+    <ClInclude Include="FTPConn.h" />
+    <ClInclude Include="FTPFldr.h" />
+    <ClInclude Include="FTPMsg.h" />
+    <ClInclude Include="Func.h" />
+    <ClInclude Include="HostPage.h" />
+    <ClInclude Include="KexCore.h" />
+    <ClInclude Include="LinkDlg.h" />
+    <ClInclude Include="MErrDlg.h" />
+    <ClInclude Include="MsgData.h" />
+    <ClInclude Include="MySocket.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="RFolder.h" />
+    <ClInclude Include="SFilePrp.h" />
+    <ClInclude Include="SFTPChan.h" />
+    <ClInclude Include="SFTPFldr.h" />
+    <ClInclude Include="SFTPStrm.h" />
+    <ClInclude Include="ShellDLL.h" />
+    <ClInclude Include="SSHCli.h" />
+    <ClInclude Include="SSHSock.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="SvInfo.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="TextStrm.h" />
+    <ClInclude Include="Transfer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ShellDLL.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Common\Common.vs14.vcxproj">
+      <Project>{e3cbe15b-c6c0-4025-9b6b-49f7e49176ce}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <Import Project="..\Common.props" />
+</Project>

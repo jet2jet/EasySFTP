@@ -1,0 +1,700 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "windows.h"
+#define IDC_STATIC -1
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// 日本語 resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_JPN)
+#ifdef _WIN32
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+#pragma code_page(932)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""windows.h""\r\n"
+    "#define IDC_STATIC -1\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_PASSWORD DIALOGEX 0, 0, 146, 148
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "パスワードの入力"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "パスワードを入力してください。",IDC_MESSAGE,7,7,121,18
+    LTEXT           "ユーザー名(&U):",IDC_STATIC,7,28,64,8
+    EDITTEXT        IDC_USER_NAME,7,38,64,12,ES_AUTOHSCROLL
+    LTEXT           "パスワード(&P):",IDC_STATIC,75,28,64,8
+    EDITTEXT        IDC_PASSWORD,75,38,64,12,ES_PASSWORD | ES_AUTOHSCROLL
+    GROUPBOX        "SFTP認証方式",IDC_STATIC,7,54,132,66,WS_GROUP
+    CONTROL         "プレーンパスワード(&L)",IDC_AUTH_PASSWORD,"Button",BS_AUTORADIOBUTTON,15,66,116,10
+    CONTROL         "秘密鍵認証(&K):",IDC_AUTH_PKEY,"Button",BS_AUTORADIOBUTTON,15,78,116,10
+    EDITTEXT        IDC_PKEY_FILE,15,89,99,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_PKEY_SEARCH,119,89,15,12
+    CONTROL         "Pageantを使用する(&A)",IDC_AUTH_PAGEANT,"Button",BS_AUTORADIOBUTTON,15,104,116,10
+    DEFPUSHBUTTON   "OK",IDOK,20,127,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,75,127,50,14
+END
+
+IDD_QUICK_CONNECT DIALOGEX 0, 0, 146, 152
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "クイック接続"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "ホスト名(&H):",IDC_STATIC,7,7,73,8
+    EDITTEXT        IDC_HOST_NAME,7,17,73,12,ES_AUTOHSCROLL
+    LTEXT           "ポート番号(&R):",IDC_STATIC,85,7,54,8
+    EDITTEXT        IDC_PORT,85,17,54,12,ES_AUTOHSCROLL
+    LTEXT           "ユーザー名(&U):",IDC_STATIC,7,34,64,8
+    EDITTEXT        IDC_USER_NAME,7,44,64,12,ES_AUTOHSCROLL
+    LTEXT           "パスワード(&P):",IDC_STATIC,75,34,64,8
+    EDITTEXT        IDC_PASSWORD,75,44,64,12,ES_PASSWORD | ES_AUTOHSCROLL
+    GROUPBOX        "   ",IDC_STATIC,7,59,132,65
+    CONTROL         "SFTP接続を使う(&S)",IDC_USE_SFTP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,59,95,10
+    CONTROL         "プレーンパスワード(&L)",IDC_AUTH_PASSWORD,"Button",BS_AUTORADIOBUTTON,15,72,116,10
+    CONTROL         "秘密鍵認証(&K):",IDC_AUTH_PKEY,"Button",BS_AUTORADIOBUTTON,15,83,116,10
+    EDITTEXT        IDC_PKEY_FILE,15,95,99,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_PKEY_SEARCH,119,95,15,12
+    CONTROL         "Pageantを使用する(&A)",IDC_AUTH_PAGEANT,"Button",BS_AUTORADIOBUTTON,15,110,116,10
+    DEFPUSHBUTTON   "接続(&C)",IDOK,20,131,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,75,131,50,14
+END
+
+IDD_PROP_TRANSFER DIALOGEX 0, 0, 210, 154
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "転送モード"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "ファイル転送モード",IDC_STATIC,7,11,101,48,WS_GROUP
+    CONTROL         "ファイル名で切り替え(&U)",IDC_FILE_AUTO,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,13,22,89,10
+    CONTROL         "常にテキストモード(&T)",IDC_FILE_TEXT,"Button",BS_AUTORADIOBUTTON,13,33,89,10
+    CONTROL         "常にバイナリモード(&B)",IDC_FILE_BINARY,"Button",BS_AUTORADIOBUTTON,13,44,89,10
+    LTEXT           "テキストファイルの種類(&X):",IDC_STATIC,112,7,91,8
+    LISTBOX         IDC_TEXTFILE_PATTERN,112,17,42,44,LBS_SORT | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "追加(&A)...",IDC_ADD_FILE,157,17,46,14
+    PUSHBUTTON      "削除(&D)",IDC_DEL_FILE,157,33,46,14
+    CONTROL         "システム設定を加える(&C)",IDC_ADD_SYSTEM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,112,65,91,10
+    CONTROL         "受信ファイルの更新日時をサーバーと揃える(&M)",IDC_KEEP_RECV_MODIFY_TIME,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,80,196,10
+    CONTROL         "送信ファイルの更新日時をローカルと揃える(&F)",IDC_KEEP_SEND_MODIFY_TIME,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,91,196,10
+END
+
+IDD_PROP_HOST DIALOGEX 0, 0, 210, 154
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "全般"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "設定名(&N):",IDC_STATIC,7,7,65,8
+    EDITTEXT        IDC_NAME,7,17,65,12,ES_AUTOHSCROLL
+    LTEXT           "ホスト名(&H):",IDC_STATIC,75,7,65,8
+    EDITTEXT        IDC_HOST_NAME,75,17,65,12,ES_AUTOHSCROLL
+    LTEXT           "ポート番号(&P):",IDC_STATIC,143,7,60,8
+    EDITTEXT        IDC_PORT,143,17,28,12,ES_RIGHT | ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "既定",IDC_DEF_PORT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,175,18,28,10
+    LTEXT           "接続モード(&M):",IDC_STATIC,7,35,65,8
+    COMBOBOX        IDC_CONNECT_MODE,7,45,65,36,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "ローカルの初期フォルダ(&L):",IDC_STATIC,7,63,133,8
+    EDITTEXT        IDC_LOCAL_PATH,7,73,113,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_LOCAL_PATH_SEARCH,125,73,15,12
+    LTEXT           "サーバーの初期フォルダ(&S):",IDC_STATIC,7,91,133,8
+    EDITTEXT        IDC_SERVER_PATH,7,102,133,12,ES_AUTOHSCROLL
+    CONTROL         "サムネイル表示を使う(Vista以降のみ) (&T)",IDC_USE_THUMBNAIL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,118,167,10
+    LTEXT           "※ サムネイル表示機能を使うと通信頻度が上がるため、通信が低速になる場合があります。",IDC_STATIC,7,129,167,18
+END
+
+IDD_PROP_CHARSET DIALOGEX 0, 0, 210, 154
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION
+CAPTION "文字コード"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "改行コード変換",IDC_STATIC,7,7,196,82
+    GROUPBOX        "ローカル側",IDC_STATIC,14,18,88,52,WS_GROUP
+    CONTROL         "<CR>と<LF> (&1)",IDC_LOCAL_CRLF,"Button",BS_AUTORADIOBUTTON | WS_GROUP,21,31,74,10
+    CONTROL         "<CR>のみ (&2)",IDC_LOCAL_CR,"Button",BS_AUTORADIOBUTTON,21,43,74,10
+    CONTROL         "<LF>のみ (&3)",IDC_LOCAL_LF,"Button",BS_AUTORADIOBUTTON,21,55,74,10
+    GROUPBOX        "サーバー側",IDC_STATIC,108,18,88,52,WS_GROUP
+    CONTROL         "<CR>と<LF> (&4)",IDC_SERVER_CRLF,"Button",BS_AUTORADIOBUTTON | WS_GROUP,115,31,74,10
+    CONTROL         "<CR>のみ (&5)",IDC_SERVER_CR,"Button",BS_AUTORADIOBUTTON,115,43,74,10
+    CONTROL         "<LF>のみ (&6)",IDC_SERVER_LF,"Button",BS_AUTORADIOBUTTON,115,55,74,10
+    LTEXT           "※テキストモード時に変換が行われます。",IDC_STATIC,14,74,182,8
+    LTEXT           "サーバーファイル名の文字コード(&F):",IDC_STATIC,7,95,120,8
+    COMBOBOX        IDC_SERVER_FILE_CHARSET,129,93,55,48,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "※SFTPモード時、サーバーのバージョンが4以上の時は自動的にUTF-8が使用されます。",IDC_STATIC,14,109,182,17
+END
+
+IDD_FILENAME DIALOGEX 0, 0, 146, 57
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "ファイル名の入力"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "ファイル名(&N):",IDC_STATIC,7,7,132,8
+    EDITTEXT        IDC_FILE_NAME,7,17,132,12,ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,19,36,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,76,36,50,14
+END
+
+IDD_MULTIPLE_ERROR DIALOGEX 0, 0, 190, 125
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "エラー"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    ICON            "",IDC_MSG_ICON,7,7,20,20
+    LTEXT           "処理中に以下のエラーが発生しました。",IDC_STATIC,38,12,145,8
+    EDITTEXT        IDC_ERROR_LIST,7,31,176,67,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,133,104,50,14
+END
+
+IDD_TRANSFER DIALOGEX 0, 0, 238, 148
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "ファイル転送状態"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LISTBOX         IDC_FILE_LIST,7,7,224,112,LBS_SORT | LBS_OWNERDRAWFIXED | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "キャンセル",IDCANCEL,181,127,50,14
+END
+
+IDD_SFILE_PROPERTY DIALOGEX 0, 0, 166, 180
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "プロパティ"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "ファイル名:",IDC_STATIC,7,7,56,8
+    EDITTEXT        IDC_FILE_NAME,68,7,91,8,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    LTEXT           "サーバーのパス:",IDC_STATIC,7,18,56,8
+    EDITTEXT        IDC_DIRECTORY,68,18,91,8,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    LTEXT           "サイズ:",IDC_STATIC,7,29,56,8
+    EDITTEXT        IDC_FILE_SIZE,68,29,91,8,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    LTEXT           "作成日時:",IDC_STATIC,7,40,56,8
+    EDITTEXT        IDC_CREATION_TIME,68,40,91,8,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    LTEXT           "更新日時:",IDC_STATIC,7,51,56,8
+    EDITTEXT        IDC_MODIFY_TIME,68,51,91,8,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    LTEXT           "所有者(&W):",IDC_STATIC,7,64,56,8
+    EDITTEXT        IDC_OWNER,67,62,92,12,ES_AUTOHSCROLL
+    LTEXT           "グループ(&R):",IDC_STATIC,7,78,56,8
+    EDITTEXT        IDC_GROUP,67,76,92,12,ES_AUTOHSCROLL
+    GROUPBOX        "アクセス権",IDC_STATIC,7,91,152,62
+    LTEXT           "所有者(&U):",IDC_STATIC,14,102,42,8
+    CONTROL         "読み取り",IDC_USER_READ,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,113,45,10
+    CONTROL         "書き込み",IDC_USER_WRITE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,125,45,10
+    CONTROL         "実行",IDC_USER_EXECUTE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,137,45,10
+    LTEXT           "グループ(&G):",IDC_STATIC,60,102,42,8
+    CONTROL         "読み取り",IDC_GROUP_READ,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,60,113,45,10
+    CONTROL         "書き込み",IDC_GROUP_WRITE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,60,125,45,10
+    CONTROL         "実行",IDC_GROUP_EXECUTE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,60,137,45,10
+    LTEXT           "その他(&O):",IDC_STATIC,106,102,42,8
+    CONTROL         "読み取り",IDC_OTHER_READ,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,106,113,45,10
+    CONTROL         "書き込み",IDC_OTHER_WRITE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,106,125,45,10
+    CONTROL         "実行",IDC_OTHER_EXECUTE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,106,137,45,10
+    DEFPUSHBUTTON   "OK",IDOK,29,159,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,87,159,50,14
+END
+
+IDD_NEWLINK DIALOGEX 0, 0, 146, 130
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "ショートカットの作成"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "リンク先とファイル名を入力してください。",IDC_STATIC,7,6,132,8
+    LTEXT           "現在のディレクトリ:",IDC_STATIC,7,19,59,8
+    EDITTEXT        IDC_CUR_DIR,7,29,132,12,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    LTEXT           "リンク先(&L):",IDC_STATIC,7,41,132,8
+    EDITTEXT        IDC_LINK_NAME,7,51,132,12,ES_AUTOHSCROLL
+    LTEXT           "ファイル名(&N):",IDC_STATIC,7,67,132,8
+    EDITTEXT        IDC_FILE_NAME,7,77,132,12,ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,19,109,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,76,109,50,14
+    CONTROL         "ハードリンク(&H)",IDC_HARD_LINK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,94,120,10
+END
+
+IDD_SERVER_INFO DIALOGEX 0, 0, 190, 111
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "サーバー情報"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_INFO,7,7,176,78,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,133,90,50,14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_PASSWORD, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 139
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 141
+    END
+
+    IDD_QUICK_CONNECT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 139
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 145
+    END
+
+    IDD_PROP_TRANSFER, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 203
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 147
+    END
+
+    IDD_PROP_HOST, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 203
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 147
+    END
+
+    IDD_PROP_CHARSET, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 203
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 147
+    END
+
+    IDD_FILENAME, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 139
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 50
+    END
+
+    IDD_MULTIPLE_ERROR, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 183
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 118
+    END
+
+    IDD_TRANSFER, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 231
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 141
+    END
+
+    IDD_SFILE_PROPERTY, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 159
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 173
+    END
+
+    IDD_NEWLINK, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 139
+        TOPMARGIN, 6
+        BOTTOMMARGIN, 123
+    END
+
+    IDD_SERVER_INFO, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 183
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 104
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_EASYFTP             ICON                    "EasySFTP_2.ico"
+IDI_NETDRIVE            ICON                    "netdrive.ico"
+IDI_NEWHOST             ICON                    "newhost.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_SHELLMENU MENU 
+BEGIN
+    POPUP "HostItemMenu "
+    BEGIN
+        MENUITEM "接続(&C)",                      ID_HOST_CONNECT
+        MENUITEM SEPARATOR
+        MENUITEM "削除(&D)",                      ID_HOST_DELETE
+        MENUITEM "名前の変更(&M)",                   ID_HOST_RENAME
+        MENUITEM SEPARATOR
+        MENUITEM "プロパティー(&R)",                  ID_HOST_PROPERTY
+    END
+    POPUP "FileItemMenu "
+    BEGIN
+        MENUITEM "開く(&O)",                      ID_ITEM_OPEN
+        MENUITEM "エクスプローラー(&X)",                ID_ITEM_EXPLORE
+        MENUITEM "テキストで開く(&X)",                 ID_ITEM_OPEN_AS_TEXT
+        MENUITEM SEPARATOR
+        MENUITEM "切り取り(&T)",                    ID_ITEM_CUT
+        MENUITEM "コピー(&C)",                     ID_ITEM_COPY
+        MENUITEM SEPARATOR
+        MENUITEM "削除(&D)",                      ID_ITEM_DELETE
+        MENUITEM "名前の変更(&M)",                   ID_ITEM_RENAME
+        MENUITEM SEPARATOR
+        MENUITEM "プロパティー(&R)",                  ID_ITEM_PROPERTY
+    END
+    POPUP "DirectoryMenu "
+    BEGIN
+        POPUP "新規作成(&X)"
+        BEGIN
+            MENUITEM "フォルダ(&F)",                    ID_PARENT_NEW_FOLDER
+            MENUITEM "ショートカット(&S)",                 ID_PARENT_NEW_SHORTCUT
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "プロパティー(&R)",                  ID_PARENT_PROPERTY
+    END
+    POPUP "DirectoryRootHelpMenu"
+    BEGIN
+        MENUITEM "サーバー情報(&I)...",               41201
+    END
+END
+
+IDR_POPUP MENU 
+BEGIN
+    POPUP "Transfer"
+    BEGIN
+        MENUITEM "ローカルファイルを開く(&O)",             ID_TRANSFER_OPEN_LOCAL
+        MENUITEM SEPARATOR
+        MENUITEM "キャンセル(&C)",                   ID_TRANSFER_CANCEL
+    END
+    POPUP "DropMenu"
+    BEGIN
+        MENUITEM "ここに移動(&M)",                   ID_DROP_MOVE
+        MENUITEM "ここにコピー(&C)",                  ID_DROP_COPY
+        MENUITEM "ショートカットを作成(&L)",              ID_DROP_LINK
+        MENUITEM SEPARATOR
+        MENUITEM "キャンセル",                       ID_DROP_CANCEL
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 0,9,3,3
+ PRODUCTVERSION 0,9,3,3
+ FILEFLAGSMASK 0x17L
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "041104b0"
+        BEGIN
+            VALUE "CompanyName", "Kuri-Applications"
+            VALUE "FileDescription", "EasySFTP.dll - Shell extension of EasySFTP"
+            VALUE "FileVersion", "0.9.3.3"
+            VALUE "InternalName", "ShellDLL"
+            VALUE "LegalCopyright", "Copyright (C) 2011 Kuri-Applications"
+            VALUE "OriginalFilename", "EasySFTP.dll"
+            VALUE "ProductName", "EasySFTP"
+            VALUE "ProductVersion", "0.9.3.3"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x411, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDS_NO_PKEY_FILE_NAME   "秘密鍵のファイル名を指定してください。"
+    IDS_PKEY_FILE_NOT_FOUND "秘密鍵のファイルが見つかりません。"
+    IDS_UNABLE_TO_LOAD_PKEY "秘密鍵の読み込みに失敗しました。\n\nエラー: %s"
+    IDS_NO_PASSWORD         "パスワードを入力してください。"
+    IDS_NO_SET_NAME         "設定名を入力してください。"
+    IDS_NO_OWNER            "所有者名を入力してください。"
+    IDS_NO_OWNER_ID         "所有者のユーザーIDを入力してください。"
+    IDS_NO_GROUP            "所有者のグループ名を入力してください。"
+    IDS_NO_GROUP_ID         "所有者のグループIDを入力してください。"
+    IDS_NEW_FINGER_PRINT    "ホスト '%s' に対して保存されていない鍵指紋を検出しました。\n・この鍵指紋が正しくない場合は「キャンセル」をクリックして接続を終了してください。\n・接続を続ける場合、この鍵指紋を保存する場合は「はい」、保存しない場合は「いいえ」をクリックしてください。\n\n鍵指紋: %s"
+    IDS_FINGER_PRINT_MISMATCH 
+                            "ホスト '%s' に対して保存されているものと異なる鍵指紋を検出しました。相手方ホストがなりすましを行っている可能性があります。\n・この鍵指紋が正しくない場合は「キャンセル」をクリックして接続を終了してください。\n・接続を続ける場合、この鍵指紋を保存する場合は「はい」、保存しない場合は「いいえ」をクリックしてください。\n\n保存されている鍵指紋: %s\n受信した鍵指紋: %s"
+    IDS_NO_LINK_TO          "リンク先を入力してください。"
+    IDS_NO_FILE_NAME        "ファイル名を入力してください。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_APP_TITLE           "EasySFTP"
+    IDS_BYTE                "バイト"
+    IDS_TRANSFER_RATE       "%s / %s - 残り %02d:%02d (転送率: %s / 秒)"
+    IDS_CONNECTMODE_FTP     "FTP"
+    IDS_CONNECTMODE_SFTP    "SFTP"
+    IDS_ADDHOST_PROP        "ホストの追加"
+    IDS_CHANGEHOST_PROP     "ホスト設定の変更"
+    IDS_FOLDER_DIALOG       "フォルダを選択してください。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_FINISHED            "完了しました。(%s)"
+    IDS_CANCELED            "取り消されました。"
+    IDS_WAITING             "待機中..."
+    IDS_AUTH_FAILED         "ユーザー名またはパスワードが異なります。再入力してください。"
+    IDS_UNAVAILABLE         "(利用不可)"
+    IDS_MULTI_SELECT        "(複数選択)"
+    IDS_TOTAL               "合計 "
+    IDS_TRANSFER_COUNT      "転送完了 %d/%d"
+    IDS_ALL_FILTER          "すべてのファイル (*.*)|*.*"
+    IDS_SHORTCUT_PREFIX     "SymLink-"
+    IDS_UNKNOWN_SIZE        "(不明)"
+    IDS_SERVER_HOST         "ホスト名"
+    IDS_SERVER_ADDRESS      "IPアドレス"
+    IDS_FTP_WELCOME         "FTPウェルカムメッセージ"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_NO_HOST_NAME        "ホスト名を入力してください。"
+    IDS_INVALID_PORT        "ポート番号を1～65535の間で入力してください。"
+    IDS_NO_USER_NAME        "ユーザー名を入力してください。"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_RCOMMAND_ADD_HOST    "新しいホスト"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_HEAD_NAME           "名前"
+    IDS_HEAD_FILE_NAME      "ファイル名"
+    IDS_HEAD_FILE_EXT       "拡張子"
+    IDS_HEAD_SIZE           "サイズ"
+    IDS_HEAD_TYPE           "種類"
+    IDS_HEAD_PERMISSIONS    "属性"
+    IDS_HEAD_CREATE_TIME    "作成日時"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_HEAD_MODIFY_TIME    "更新日時"
+    IDS_HEAD_TRANSFER_TYPE  "転送モード"
+    IDS_HEAD_UID            "所有者"
+    IDS_HEAD_GID            "グループ"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_INVALID_FILE_NAME_CHAR "ファイル名に不正な文字が使用されています。"
+    IDS_DELETE_HOST         "ホスト設定 '%s' を削除しますか？"
+    IDS_DELETE_FILE         "ファイル '%s' を削除しますか？"
+    IDS_DELETE_DIRECTORY    "ディレクトリ '%s' 削除しますか？"
+    IDS_DELETE_MULTIPLE     "%d個の項目を削除しますか？"
+    IDS_PAGEANT_NOT_AVAILABLE "Pageantが利用できません。Pageantが実行されているか確認してください。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_RHEAD_NAME          "名前"
+    IDS_RHEAD_MODE          "種別"
+    IDS_RHEAD_HOST          "ホスト名"
+    IDS_RHEAD_PORT          "ポート番号"
+    IDS_RHEAD_STATUS        "状態"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_COMMAND_OK          "コマンドは成功しました。"
+    IDS_COMMAND_FAILED      "サーバーはエラーコードを返しました: %d"
+    IDS_COMMAND_UNKNOWN_ERROR "不明なエラーです。"
+    IDS_COMMAND_OUTOFMEMORY "メモリが不足しています。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_SFTP_UNKNOWN        "不明なエラーです。"
+    IDS_SFTP_EOF            "ファイルの終端に達しました。"
+    IDS_SFTP_NO_SUCH_FILE   "ファイルが見つかりません。"
+    IDS_SFTP_PERMISSION_DENIED "アクセスが拒否されました。"
+    IDS_SFTP_FAILURE        "コマンドの実行に失敗しました。"
+    IDS_SFTP_BAD_MESSAGE    "不正なメッセージです。"
+    IDS_SFTP_NO_CONNECTION  "接続していません。"
+    IDS_SFTP_CONNECTION_LOST "接続が切断されました。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_SFTP_OP_UNSUPPORTED "この操作はサポートされていません。"
+    IDS_SFTP_INVALID_HANDLE "不正なハンドルです。"
+    IDS_SFTP_NO_SUCH_PATH   "指定したパスが見つかりません。"
+    IDS_SFTP_FILE_ALREADY_EXISTS "指定したファイルは既に存在します。"
+    IDS_SFTP_WRITE_PROTECT  "書き込み保護がされています。"
+    IDS_SFTP_NO_MEDIA       "メディアが存在しないか、準備されていません。"
+    IDS_SFTP_NO_SPACE_ON_FILESYSTEM "サーバー側の空き容量が不足しています。"
+    IDS_SFTP_QUOTA_EXCEEDED "クォータを超過しました。"
+    IDS_SFTP_UNKNOWN_PRINCIPAL "不明な権限です。"
+    IDS_SFTP_LOCK_CONFLICT  "ロックが競合しました。"
+    IDS_SFTP_DIR_NOT_EMPTY  "ディレクトリが空ではありません。"
+    IDS_SFTP_NOT_A_DIRECTORY "指定した名前はディレクトリではありません。"
+    IDS_SFTP_INVALID_FILENAME "不正なファイル名です。"
+    IDS_SFTP_LINK_LOOP      "リンクがループしています。"
+    IDS_SFTP_CANNOT_DELETE  "この項目は削除できません。"
+    IDS_SFTP_INVALID_PARAMETER "不正な引数が渡されました。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_SFTP_FILE_IS_A_DIRECTORY "指定したファイルはディレクトリです。"
+    IDS_SFTP_BYTE_RANGE_LOCK_CONFLICT "範囲指定されたロックが競合しています。"
+    IDS_SFTP_BYTE_RANGE_LOCK_REFUSED "範囲指定ロックが拒否されました。"
+    IDS_SFTP_DELETE_PENDING "指定した項目は削除中です。"
+    IDS_SFTP_FILE_CORRUPT   "ファイル処理中にエラーが発生しました。"
+    IDS_SFTP_OWNER_INVALID  "不正な所有者名です。"
+    IDS_SFTP_GROUP_INVALID  "不正なグループ名です。"
+    IDS_SFTP_NO_MATCHING_BYTE_RANGE_LOCK "ロックの範囲が一致しません。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_NOT_CONNECTED       "未接続"
+    IDS_CONNECTED           "接続中"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_TYPE_NONE           "なし"
+    IDS_TYPE_TEXT           "テキスト"
+    IDS_TYPE_BINARY         "バイナリ"
+    IDS_TYPE_DIRECTORY      "ディレクトリ"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_UNKNOWN_HOST        "ホスト (%s) が見つかりません。"
+    IDS_FAILED_TO_CONNECT   "接続に失敗しました。"
+    IDS_FAILED_TO_CONNECT_BANNED "サーバーから接続を拒否されました。"
+    IDS_FAILED_TO_CONNECT_MSG "接続に失敗しました。\n\nサーバーからのメッセージ: %s"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_COMMAND_CONNECTION_ERROR "サーバーとの通信中にエラーが発生しました。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_SSH_VERSION         "SSHバージョン"
+    IDS_SFTP_VERSION        "SFTPバージョン"
+    IDS_SERVER_NAME         "サーバー名"
+    IDS_SSH_KEY_TYPE        "SSHホスト鍵の種類"
+    IDS_SSH_KEX             "SSH鍵認証方式"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_ITEM_OPEN            "ファイルを一時ディレクトリにダウンロードして開きます。"
+    ID_ITEM_EXPLORE         "エクスプローラーでこのディレクトリを開きます。"
+    ID_ITEM_OPEN_AS_TEXT    "ファイルを一時ディレクトリにダウンロードしてテキストとして開きます。"
+    ID_ITEM_CUT             "ファイルの情報をクリップボードにコピーします。貼り付けるとファイルが削除されます。"
+    ID_ITEM_COPY            "ファイルの情報をクリップボードにコピーします。"
+    ID_ITEM_DELETE          "ファイルを削除します。(ごみ箱には移動されません。)"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_ITEM_RENAME          "ファイルの名前を変更します。"
+    ID_ITEM_PROPERTY        "ファイルのプロパティーを表示します。"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_PARENT_NEW_FOLDER    "新しいディレクトリを作成します。"
+    ID_PARENT_NEW_SHORTCUT  "新しいショートカット(シンボリックリンク)を作成します。"
+    ID_PARENT_PROPERTY      "ディレクトリのプロパティーを表示します。"
+END
+
+#endif    // 日本語 resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

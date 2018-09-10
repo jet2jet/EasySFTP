@@ -1,0 +1,10 @@
+
+EXPORTS
+	DllCanUnloadNow		PRIVATE
+	DllGetClassObject	PRIVATE
+	DllRegisterServer	PRIVATE
+	DllUnregisterServer	PRIVATE
+
+	EasySFTPCreateRoot  @1
+	EasySFTPRegisterServer		@201 NONAME
+	EasySFTPUnregisterServer	@202 NONAME

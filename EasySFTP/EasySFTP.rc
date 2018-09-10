@@ -1,0 +1,435 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include "targetver.h"
+#endif
+#define APSTUDIO_HIDDEN_SYMBOLS
+#include "windows.h"
+#undef APSTUDIO_HIDDEN_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// 日本語 resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_JPN)
+#ifdef _WIN32
+LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
+#pragma code_page(932)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_EASYFTP             ICON                    "EasySFTP_2.ico"
+ID_STATUS_SECURE        ICON                    "secure.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDC_EASYFTP MENU 
+BEGIN
+    POPUP "ファイル(&F)"
+    BEGIN
+        MENUITEM "クイック接続(&Q)...",               ID_FILE_QUICK_CONNECT
+        MENUITEM "切断(&D)",                      ID_FILE_DISCONNECT
+        MENUITEM SEPARATOR
+        MENUITEM "終了(&X)",                      ID_FILE_EXIT
+    END
+    POPUP "編集(&E)"
+    BEGIN
+        MENUITEM "アップロード(&U)",                  ID_EDIT_UPLOAD
+        MENUITEM "ダウンロード(&L)",                  ID_EDIT_DOWNLOAD
+        MENUITEM "すべてアップロード(&O)",               ID_EDIT_UPLOAD_ALL
+        MENUITEM "すべてダウンロード(&N)",               ID_EDIT_DOWNLOAD_ALL
+    END
+    POPUP "表示(&V)"
+    BEGIN
+        MENUITEM "ファイル転送状態(&T)",                ID_VIEW_TRANSFER
+        MENUITEM SEPARATOR
+        MENUITEM "最新の情報に更新(&R)\tF5",            ID_VIEW_REFRESH
+    END
+    POPUP "転送(&X)"
+    BEGIN
+        POPUP "転送モード(&M)"
+        BEGIN
+            MENUITEM "自動判別(&A)",                    ID_TRANSFER_MODE_AUTO
+            MENUITEM "テキスト(&T)",                    ID_TRANSFER_MODE_TEXT
+            MENUITEM "バイナリ(&B)",                    ID_TRANSFER_MODE_BINARY
+        END
+        POPUP "ローカル改行モード(&R)"
+        BEGIN
+            MENUITEM "<&CR><LF>",                   ID_TRANSFER_LOCAL_CRLF
+            MENUITEM "<C&R>",                       ID_TRANSFER_LOCAL_CR
+            MENUITEM "<&LF>",                       ID_TRANSFER_LOCAL_LF
+        END
+        POPUP "サーバー改行モード(&R)"
+        BEGIN
+            MENUITEM "<&CR><LF>",                   ID_TRANSFER_SERVER_CRLF
+            MENUITEM "<C&R>",                       ID_TRANSFER_SERVER_CR
+            MENUITEM "<&LF>",                       ID_TRANSFER_SERVER_LF
+        END
+    END
+    POPUP "ツール(&T)"
+    BEGIN
+        MENUITEM "設定(&O)...",                   ID_TOOL_OPTION
+    END
+    POPUP "ヘルプ(&H)"
+    BEGIN
+        MENUITEM "バージョン情報(&A)...",              ID_HELP_ABOUT
+    END
+END
+
+IDR_POPUP MENU 
+BEGIN
+    POPUP "ReturnMode"
+    BEGIN
+        MENUITEM "<&CR><LF>",                   ID_RETURN_MODE_CRLF
+        MENUITEM "<C&R>",                       ID_RETURN_MODE_CR
+        MENUITEM "<&LF>",                       ID_RETURN_MODE_LF
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDC_EASYFTP ACCELERATORS 
+BEGIN
+    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
+    VK_DELETE,      ID_EDIT_DELETE,         VIRTKEY, NOINVERT
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
+    VK_RETURN,      ID_FILE_PROPERTY,       VIRTKEY, ALT, NOINVERT
+    VK_F2,          ID_FILE_RENAME,         VIRTKEY, NOINVERT
+    VK_F5,          ID_VIEW_REFRESH,        VIRTKEY, NOINVERT
+    "A",            ID_EDIT_SELECT_ALL,     VIRTKEY, CONTROL, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 226, 122
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "バージョン情報"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    ICON            IDI_EASYFTP,IDC_STATIC,7,7,20,20
+    LTEXT           "EasySFTP version 0.9.3.3",IDC_STATIC,33,8,186,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2011 Kuri-Applications",IDC_STATIC,33,17,186,8
+    LTEXT           "このプログラムは OpenSSL 0.9.8l を使用しています。",IDC_STATIC,33,31,186,8
+    LTEXT           "このプログラムは一部に OpenSSH 5.3p1 のコードを使用しています。",IDC_STATIC,33,42,186,18
+    LTEXT           "このプログラムは修正 BSD ライセンスに基づいて配布されています。ライセンスの詳細は license.txt をご覧ください。",IDC_STATIC,33,78,186,17
+    DEFPUSHBUTTON   "OK",IDOK,169,101,50,14,WS_GROUP
+    LTEXT           "このプログラムは Pageant の機能の一部に PuTTY のコードを使用しています。",IDC_STATIC,33,60,186,18
+END
+
+IDD_OPTION DIALOGEX 0, 0, 182, 128
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "設定"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "システム登録",IDC_STATIC,7,41,168,59
+    LTEXT           "EasySFTP を Windows へ登録し、エクスプローラーなどからも利用できるようにします。(アプリケーションの再起動が必要です。)",IDC_STATIC,14,52,154,26
+    PUSHBUTTON      "登録(&R)...",IDC_REGISTER,82,80,86,14
+    DEFPUSHBUTTON   "OK",IDOK,125,107,50,14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 219
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 115
+    END
+
+    IDD_OPTION, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 121
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#ifndef APSTUDIO_INVOKED\r\n"
+    "#include ""targetver.h""\r\n"
+    "#endif\r\n"
+    "#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "#include ""windows.h""\r\n"
+    "#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 0,9,3,3
+ PRODUCTVERSION 0,9,3,3
+ FILEFLAGSMASK 0x17L
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "041104b0"
+        BEGIN
+            VALUE "CompanyName", "Kuri-Applications"
+            VALUE "FileDescription", "EasySFTP - SFTP/FTP client application"
+            VALUE "FileVersion", "0.9.3.3"
+            VALUE "InternalName", "EasySFTP"
+            VALUE "LegalCopyright", "Copyright (C) 2011 Kuri-Applications"
+            VALUE "OriginalFilename", "EasySFTP.exe"
+            VALUE "ProductName", "EasySFTP"
+            VALUE "ProductVersion", "0.9.3.3"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x411, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_TOOLBAR             BITMAP                  "toolbar.bmp"
+IDB_ADDRESS_BUTTONS     BITMAP                  "AddrBtns.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDS_APP_TITLE           "EasySFTP"
+    IDS_BYTE                "バイト"
+    IDS_ROOTDIR             "(ルート)"
+    IDS_TRANSFER_RATE       "%s / %s - 残り %02d:%02d (転送率: %s / 秒)"
+    IDS_CONNECTMODE_FTP     "FTP"
+    IDS_CONNECTMODE_SFTP    "SFTP"
+    IDS_ADDHOST_PROP        "ホストの追加"
+    IDS_CHANGEHOST_PROP     "ホスト設定の変更"
+    IDS_FOLDER_DIALOG       "フォルダを選択してください。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_HEAD_FILE_NAME      "名前"
+    IDS_HEAD_SIZE           "サイズ"
+    IDS_HEAD_TYPE           "種類"
+    IDS_HEAD_MODIFY_TIME    "更新日時"
+    IDS_HEAD_PERMISSIONS    "属性"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_UNKNOWN_HOST        "ホスト (%s) が見つかりません。"
+    IDS_FAILED_TO_CONNECT   "接続に失敗しました。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_CONNECTING          "接続中..."
+    IDS_AUTHENTICATING      "認証中..."
+    IDS_CONNECTED           "接続しました。"
+    IDS_COMMAND_OK          "コマンドは成功しました。"
+    IDS_COMMAND_FAILED      "サーバーはエラーコードを返しました: %d"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_FINISHED            "完了しました。(%s)"
+    IDS_CANCELED            "取り消されました。"
+    IDS_WAITING             "待機中..."
+    IDS_NEW_DIRECTORY       "新しいフォルダ"
+    IDS_AUTH_FAILED         "ユーザー名またはパスワードが異なります。再入力してください。"
+    IDS_UNAVAILABLE         "(利用不可)"
+    IDS_MULTI_SELECT        "(複数選択)"
+    IDS_TOTAL               "合計 "
+    IDS_TRANSFER_COUNT      "転送完了 %d/%d"
+    IDS_ALL_FILTER          "すべてのファイル (*.*)|*.*"
+    IDS_SHORTCUT_PREFIX     "SymLink-"
+    IDS_UNKNOWN_SIZE        "(不明)"
+    IDS_REGISTER_BUTTON     "登録(&R)..."
+    IDS_UNREGISTER_BUTTON   "登録の削除(&R)..."
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_DIRCHANGE_FAILED    "ディレクトリに移動できません。"
+    IDS_DIRLIST_RECEIVED    "ディレクトリの一覧を取得しました。"
+    IDS_CANNOT_CREATE_DIRECTORY "ディレクトリを作成できません。"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_FILE_CONNECT         "登録したサーバーに接続します。\n接続"
+    ID_FILE_DISCONNECT      "現在の接続を終了します。\n切断"
+    ID_FILE_QUICK_CONNECT   "ホスト名などを直接入力してサーバーに接続します。\nクイック接続"
+    ID_FILE_OPEN            "選択したファイルを開きます。\n開く"
+    ID_FILE_SAVE_AS         "選択したファイルに別の名前を付けてダウンロードします。"
+    ID_FILE_RENAME          "選択したファイルの名前を変更します。\n名前の変更"
+    ID_FILE_NEW_FOLDER      "新しいフォルダを作成します。\n新しいフォルダ"
+    ID_FILE_EXIT            "アプリケーションを終了します。"
+    ID_FILE_PROPERTY        "選択したファイルのプロパティを表示します。"
+    ID_FILE_CREATE_SHORTCUT "ショートカット(リンク)を作成します。"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_HELP_ABOUT           "アプリケーションのバージョン情報を表示します。"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_VIEW_TRANSFER        "現在進行中のファイル転送の状態を表示します。"
+    ID_VIEW_REFRESH         "ファイルの一覧を更新します。\n最新の情報に更新"
+    ID_VIEW_GO_FOLDER       "入力したフォルダに移動します。\n移動"
+    ID_VIEW_PARENT_FOLDER   "親フォルダに移動します。\n1つ上のフォルダに移動"
+    ID_VIEW_SERVER_GO_FOLDER "入力したサーバーディレクトリに移動します。\n移動"
+    ID_VIEW_SERVER_PARENT_FOLDER "1つ上のディレクトリに移動します。\n1つ上のディレクトリに移動"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_EDIT_DELETE          "選択したファイルを削除します。\n削除"
+    ID_EDIT_UPLOAD          "ローカル側の選択したファイルをサーバーに送ります。\nアップロード"
+    ID_EDIT_DOWNLOAD        "サーバー側の選択したファイルをローカルに保存します。\nダウンロード"
+    ID_EDIT_UPLOAD_ALL      "ローカル側のファイル全てをサーバー側にアップロードします。\nすべてアップロード"
+    ID_EDIT_DOWNLOAD_ALL    "サーバー側のファイル全てをローカル側にダウンロードします。\nすべてダウンロード"
+    ID_EDIT_CUT             "選択したファイルを切り取り、クリップボードに情報を保存します。\n切り取り"
+    ID_EDIT_COPY            "選択したファイルの情報をクリップボードにコピーして保存します。\nコピー"
+    ID_EDIT_PASTE           "クリップボードにあるファイルを貼り付けます。\n貼り付け"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_TRANSFER_MODE_AUTO   "テキストファイルとバイナリファイルを設定から判別して送受信します。\n自動判別モード"
+    ID_TRANSFER_MODE_TEXT   "全てのファイルをテキストファイルとして送受信します。\nテキストモード"
+    ID_TRANSFER_MODE_BINARY "全てのファイルをバイナリファイルとして送受信します。\nバイナリモード"
+    ID_TRANSFER_LOCAL_MODE  "ローカル側ファイルの改行モードを指定します。\nローカルファイルの改行モード"
+    ID_TRANSFER_LOCAL_CRLF  "ローカル側ファイルの改行を<CR><LF>として読み込みます。\n<CR><LF>"
+    ID_TRANSFER_LOCAL_CR    "ローカル側ファイルの改行を<CR>として読み込みます。\n<CR>"
+    ID_TRANSFER_LOCAL_LF    "ローカル側ファイルの改行を<LF>として読み込みます。\n<LF>"
+    ID_TRANSFER_SERVER_MODE "サーバー側ファイルの改行モードを指定します。\nサーバーファイルの改行モード"
+    ID_TRANSFER_SERVER_CRLF "サーバー側ファイルの改行を<CR><LF>として読み込みます。\n<CR><LF>"
+    ID_TRANSFER_SERVER_CR   "サーバー側ファイルの改行を<CR>として読み込みます。\n<CR>"
+    ID_TRANSFER_SERVER_LF   "サーバー側ファイルの改行を<LF>として読み込みます。\n<LF>"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_TYPE_NONE           "なし"
+    IDS_TYPE_TEXT           "テキスト"
+    IDS_TYPE_BINARY         "バイナリ"
+    IDS_TYPE_DIRECTORY      "ディレクトリ"
+    IDS_TYPE_MIXED          "混在"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_EXTERNAL_APP_IS_DOWNLOADING 
+                            "外部アプリケーションがダウンロードを行っています。切断するとそのデータは無効となります。\n\n続行しますか？"
+    IDS_DATA_ON_CLIPBOARD   "クリップボードにサーバーのファイルデータが存在します。切断するとそのデータは無効になりますがよろしいですか?"
+    IDS_RESTART_APP         "アプリケーションを再起動します。"
+END
+
+STRINGTABLE 
+BEGIN
+    IDS_REGESFTP_NOT_FOUND  "「RegESFTP.exe」が見つかりません。"
+    IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK 
+                            "エミュレートモードでの EasySFTP の初期化に失敗しました。EasySFTP をレジストリに登録して再度実行してください。\n\nRegESFTP.exe を利用して今すぐレジストリに登録しますか？(管理者権限が必要です。)"
+    IDS_FAILED_TO_INIT_APP  "アプリケーションの初期化に失敗しました。メモリが不足している可能性があります。"
+    IDS_FAILED_TO_LOAD_SYSLIBS "システムライブラリーの初期化に失敗しました。メモリが不足している可能性があります。"
+    IDS_CANNOT_RUN_IN_EMULATION_MODE 
+                            "Windows 95/98/Me ではエミュレートモードで EasySFTP を実行することが出来ません。EasySFTP をレジストリに登録して再度実行してください。\n\nRegESFTP.exe を利用して今すぐレジストリに登録しますか？"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_TOOL_OPTION          "アプリケーションの設定を変更します。"
+END
+
+#endif    // 日本語 resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

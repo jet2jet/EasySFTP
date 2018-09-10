@@ -1,0 +1,3 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Condition="Exists('$(SolutionDir)Common.user.props')" Project="$(SolutionDir)Common.user.props" />
+</Project>
