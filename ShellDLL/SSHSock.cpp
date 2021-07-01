@@ -5,6 +5,7 @@
  */
 
 #include "StdAfx.h"
+#include "MyFunc.h"
 #include "SSHSock.h"
 
 #include "ExBuffer.h"
@@ -322,9 +323,9 @@ bool CSSH2Socket::SendPacket(BYTE bType, const void* pBuffer, size_t nLen, size_
 
 	m_nSendSequenceNumber++;
 
-	// ‘—M‚ªŠ®—¹‚·‚é‘O‚Éƒoƒbƒtƒ@‚ªÄ—˜—p‚³‚ê‚È‚¢‚æ‚¤‚ÉA
-	// ƒf[ƒ^‚ğƒuƒƒbƒLƒ“ƒOƒ‚[ƒh‚Å‘—M‚·‚é
-	// (TeraTerm ‚Ì ttxssh/ssh.cAsend_packet_blocking ‚ğQÆ)
+	// é€ä¿¡ãŒå®Œäº†ã™ã‚‹å‰ã«ãƒãƒƒãƒ•ã‚¡ãŒå†åˆ©ç”¨ã•ã‚Œãªã„ã‚ˆã†ã«ã€
+	// ãƒ‡ãƒ¼ã‚¿ã‚’ãƒ–ãƒ­ãƒƒã‚­ãƒ³ã‚°ãƒ¢ãƒ¼ãƒ‰ã§é€ä¿¡ã™ã‚‹
+	// (TeraTerm ã® ttxssh/ssh.cã€send_packet_blocking ã‚’å‚ç…§)
 	bool ret = _DoSendSocketBlocking(this, pvSend, nBufferLen);
 	free(pvSend);
 	return ret;

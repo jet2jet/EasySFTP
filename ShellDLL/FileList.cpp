@@ -5,7 +5,7 @@
  */
 
 #include "stdafx.h"
-//#include "EasySFTP.h"
+#include "MyFunc.h"
 #include "FileList.h"
 
 #include "SFTPChan.h"
@@ -134,13 +134,13 @@ static int __stdcall ParseEnglishMonthName(LPCWSTR lpszString)
 
 static int __stdcall ParseJapaneseMonthName(LPCWSTR lpszString)
 {
-	if (lpszString[1] == L'ŒŽ')
+	if (lpszString[1] == 0x6708) // L'æœˆ'
 	{
 		if (lpszString[0] < L'1' || lpszString[0] > L'9')
 			return 0;
 		return (lpszString[0] - L'0');
 	}
-	else if (lpszString[2] == L'ŒŽ')
+	else if (lpszString[2] == 0x6708) // L'æœˆ'
 	{
 		if (lpszString[0] != L'1' || (lpszString[1] < L'0' || lpszString[1] > L'2'))
 			return 0;
@@ -153,14 +153,14 @@ static int __stdcall ParseJapaneseMonthName(LPCWSTR lpszString)
 static int __stdcall ParseJapaneseDayName(LPCWSTR lpszString, LPCWSTR* lplpPos)
 {
 	int r;
-	if (lpszString[1] == L'“ú')
+	if (lpszString[1] == 0x65E5) // L'æ—¥'
 	{
 		if (lpszString[2] != L' ' || lpszString[0] < L'1' || lpszString[0] > L'9')
 			return 0;
 		*lplpPos = lpszString + 2;
 		return (lpszString[0] - L'0');
 	}
-	if (lpszString[2] != L'“ú' || lpszString[3] != L' ' ||
+	if (lpszString[2] != 0x65E5 || lpszString[3] != L' ' ||
 		lpszString[1] < L'0' || lpszString[1] > L'9')
 		return 0;
 	if (lpszString[0] == L' ')
@@ -210,7 +210,8 @@ static bool __stdcall ParseYearOrHourMinute(LPCWSTR& lpszString, SYSTEMTIME* pst
 		pst->wMinute = (WORD) n;
 		lpszString = lpw + 1;
 	}
-	else if (*lpw == L'”N' && *(lpw + 1) == L' ')
+	// 0x5E74: L'å¹´'
+	else if (*lpw == 0x5E74 && *(lpw + 1) == L' ')
 	{
 		pst->wYear = (WORD) n;
 		lpszString = lpw + 2;

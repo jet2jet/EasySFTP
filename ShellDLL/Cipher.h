@@ -34,7 +34,7 @@ struct CMacData
 	void* pKeyData;
 	size_t nKeyLen;
 	const EVP_MD* pEVPMD;
-	HMAC_CTX evpCtx;
+	HMAC_CTX* pEvpCtx;
 	//umac_ctx
 };
 
@@ -91,7 +91,7 @@ struct CNewKeyData
 struct CCipherContext
 {
 	CCipher* pCipher;
-	EVP_CIPHER_CTX evp;
+	EVP_CIPHER_CTX* pEvp;
 };
 
 extern "C" CCipher* __stdcall GetCipherByName(LPCSTR lpszName);

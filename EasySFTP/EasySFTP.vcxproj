@@ -251,6 +251,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\README.md" />
     <None Include="AddrBtns.bmp" />
     <None Include="EasySFTP.ico" />
     <None Include="EasySFTP_2.ico" />

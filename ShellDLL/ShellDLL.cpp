@@ -1015,9 +1015,9 @@ int CMainDLL::ExitInstance()
 	//::ENGINE_cleanup();
 	//::CONF_modules_unload();
 	//::RAND_cleanup();
-	::ERR_free_strings();
-	::EVP_cleanup();
-	::CRYPTO_cleanup_all_ex_data();
+	ERR_free_strings();
+	EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
 
 	return 0;
 }
@@ -1803,7 +1803,7 @@ EXTERN_C PITEMID_CHILD __stdcall CreateRootCommandItem(IMalloc* pMalloc, WORD wI
 	nSize = sizeof(CSFTPCommandItem) - (sizeof(DELEGATEITEMID) - sizeof(BYTE));
 	if (nSize > 65535)
 		return NULL;
-	// IMalloc::Alloc �ɓn���̂͒��g�̃T�C�Y�̂�
+	// IMalloc::Alloc に渡すのは中身のサイズのみ
 	pItem = (CSFTPCommandItem*) pMalloc->Alloc(nSize);
 	if (!pItem)
 		return NULL;
@@ -1826,7 +1826,7 @@ EXTERN_C PITEMID_CHILD __stdcall CreateHostItem(IMalloc* pMalloc, bool bSFTPMode
 		- sizeof(WCHAR) + (sizeof(WCHAR) * wcslen(lpszHostName));
 	if (nSize > 65535)
 		return NULL;
-	// IMalloc::Alloc �ɓn���̂͒��g�̃T�C�Y�̂�
+	// IMalloc::Alloc に渡すのは中身のサイズのみ
 	pItem = (CSFTPHostItem*) pMalloc->Alloc(nSize);
 	if (!pItem)
 		return NULL;
@@ -1848,7 +1848,7 @@ EXTERN_C PITEMID_CHILD __stdcall CreateFileItem(IMalloc* pMalloc, CFTPFileItem* 
 		- sizeof(WCHAR) + (sizeof(WCHAR) * pFTPItem->strFileName.GetLength());
 	if (nSize > 65535)
 		return NULL;
-	// IMalloc::Alloc �ɓn���̂͒��g�̃T�C�Y�̂�
+	// IMalloc::Alloc に渡すのは中身のサイズのみ
 	pItem = (CSFTPFileItem*) pMalloc->Alloc(nSize);
 	if (!pItem)
 		return NULL;
@@ -1879,7 +1879,7 @@ EXTERN_C PITEMID_CHILD __stdcall CreateDummyFileItem(IMalloc* pMalloc, LPCWSTR l
 		- sizeof(WCHAR) + (sizeof(WCHAR) * wcslen(lpszFileName));
 	if (nSize > 65535)
 		return NULL;
-	// IMalloc::Alloc �ɓn���̂͒��g�̃T�C�Y�̂�
+	// IMalloc::Alloc に渡すのは中身のサイズのみ
 	pItem = (CSFTPFileItem*) pMalloc->Alloc(nSize);
 	if (!pItem)
 		return NULL;

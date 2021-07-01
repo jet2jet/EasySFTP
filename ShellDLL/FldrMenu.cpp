@@ -981,7 +981,8 @@ void CFTPFileDirectoryMenu::DoProperty(HWND hWndOwner)
 	{
 		PITEMID_CHILD pidlC = ::GetChildItemIDList(m_pidlMe);
 		IContextMenu* pMenu = NULL;
-		HRESULT hr = pParent->GetUIObjectOf(hWndOwner, 1, &pidlC, IID_IContextMenu, NULL, (void**) &pMenu);
+		PCITEMID_CHILD pcidlC = pidlC;
+		HRESULT hr = pParent->GetUIObjectOf(hWndOwner, 1, &pcidlC, IID_IContextMenu, NULL, (void**) &pMenu);
 		if (SUCCEEDED(hr) && pMenu)
 		{
 			CMINVOKECOMMANDINFOEX ciex;
@@ -992,5 +993,6 @@ void CFTPFileDirectoryMenu::DoProperty(HWND hWndOwner)
 			pMenu->InvokeCommand((CMINVOKECOMMANDINFO*) &ciex);
 			pMenu->Release();
 		}
+		::CoTaskMemFree(pidlC);
 	}
 }

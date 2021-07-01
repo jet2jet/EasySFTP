@@ -59,7 +59,10 @@ static HRESULT __stdcall GetRelativeDataObject(IShellFolder* pFolder, HWND hWndO
 	PIDLIST_RELATIVE pidlParent = (PIDLIST_RELATIVE) ::RemoveOneChild((PCUIDLIST_ABSOLUTE) pidlRelative);
 	HRESULT hr = pFolder->BindToObject(pidlParent, NULL, IID_IShellFolder, (void**) &p2);
 	if (SUCCEEDED(hr))
-		hr = p2->GetUIObjectOf(hWndOwner, 1, &pidlChild, IID_IDataObject, NULL, (void**) ppObject);
+	{
+		PCITEMID_CHILD pcidlChild = pidlChild;
+		hr = p2->GetUIObjectOf(hWndOwner, 1, &pcidlChild, IID_IDataObject, NULL, (void**)ppObject);
+	}
 	::CoTaskMemFree(pidlParent);
 	::CoTaskMemFree(pidlChild);
 	return hr;

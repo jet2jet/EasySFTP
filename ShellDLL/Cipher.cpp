@@ -43,7 +43,11 @@ extern "C" void __stdcall MacSetupById(CMacData* pMac, int nID)
 	pMac->nType = s_macs[nID].nType;
 	if (pMac->nType == SSH_EVP)
 	{
-		memset(&pMac->evpCtx, 0, sizeof(pMac->evpCtx));
+		pMac->pEvpCtx = HMAC_CTX_new();
+		if (!pMac->pEvpCtx)
+		{
+			return;
+		}
 		pMac->pEVPMD = (*s_macs[nID].mdfunc)();
 		if ((nEvpLen = EVP_MD_size(pMac->pEVPMD)) <= 0)
 		{
@@ -54,6 +58,7 @@ extern "C" void __stdcall MacSetupById(CMacData* pMac, int nID)
 	}
 	else
 	{
+		pMac->pEvpCtx = NULL;
 		pMac->pEVPMD = NULL;
 		pMac->nMacLen = s_macs[nID].nLen / 8;
 		pMac->nKeyLen = s_macs[nID].nKeyLen / 8;
@@ -86,9 +91,9 @@ extern "C" bool __stdcall MacInit(CMacData* pMac)
 	switch (pMac->nType)
 	{
 		case SSH_EVP:
-			if (!pMac->pEVPMD)
+			if (!pMac->pEVPMD || !pMac->pEvpCtx)
 				return false;
-			HMAC_Init(&pMac->evpCtx, pMac->pKeyData, (int) pMac->nKeyLen, pMac->pEVPMD);
+			HMAC_Init(pMac->pEvpCtx, pMac->pKeyData, (int) pMac->nKeyLen, pMac->pEVPMD);
 			break;
 		case SSH_UMAC:
 			// unsupported
@@ -119,10 +124,10 @@ extern "C" void* __stdcall MacCompute(CMacData* pMac, UINT uSeqNum, const void* 
 			b[2] = HIBYTE(LOWORD(uSeqNum));
 			b[3] = LOBYTE(LOWORD(uSeqNum));
 			/* reset HMAC context */
-			HMAC_Init(&pMac->evpCtx, NULL, 0, NULL);
-			HMAC_Update(&pMac->evpCtx, b, sizeof(b));
-			HMAC_Update(&pMac->evpCtx, (const unsigned char*) pData, nLen);
-			HMAC_Final(&pMac->evpCtx, (unsigned char*) pRet, NULL);
+			HMAC_Init(pMac->pEvpCtx, NULL, 0, NULL);
+			HMAC_Update(pMac->pEvpCtx, b, sizeof(b));
+			HMAC_Update(pMac->pEvpCtx, (const unsigned char*) pData, nLen);
+			HMAC_Final(pMac->pEvpCtx, (unsigned char*) pRet, NULL);
 			break;
 		//case SSH_UMAC:
 		//	put_u64(nonce, uSeqNum);
@@ -140,8 +145,11 @@ extern "C" void __stdcall MacCleanup(CMacData* pMac)
 {
 	if (pMac->nType == SSH_EVP)
 	{
-		if (pMac->pEVPMD)
-			HMAC_CTX_cleanup(&pMac->evpCtx);
+		if (pMac->pEVPMD && pMac->pEvpCtx)
+		{
+			HMAC_CTX_free(pMac->pEvpCtx);
+			pMac->pEvpCtx = NULL;
+		}
 	}
 	pMac->pEVPMD = NULL;
 }
@@ -217,30 +225,42 @@ extern "C" bool __stdcall InitCipherContext(CCipherContext* pContext, CCipher* p
 	}
 	pContext->pCipher = pCipher;
 
+	pContext->pEvp = EVP_CIPHER_CTX_new();
+	if (!pContext->pEvp)
+	{
+		return false;
+	}
+
 	pType = (*pCipher->GetEvpType)();
 
-	EVP_CIPHER_CTX_init(&pContext->evp);
-	if (EVP_CipherInit(&pContext->evp, pType, NULL, (unsigned char*) pIV,
+	EVP_CIPHER_CTX_init(pContext->pEvp);
+	if (EVP_CipherInit(pContext->pEvp, pType, NULL, (unsigned char*) pIV,
 	    !!bEncrypt) == 0)
 	{
 		//fatal("cipher_init: EVP_CipherInit failed for %s",
 		//    pCipher->lpszName);
+		EVP_CIPHER_CTX_free(pContext->pEvp);
+		pContext->pEvp = NULL;
 		return false;
 	}
-	nKLen = EVP_CIPHER_CTX_key_length(&pContext->evp);
+	nKLen = EVP_CIPHER_CTX_key_length(pContext->pEvp);
 	if (nKLen > 0 && nKeyLen != (size_t) nKLen)
 	{
-		if (EVP_CIPHER_CTX_set_key_length(&pContext->evp, (int) nKeyLen) == 0)
+		if (EVP_CIPHER_CTX_set_key_length(pContext->pEvp, (int) nKeyLen) == 0)
 		{
 			//fatal("cipher_init: set keylen failed (%d -> %d)",
 			//    nKLen, nKeyLen);
+			EVP_CIPHER_CTX_free(pContext->pEvp);
+			pContext->pEvp = NULL;
 			return false;
 		}
 	}
-	if (EVP_CipherInit(&pContext->evp, NULL, (unsigned char*) pKey, NULL, -1) == 0)
+	if (EVP_CipherInit(pContext->pEvp, NULL, (unsigned char*) pKey, NULL, -1) == 0)
 	{
 		//fatal("cipher_init: EVP_CipherInit: set key failed for %s",
 		//    pCipher->lpszName);
+		EVP_CIPHER_CTX_free(pContext->pEvp);
+		pContext->pEvp = NULL;
 		return false;
 	}
 
@@ -248,10 +268,12 @@ extern "C" bool __stdcall InitCipherContext(CCipherContext* pContext, CCipher* p
 	{
 		pJunk = malloc(pCipher->nDiscardLen);
 		pDiscard = malloc(pCipher->nDiscardLen);
-		if (EVP_Cipher(&pContext->evp, (unsigned char*) pDiscard,
+		if (EVP_Cipher(pContext->pEvp, (unsigned char*) pDiscard,
 			(unsigned char*) pJunk, (unsigned int) pCipher->nDiscardLen) == 0)
 		{
 			//fatal("evp_crypt: EVP_Cipher failed during discard");
+			EVP_CIPHER_CTX_free(pContext->pEvp);
+			pContext->pEvp = NULL;
 			return false;
 		}
 		_SecureStringW::SecureEmptyBuffer(pDiscard, pCipher->nDiscardLen);
@@ -263,14 +285,16 @@ extern "C" bool __stdcall InitCipherContext(CCipherContext* pContext, CCipher* p
 
 extern "C" void __stdcall CleanupCipherContext(CCipherContext* pContext)
 {
-	EVP_CIPHER_CTX_cleanup(&pContext->evp);
+	EVP_CIPHER_CTX_cleanup(pContext->pEvp);
+	EVP_CIPHER_CTX_free(pContext->pEvp);
+	pContext->pEvp = NULL;
 }
 
 extern "C" bool __stdcall CryptWithCipherContext(CCipherContext* pContext, void* pvDest, const void* pvSrc, size_t nSize)
 {
 	if ((nSize % pContext->pCipher->nBlockSize) != 0)
 		return false;
-	return EVP_Cipher(&pContext->evp, (unsigned char*) pvDest, (const unsigned char*) pvSrc, (unsigned int) nSize) != 0;
+	return EVP_Cipher(pContext->pEvp, (unsigned char*) pvDest, (const unsigned char*) pvSrc, (unsigned int) nSize) != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

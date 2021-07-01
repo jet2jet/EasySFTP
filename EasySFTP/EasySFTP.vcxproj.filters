@@ -110,6 +110,7 @@
       <Filter>リソース ファイル</Filter>
     </None>
     <None Include="ToDo.txt" />
+    <None Include="..\README.md" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="EasySFTP.rc">

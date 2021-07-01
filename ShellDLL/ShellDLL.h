@@ -8,6 +8,7 @@
 
 #include "resource.h"
 
+#include "MyFunc.h"
 #include "Unicode.h"
 #include "UString.h"
 #include "SUString.h"

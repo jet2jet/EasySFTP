@@ -80,11 +80,9 @@
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>F:\OpenSSL\lib\vc14\x64;$(LibraryPath)</LibraryPath>
     <TargetName>EasySFTP</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>F:\OpenSSL\lib\vc14\x64;$(LibraryPath)</LibraryPath>
     <TargetName>EasySFTP</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -106,7 +104,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;libeay32.lib;ssleay32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.9</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -133,7 +131,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;libeay32.lib;ssleay32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.9</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -157,7 +155,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;libeay32.lib;ssleay32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.9</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -187,7 +185,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;libeay32.lib;ssleay32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.9</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -247,6 +245,9 @@
     <ClCompile Include="Transfer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Common.props" />
+    <None Include="..\Common.user.props" />
+    <None Include="..\Common.user.sample.props" />
     <None Include="newhost.ico" />
     <None Include="ShellDLL.def" />
     <None Include="EasySFTP_2.ico" />

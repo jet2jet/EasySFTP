@@ -150,6 +150,9 @@
     <None Include="newhost.ico">
       <Filter>リソース ファイル</Filter>
     </None>
+    <None Include="..\Common.props" />
+    <None Include="..\Common.user.props" />
+    <None Include="..\Common.user.sample.props" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Auth.h">

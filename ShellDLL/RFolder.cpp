@@ -525,7 +525,7 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 				pDirectory->Release();
 				//if (!bFound)
 				//{
-				//	// new‚ÅAddRef‚³‚ê‚Ä‚¢‚é‚Ì‚Å‚à‚¤ˆê“xRelease‚ª•K—v
+				//	// newã§AddRefã•ã‚Œã¦ã„ã‚‹ã®ã§ã‚‚ã†ä¸€åº¦ReleaseãŒå¿…è¦
 				//	pDirectory->Release();
 				//	delete pHostData;
 				//}
@@ -540,7 +540,7 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 				pDirectory->Release();
 				//if (!bFound)
 				//{
-				//	// new‚ÅAddRef‚³‚ê‚Ä‚¢‚é‚Ì‚Å‚à‚¤ˆê“xRelease‚ª•K—v
+				//	// newã§AddRefã•ã‚Œã¦ã„ã‚‹ã®ã§ã‚‚ã†ä¸€åº¦ReleaseãŒå¿…è¦
 				//	pDirectory->Release();
 				//	delete pHostData;
 				//}
@@ -1573,12 +1573,13 @@ bool CEasySFTPFolderRoot::ConnectDialog(HWND hWndOwner, CUserInfo* pUser)
 			pUser->nAuthType = m_dlgConnect.m_nAuthType;
 			if (m_dlgConnect.m_pPKey)
 			{
-				if (m_dlgConnect.m_pPKey->type == EVP_PKEY_RSA)
+				auto pkeyType = EVP_PKEY_base_id(m_dlgConnect.m_pPKey);
+				if (pkeyType == EVP_PKEY_RSA)
 				{
 					pUser->keyType = KEY_RSA;
 					pUser->keyData = EVP_PKEY_get1_RSA(m_dlgConnect.m_pPKey);
 				}
-				else if (m_dlgConnect.m_pPKey->type == EVP_PKEY_DSA)
+				else if (pkeyType == EVP_PKEY_DSA)
 				{
 					pUser->keyType = KEY_DSA;
 					pUser->keyData = EVP_PKEY_get1_DSA(m_dlgConnect.m_pPKey);
@@ -1648,7 +1649,7 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, CUserInfo* pUser,
 			m_dlgConnect.m_bDisableAuthPublicKey = false;
 			bAvailable = true;
 		}
-		// EasySFTP ‚ª‘Î‰‚µ‚Ä‚¢‚é”FØ•û–@‚ªŒ©‚Â‚©‚ç‚È‚¢ê‡‚ÍƒGƒ‰[‚ğ•Ô‚·
+		// EasySFTP ãŒå¯¾å¿œã—ã¦ã„ã‚‹èªè¨¼æ–¹æ³•ãŒè¦‹ã¤ã‹ã‚‰ãªã„å ´åˆã¯ã‚¨ãƒ©ãƒ¼ã‚’è¿”ã™
 		if (!bAvailable)
 			return -1;
 	}
@@ -1667,12 +1668,13 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, CUserInfo* pUser,
 			pUser->nAuthType = m_dlgConnect.m_nAuthType;
 			if (m_dlgConnect.m_pPKey)
 			{
-				if (m_dlgConnect.m_pPKey->type == EVP_PKEY_RSA)
+				auto pkeyType = EVP_PKEY_base_id(m_dlgConnect.m_pPKey);
+				if (pkeyType == EVP_PKEY_RSA)
 				{
 					pUser->keyType = KEY_RSA;
 					pUser->keyData = EVP_PKEY_get1_RSA(m_dlgConnect.m_pPKey);
 				}
-				else if (m_dlgConnect.m_pPKey->type == EVP_PKEY_DSA)
+				else if (pkeyType == EVP_PKEY_DSA)
 				{
 					pUser->keyType = KEY_DSA;
 					pUser->keyData = EVP_PKEY_get1_DSA(m_dlgConnect.m_pPKey);
@@ -2343,7 +2345,7 @@ STDMETHODIMP CEasySFTPRootMenu::GetSite(REFIID riid, void** ppvSite)
 
 void CEasySFTPRootMenu::DoAdd(HWND hWndOwner)
 {
-	// ƒy[ƒW‚ª‰Šú‰»‚³‚ê‚È‚©‚Á‚½ê‡‚Í true ‚Ì‚Ü‚Ü‚É‚È‚é
+	// ãƒšãƒ¼ã‚¸ãŒåˆæœŸåŒ–ã•ã‚Œãªã‹ã£ãŸå ´åˆã¯ true ã®ã¾ã¾ã«ãªã‚‹
 	bool br1 = true;
 	bool br2 = true;
 	bool br3 = true;
@@ -2391,7 +2393,7 @@ void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
 	if (!pHostData || !pHostData->pSettings)
 		return;
 
-	// ƒy[ƒW‚ª‰Šú‰»‚³‚ê‚È‚©‚Á‚½ê‡‚Í true ‚Ì‚Ü‚Ü‚É‚È‚é
+	// ãƒšãƒ¼ã‚¸ãŒåˆæœŸåŒ–ã•ã‚Œãªã‹ã£ãŸå ´åˆã¯ true ã®ã¾ã¾ã«ãªã‚‹
 	bool br1 = true;
 	bool br2 = true;
 	bool br3 = true;

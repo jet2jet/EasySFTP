@@ -18,13 +18,11 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// 日本語 resources
+// 日本語 (日本) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_JPN)
-#ifdef _WIN32
 LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
 #pragma code_page(932)
-#endif //_WIN32
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -34,14 +32,16 @@ LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDI_EASYFTP             ICON                    "EasySFTP_2.ico"
+
 ID_STATUS_SECURE        ICON                    "secure.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // Menu
 //
 
-IDC_EASYFTP MENU 
+IDC_EASYFTP MENU
 BEGIN
     POPUP "ファイル(&F)"
     BEGIN
@@ -94,7 +94,7 @@ BEGIN
     END
 END
 
-IDR_POPUP MENU 
+IDR_POPUP MENU
 BEGIN
     POPUP "ReturnMode"
     BEGIN
@@ -110,7 +110,7 @@ END
 // Accelerator
 //
 
-IDC_EASYFTP ACCELERATORS 
+IDC_EASYFTP ACCELERATORS
 BEGIN
     "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
     VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
@@ -138,7 +138,7 @@ BEGIN
     ICON            IDI_EASYFTP,IDC_STATIC,7,7,20,20
     LTEXT           "EasySFTP version 0.9.3.3",IDC_STATIC,33,8,186,8,SS_NOPREFIX
     LTEXT           "Copyright (C) 2011 Kuri-Applications",IDC_STATIC,33,17,186,8
-    LTEXT           "このプログラムは OpenSSL 0.9.8l を使用しています。",IDC_STATIC,33,31,186,8
+    LTEXT           "このプログラムは OpenSSL 1.1.1k を使用しています。",IDC_STATIC,33,31,186,8
     LTEXT           "このプログラムは一部に OpenSSH 5.3p1 のコードを使用しています。",IDC_STATIC,33,42,186,18
     LTEXT           "このプログラムは修正 BSD ライセンスに基づいて配布されています。ライセンスの詳細は license.txt をご覧ください。",IDC_STATIC,33,78,186,17
     DEFPUSHBUTTON   "OK",IDOK,169,101,50,14,WS_GROUP
@@ -163,7 +163,7 @@ END
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO 
+GUIDELINES DESIGNINFO
 BEGIN
     IDD_ABOUTBOX, DIALOG
     BEGIN
@@ -260,14 +260,16 @@ END
 //
 
 IDB_TOOLBAR             BITMAP                  "toolbar.bmp"
+
 IDB_ADDRESS_BUTTONS     BITMAP                  "AddrBtns.bmp"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // String Table
 //
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_APP_TITLE           "EasySFTP"
     IDS_BYTE                "バイト"
@@ -280,7 +282,7 @@ BEGIN
     IDS_FOLDER_DIALOG       "フォルダを選択してください。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_HEAD_FILE_NAME      "名前"
     IDS_HEAD_SIZE           "サイズ"
@@ -289,13 +291,13 @@ BEGIN
     IDS_HEAD_PERMISSIONS    "属性"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_UNKNOWN_HOST        "ホスト (%s) が見つかりません。"
     IDS_FAILED_TO_CONNECT   "接続に失敗しました。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_CONNECTING          "接続中..."
     IDS_AUTHENTICATING      "認証中..."
@@ -304,7 +306,7 @@ BEGIN
     IDS_COMMAND_FAILED      "サーバーはエラーコードを返しました: %d"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_FINISHED            "完了しました。(%s)"
     IDS_CANCELED            "取り消されました。"
@@ -322,14 +324,14 @@ BEGIN
     IDS_UNREGISTER_BUTTON   "登録の削除(&R)..."
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_DIRCHANGE_FAILED    "ディレクトリに移動できません。"
     IDS_DIRLIST_RECEIVED    "ディレクトリの一覧を取得しました。"
     IDS_CANNOT_CREATE_DIRECTORY "ディレクトリを作成できません。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_FILE_CONNECT         "登録したサーバーに接続します。\n接続"
     ID_FILE_DISCONNECT      "現在の接続を終了します。\n切断"
@@ -343,12 +345,12 @@ BEGIN
     ID_FILE_CREATE_SHORTCUT "ショートカット(リンク)を作成します。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_HELP_ABOUT           "アプリケーションのバージョン情報を表示します。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_VIEW_TRANSFER        "現在進行中のファイル転送の状態を表示します。"
     ID_VIEW_REFRESH         "ファイルの一覧を更新します。\n最新の情報に更新"
@@ -358,7 +360,7 @@ BEGIN
     ID_VIEW_SERVER_PARENT_FOLDER "1つ上のディレクトリに移動します。\n1つ上のディレクトリに移動"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_EDIT_DELETE          "選択したファイルを削除します。\n削除"
     ID_EDIT_UPLOAD          "ローカル側の選択したファイルをサーバーに送ります。\nアップロード"
@@ -370,7 +372,7 @@ BEGIN
     ID_EDIT_PASTE           "クリップボードにあるファイルを貼り付けます。\n貼り付け"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_TRANSFER_MODE_AUTO   "テキストファイルとバイナリファイルを設定から判別して送受信します。\n自動判別モード"
     ID_TRANSFER_MODE_TEXT   "全てのファイルをテキストファイルとして送受信します。\nテキストモード"
@@ -385,7 +387,7 @@ BEGIN
     ID_TRANSFER_SERVER_LF   "サーバー側ファイルの改行を<LF>として読み込みます。\n<LF>"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_TYPE_NONE           "なし"
     IDS_TYPE_TEXT           "テキスト"
@@ -394,7 +396,7 @@ BEGIN
     IDS_TYPE_MIXED          "混在"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_EXTERNAL_APP_IS_DOWNLOADING 
                             "外部アプリケーションがダウンロードを行っています。切断するとそのデータは無効となります。\n\n続行しますか？"
@@ -402,7 +404,7 @@ BEGIN
     IDS_RESTART_APP         "アプリケーションを再起動します。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_REGESFTP_NOT_FOUND  "「RegESFTP.exe」が見つかりません。"
     IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK 
@@ -413,12 +415,12 @@ BEGIN
                             "Windows 95/98/Me ではエミュレートモードで EasySFTP を実行することが出来ません。EasySFTP をレジストリに登録して再度実行してください。\n\nRegESFTP.exe を利用して今すぐレジストリに登録しますか？"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_TOOL_OPTION          "アプリケーションの設定を変更します。"
 END
 
-#endif    // 日本語 resources
+#endif    // 日本語 (日本) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

@@ -78,29 +78,45 @@ static bool __stdcall SignSSH2Key(DWORD dwCompat, const KeyData& keyData, KeyTyp
 	if (keyType == KEY_RSA || keyType == KEY_RSA1)
 	{
 		const EVP_MD *evp_md;
-		EVP_MD_CTX md;
+		EVP_MD_CTX* pmd;
 		void* pSig;
 		UINT nSLen, nDLen;
 		size_t nLen;
 		int ret, nNID;
 
+		pmd = EVP_MD_CTX_new();
+		if (!pmd)
+		{
+			free(pDigest);
+			return false;
+		}
+
 		nNID = (dwCompat & SSH_BUG_RSASIGMD5) ? NID_md5 : NID_sha1;
 		if (!(evp_md = EVP_get_digestbynid(nNID)))
 		{
 			//error("ssh_rsa_sign: EVP_get_digestbynid %d failed", nNID);
+			EVP_MD_CTX_free(pmd);
 			free(pDigest);
 			return false;
 		}
-		EVP_DigestInit(&md, evp_md);
-		EVP_DigestUpdate(&md, pData, nDataLen);
-		EVP_DigestFinal(&md, (unsigned char*) pDigest, &nDLen);
+		EVP_DigestInit(pmd, evp_md);
+		EVP_DigestUpdate(pmd, pData, nDataLen);
+		EVP_DigestFinal(pmd, (unsigned char*) pDigest, &nDLen);
+		EVP_MD_CTX_free(pmd);
 
 		nSLen = RSA_size(keyData);
 		pSig = malloc(nSLen);
+		if (!pSig)
+		{
+			_SecureStringW::SecureEmptyBuffer(pDigest, EVP_MAX_MD_SIZE);
+			free(pDigest);
+			return false;
+		}
 
 		nLen = 0;
 		ret = RSA_sign(nNID, (unsigned char*) pDigest, nDLen, (unsigned char*) pSig, (UINT*) &nLen, keyData);
 		_SecureStringW::SecureEmptyBuffer(pDigest, EVP_MAX_MD_SIZE);
+		free(pDigest);
 
 		if (ret != 1)
 		{
@@ -109,7 +125,6 @@ static bool __stdcall SignSSH2Key(DWORD dwCompat, const KeyData& keyData, KeyTyp
 			//error("ssh_rsa_sign: RSA_sign failed: %s",
 			//	ERR_error_string(ecode, NULL));
 			free(pSig);
-			free(pDigest);
 			return false;
 		}
 		if (nLen < (size_t) nSLen)
@@ -123,7 +138,6 @@ static bool __stdcall SignSSH2Key(DWORD dwCompat, const KeyData& keyData, KeyTyp
 		{
 			//error("ssh_rsa_sign: nSLen %u nLen %u", nSLen, nLen);
 			free(pSig);
-			free(pDigest);
 			return false;
 		}
 
@@ -144,7 +158,7 @@ static bool __stdcall SignSSH2Key(DWORD dwCompat, const KeyData& keyData, KeyTyp
 	{
 		DSA_SIG* sig;
 		const EVP_MD* evp_md = EVP_sha1();
-		EVP_MD_CTX md;
+		EVP_MD_CTX* pmd;
 		void* pSigBlob;
 		UINT nRLen, nSLen, nDLen;
 		size_t nLen;
@@ -155,32 +169,41 @@ static bool __stdcall SignSSH2Key(DWORD dwCompat, const KeyData& keyData, KeyTyp
 			free(pDigest);
 			return false;
 		}
-		EVP_DigestInit(&md, evp_md);
-		EVP_DigestUpdate(&md, pData, nDataLen);
-		EVP_DigestFinal(&md, (unsigned char*) pDigest, &nDLen);
+		pmd = EVP_MD_CTX_new();
+		if (!pmd)
+		{
+			free(pSigBlob);
+			free(pDigest);
+			return false;
+		}
+		EVP_DigestInit(pmd, evp_md);
+		EVP_DigestUpdate(pmd, pData, nDataLen);
+		EVP_DigestFinal(pmd, (unsigned char*) pDigest, &nDLen);
+		EVP_MD_CTX_free(pmd);
 
 		sig = DSA_do_sign((unsigned char*) pDigest, nDLen, keyData);
 		_SecureStringW::SecureEmptyBuffer(pDigest, EVP_MAX_MD_SIZE);
+		free(pDigest);
 
 		if (sig == NULL)
 		{
 			//error("ssh_dss_sign: sign failed");
-			free(pDigest);
 			return false;
 		}
 
-		nRLen = BN_num_bytes(sig->r);
-		nSLen = BN_num_bytes(sig->s);
+		const BIGNUM* r, * s;
+		DSA_SIG_get0(sig, &r, &s);
+		nRLen = BN_num_bytes(r);
+		nSLen = BN_num_bytes(s);
 		if (nRLen > INTBLOB_LEN || nSLen > INTBLOB_LEN)
 		{
 			//error("bad sig size %u %u", nRLen, nSLen);
 			DSA_SIG_free(sig);
-			free(pDigest);
 			return false;
 		}
 		memset(pSigBlob, 0, SIGBLOB_LEN);
-		BN_bn2bin(sig->r, (unsigned char*) pSigBlob + SIGBLOB_LEN - INTBLOB_LEN - nRLen);
-		BN_bn2bin(sig->s, (unsigned char*) pSigBlob + SIGBLOB_LEN - nSLen);
+		BN_bn2bin(r, (unsigned char*) pSigBlob + SIGBLOB_LEN - INTBLOB_LEN - nRLen);
+		BN_bn2bin(s, (unsigned char*) pSigBlob + SIGBLOB_LEN - nSLen);
 		DSA_SIG_free(sig);
 
 		if (dwCompat & SSH_BUG_SIGBLOB)
@@ -211,7 +234,6 @@ static bool __stdcall SignSSH2Key(DWORD dwCompat, const KeyData& keyData, KeyTyp
 		_SecureStringW::SecureEmptyBuffer(pSigBlob, SIGBLOB_LEN);
 		free(pSigBlob);
 	}
-	free(pDigest);
 	return true;
 }
 

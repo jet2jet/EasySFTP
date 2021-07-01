@@ -211,7 +211,7 @@ private:
 		const void* pCKexInit, size_t nCKexInitLen,
 		const void* pSKexInit, size_t nSKexInitLen,
 		const void* pServerHostKeyBlob, size_t nServerHostKeyBlobLen,
-		int nMin, int nWantBits, int nMax, const BIGNUM* pPrimeNum, BIGNUM* pGenNum,
+		int nMin, int nWantBits, int nMax, const BIGNUM* pPrimeNum, const BIGNUM* pGenNum,
 		const BIGNUM* pClientDHPub, const BIGNUM* pServerDHPub, const BIGNUM* pShared,
 		void** ppHash, size_t* pnHashLen);
 	bool m_bSha256;

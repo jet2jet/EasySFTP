@@ -2,9 +2,12 @@
 -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+	<!-- (Must be end with '\') -->
     <OpenSSLRoot>\OpenSSL\</OpenSSLRoot>
-    <LibraryPath Condition="'$(Platform)'=='x64'">$(OpenSSLRoot)lib\x64;$(LibraryPath)</LibraryPath>
-    <LibraryPath Condition="'$(Platform)'!='x64'">$(OpenSSLRoot)lib;$(LibraryPath)</LibraryPath>
-    <IncludePath>$(OpenSSLRoot)include;$(IncludePath)</IncludePath>
+    <OpenSSLLibraryNames>libcrypto.lib;libssl.lib</OpenSSLLibraryNames>
+    <LibraryPath Condition="'$(Platform)'=='x64'">$(OpenSSLRoot)x64\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath Condition="'$(Platform)'!='x64'">$(OpenSSLRoot)x86\lib;$(LibraryPath)</LibraryPath>
+	<IncludePath Condition="'$(Platform)'=='x64'">$(OpenSSLRoot)x64\include;$(IncludePath)</IncludePath>
+	<IncludePath Condition="'$(Platform)'!='x64'">$(OpenSSLRoot)x86\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
 </Project>

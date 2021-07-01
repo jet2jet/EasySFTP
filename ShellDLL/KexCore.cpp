@@ -21,7 +21,7 @@ extern "C" bool __stdcall AppendBigNumToBuffer(CExBuffer* pBuffer, const BIGNUM*
 		pBuffer->AppendToBuffer((UINT) 0);
 		return true;
 	}
-	if (pbnum->neg)
+	if (BN_is_negative(pbnum))
 		return false;
 	nSize = 1 + BN_num_bytes(pbnum);    // with padding byte
 	if (nSize < 2)
@@ -115,30 +115,83 @@ static bool __stdcall CreateKeyFromBlob(const void* pvData, size_t nLen, KeyType
 	{
 		case KEY_RSA1:
 		case KEY_RSA:
+		{
 			if (!(key = ::RSA_new()))
 				return false;
-			if (!(key.rsa()->n = ::BN_new()) || !(key.rsa()->e = ::BN_new()) ||
-				!GetBigNumFromBuffer(&buf, key.rsa()->e) ||
-				!GetBigNumFromBuffer(&buf, key.rsa()->n))
+			auto n = ::BN_new();
+			if (!n)
 			{
 				::RSA_free(key);
 				return false;
 			}
-			break;
+			auto e = ::BN_new();
+			if (!e)
+			{
+				::BN_free(n);
+				::RSA_free(key);
+				return false;
+			}
+			if (!GetBigNumFromBuffer(&buf, e) ||
+				!GetBigNumFromBuffer(&buf, n) ||
+				!::RSA_set0_key(key, n, e, NULL))
+			{
+				::BN_free(e);
+				::BN_free(n);
+				::RSA_free(key);
+				return false;
+			}
+		}
+		break;
 		case KEY_DSA:
+		{
 			if (!(key = ::DSA_new()))
 				return false;
-			if (!(key.dsa()->p = ::BN_new()) || !(key.dsa()->q = ::BN_new()) ||
-				!(key.dsa()->g = ::BN_new()) || !(key.dsa()->pub_key = ::BN_new()) ||
-				!GetBigNumFromBuffer(&buf, key.dsa()->p) ||
-				!GetBigNumFromBuffer(&buf, key.dsa()->q) ||
-				!GetBigNumFromBuffer(&buf, key.dsa()->g) ||
-				!GetBigNumFromBuffer(&buf, key.dsa()->pub_key))
+			auto p = ::BN_new();
+			if (!p)
 			{
 				::DSA_free(key);
 				return false;
 			}
-			break;
+			auto q = ::BN_new();
+			if (!q)
+			{
+				::BN_free(p);
+				::DSA_free(key);
+				return false;
+			}
+			auto g = ::BN_new();
+			if (!g)
+			{
+				::BN_free(q);
+				::BN_free(p);
+				::DSA_free(key);
+				return false;
+			}
+			auto pub_key = ::BN_new();
+			if (!pub_key)
+			{
+				::BN_free(g);
+				::BN_free(q);
+				::BN_free(p);
+				::DSA_free(key);
+				return false;
+			}
+			if (!GetBigNumFromBuffer(&buf, p) ||
+				!GetBigNumFromBuffer(&buf, q) ||
+				!GetBigNumFromBuffer(&buf, g) ||
+				!GetBigNumFromBuffer(&buf, pub_key) ||
+				!::DSA_set0_key(key, pub_key, NULL) ||
+				!::DSA_set0_pqg(key, p, q, g))
+			{
+				::BN_free(pub_key);
+				::BN_free(g);
+				::BN_free(q);
+				::BN_free(p);
+				::DSA_free(key);
+				return false;
+			}
+		}
+		break;
 		case KEY_UNSPEC:
 			break;
 	}
@@ -169,16 +222,16 @@ extern "C" bool __stdcall CreateBlobFromKey(KeyType keyType, const KeyData* pKey
 	{
 		case KEY_DSA:
 			buf.AppendToBufferWithLenCE(KeyTypeToName(keyType));
-			AppendBigNumToBuffer(&buf, pKeyData->dsa()->p);
-			AppendBigNumToBuffer(&buf, pKeyData->dsa()->q);
-			AppendBigNumToBuffer(&buf, pKeyData->dsa()->g);
-			AppendBigNumToBuffer(&buf, pKeyData->dsa()->pub_key);
+			AppendBigNumToBuffer(&buf, ::DSA_get0_p(pKeyData->dsa()));
+			AppendBigNumToBuffer(&buf, ::DSA_get0_q(pKeyData->dsa()));
+			AppendBigNumToBuffer(&buf, ::DSA_get0_g(pKeyData->dsa()));
+			AppendBigNumToBuffer(&buf, ::DSA_get0_pub_key(pKeyData->dsa()));
 			break;
 		case KEY_RSA:
 		case KEY_RSA1:
 			buf.AppendToBufferWithLenCE(KeyTypeToName(keyType));
-			AppendBigNumToBuffer(&buf, pKeyData->rsa()->e);
-			AppendBigNumToBuffer(&buf, pKeyData->rsa()->n);
+			AppendBigNumToBuffer(&buf, ::RSA_get0_e(pKeyData->rsa()));
+			AppendBigNumToBuffer(&buf, ::RSA_get0_n(pKeyData->rsa()));
 			break;
 		default:
 			return false;
@@ -262,16 +315,28 @@ static int __stdcall VerifyDSSKey(DWORD dwSFlags, DSA* pDSA, const void* pvSigna
 		free(pSigBlob);
 		return -1;
 	}
-	if (!(pSig->r = BN_new()) || !(pSig->s = BN_new()))
+	auto r = BN_new();
+	if (!r)
 	{
 		DSA_SIG_free(pSig);
 		_SecureStringW::SecureEmptyBuffer(pSigBlob, nBlobLen);
 		free(pSigBlob);
 		return -1;
 	}
-	if (!BN_bin2bn((unsigned char*) pSigBlob, INTBLOB_LEN, pSig->r) ||
-		!BN_bin2bn((unsigned char*) pSigBlob + INTBLOB_LEN, INTBLOB_LEN, pSig->s))
+	auto s = BN_new();
+	if (!s)
 	{
+		BN_free(r);
+		DSA_SIG_free(pSig);
+		_SecureStringW::SecureEmptyBuffer(pSigBlob, nBlobLen);
+		free(pSigBlob);
+		return -1;
+	}
+	if (!BN_bin2bn((unsigned char*) pSigBlob, INTBLOB_LEN, r) ||
+		!BN_bin2bn((unsigned char*) pSigBlob + INTBLOB_LEN, INTBLOB_LEN, s))
+	{
+		BN_free(s);
+		BN_free(r);
 		DSA_SIG_free(pSig);
 		_SecureStringW::SecureEmptyBuffer(pSigBlob, nBlobLen);
 		free(pSigBlob);
@@ -279,31 +344,45 @@ static int __stdcall VerifyDSSKey(DWORD dwSFlags, DSA* pDSA, const void* pvSigna
 	}
 	_SecureStringW::SecureEmptyBuffer(pSigBlob, nBlobLen);
 	free(pSigBlob);
+	if (!::DSA_SIG_set0(pSig, r, s))
+	{
+		BN_free(s);
+		BN_free(r);
+		DSA_SIG_free(pSig);
+		return -1;
+	}
 
 	const EVP_MD *evp_md = EVP_sha1();
-	EVP_MD_CTX md;
+	EVP_MD_CTX* pmd;
 	void* pDigest = malloc(EVP_MAX_MD_SIZE);
 	if (!pDigest)
 	{
 		DSA_SIG_free(pSig);
 		return -1;
 	}
+	pmd = EVP_MD_CTX_new();
+	if (!pmd)
+	{
+		DSA_SIG_free(pSig);
+		return -1;
+	}
 
 	UINT nDigestLen;
-	EVP_DigestInit(&md, evp_md);
-	EVP_DigestUpdate(&md, pHash, nHashLen);
-	EVP_DigestFinal(&md, (unsigned char*) pDigest, &nDigestLen);
+	EVP_DigestInit(pmd, evp_md);
+	EVP_DigestUpdate(pmd, pHash, nHashLen);
+	EVP_DigestFinal(pmd, (unsigned char*) pDigest, &nDigestLen);
 
 	int ret = DSA_do_verify((unsigned char*) pDigest, nDigestLen, pSig, pDSA);
 	_SecureStringW::SecureEmptyBuffer(pDigest, EVP_MAX_MD_SIZE);
 	free(pDigest);
+	EVP_MD_CTX_free(pmd);
 	DSA_SIG_free(pSig);
 	return ret;
 }
 
 // in OpenSSH.cpp
 extern "C" int __stdcall openssh_RSA_verify(int type, const u_char* hash, u_int hashlen,
-    const u_char* sigbuf, u_int siglen, RSA* rsa);
+	const u_char* sigbuf, u_int siglen, RSA* rsa);
 
 /* Minimum modulus size (n) for RSA keys. */
 #define SSH_RSA_MINIMUM_MODULUS_SIZE	768
@@ -313,7 +392,7 @@ static int __stdcall VerifyRSAKey(DWORD dwSFlags, RSA* pRSA, const void* pvSigna
 {
 	if (!pRSA)
 		return -1;
-	if (BN_num_bits(pRSA->n) < SSH_RSA_MINIMUM_MODULUS_SIZE)
+	if (BN_num_bits(RSA_get0_n(pRSA)) < SSH_RSA_MINIMUM_MODULUS_SIZE)
 		return -1;
 
 	void* pSigBlob;
@@ -369,7 +448,7 @@ static int __stdcall VerifyRSAKey(DWORD dwSFlags, RSA* pRSA, const void* pvSigna
 		free(pSigBlob);
 		return -1;
 	}
-	EVP_MD_CTX md;
+	EVP_MD_CTX* pmd;
 	void* pDigest = malloc(EVP_MAX_MD_SIZE);
 	if (!pDigest)
 	{
@@ -377,15 +456,24 @@ static int __stdcall VerifyRSAKey(DWORD dwSFlags, RSA* pRSA, const void* pvSigna
 		free(pSigBlob);
 		return -1;
 	}
+	pmd = EVP_MD_CTX_new();
+	if (!pmd)
+	{
+		free(pDigest);
+		_SecureStringW::SecureEmptyBuffer(pSigBlob, nBlobLen);
+		free(pSigBlob);
+		return -1;
+	}
 
 	UINT nDigestLen;
-	EVP_DigestInit(&md, evp_md);
-	EVP_DigestUpdate(&md, pHash, nHashLen);
-	EVP_DigestFinal(&md, (unsigned char*) pDigest, &nDigestLen);
+	EVP_DigestInit(pmd, evp_md);
+	EVP_DigestUpdate(pmd, pHash, nHashLen);
+	EVP_DigestFinal(pmd, (unsigned char*) pDigest, &nDigestLen);
 
 	int ret = openssh_RSA_verify(nid, (unsigned char*) pDigest, nDigestLen, (unsigned char*) pSigBlob, (UINT) nBlobLen, pRSA);
 	_SecureStringW::SecureEmptyBuffer(pDigest, EVP_MAX_MD_SIZE);
 	_SecureStringW::SecureEmptyBuffer(pSigBlob, nBlobLen);
+	EVP_MD_CTX_free(pmd);
 	free(pDigest);
 	free(pSigBlob);
 	return ret;
@@ -412,7 +500,7 @@ static void* __stdcall MakeKeyFromHash(CKeyExchange* pKex, DWORD dwCompatFlags, 
 	const void* pHash, size_t nHashLen, const BIGNUM* pShared)
 {
 	CExBuffer buf;
-	EVP_MD_CTX md;
+	EVP_MD_CTX* pmd;
 	size_t nHave;
 	int mdsz;
 	void* pDigest;
@@ -422,17 +510,27 @@ static void* __stdcall MakeKeyFromHash(CKeyExchange* pKex, DWORD dwCompatFlags, 
 		return NULL;
 	}
 	pDigest = malloc(ROUNDUP(nSizeNeed, (size_t) mdsz));
+	if (!pDigest)
+	{
+		return NULL;
+	}
+	pmd = EVP_MD_CTX_new();
+	if (!pmd)
+	{
+		free(pDigest);
+		return NULL;
+	}
 
 	AppendBigNumToBuffer(&buf, pShared);
 
 	/* K1 = HASH(K || H || "A" || session_id) */
-	EVP_DigestInit(&md, pKex->m_pEVPMD);
+	EVP_DigestInit(pmd, pKex->m_pEVPMD);
 	if (!(dwCompatFlags & SSH_BUG_DERIVEKEY))
-		EVP_DigestUpdate(&md, buf, buf.GetLength());
-	EVP_DigestUpdate(&md, pHash, nHashLen);
-	EVP_DigestUpdate(&md, &id, 1);
-	EVP_DigestUpdate(&md, pKex->m_pvSessionID, pKex->m_nSessionIDLen);
-	EVP_DigestFinal(&md, (unsigned char*) pDigest, NULL);
+		EVP_DigestUpdate(pmd, buf, buf.GetLength());
+	EVP_DigestUpdate(pmd, pHash, nHashLen);
+	EVP_DigestUpdate(pmd, &id, 1);
+	EVP_DigestUpdate(pmd, pKex->m_pvSessionID, pKex->m_nSessionIDLen);
+	EVP_DigestFinal(pmd, (unsigned char*) pDigest, NULL);
 
 	/*
 	 * expand key:
@@ -440,14 +538,15 @@ static void* __stdcall MakeKeyFromHash(CKeyExchange* pKex, DWORD dwCompatFlags, 
 	 * Key = K1 || K2 || ... || Kn
 	 */
 	for (nHave = mdsz; nSizeNeed > nHave; nHave += (size_t) mdsz) {
-		EVP_DigestInit(&md, pKex->m_pEVPMD);
+		EVP_DigestInit(pmd, pKex->m_pEVPMD);
 		if (!(dwCompatFlags & SSH_BUG_DERIVEKEY))
-			EVP_DigestUpdate(&md, buf, buf.GetLength());
-		EVP_DigestUpdate(&md, pHash, nHashLen);
-		EVP_DigestUpdate(&md, (unsigned char*) pDigest, nHave);
-		EVP_DigestFinal(&md, (unsigned char*) pDigest + nHave, NULL);
+			EVP_DigestUpdate(pmd, buf, buf.GetLength());
+		EVP_DigestUpdate(pmd, pHash, nHashLen);
+		EVP_DigestUpdate(pmd, (unsigned char*) pDigest, nHave);
+		EVP_DigestFinal(pmd, (unsigned char*) pDigest + nHave, NULL);
 	}
 
+	EVP_MD_CTX_free(pmd);
 	return pDigest;
 }
 
@@ -555,7 +654,23 @@ void CKeyExchange::DoDeriveKeys(DWORD dwCompatFlags, const void* pHash, size_t n
 static DH* __stdcall CreateDHByString(const char* pszGen, const char* pszGroup)
 {
 	DH* dh = DH_new();
-	if (!dh || !BN_hex2bn(&dh->p, pszGroup) || !BN_hex2bn(&dh->g, pszGen))
+	if (!dh)
+	{
+		return NULL;
+	}
+	BIGNUM* p, * g;
+	if (!BN_hex2bn(&p, pszGroup))
+	{
+		DH_free(dh);
+		return NULL;
+	}
+	if (!BN_hex2bn(&g, pszGroup))
+	{
+		BN_free(p);
+		DH_free(dh);
+		return NULL;
+	}
+	if (!DH_set0_pqg(dh, p, NULL, g))
 	{
 		if (dh)
 			DH_free(dh);
@@ -567,29 +682,29 @@ static DH* __stdcall CreateDHByString(const char* pszGen, const char* pszGroup)
 static DH* __stdcall CreateDH1()
 {
 	static const char* gen1 = "2", * group1 =
-	    "FFFFFFFF" "FFFFFFFF" "C90FDAA2" "2168C234" "C4C6628B" "80DC1CD1"
-	    "29024E08" "8A67CC74" "020BBEA6" "3B139B22" "514A0879" "8E3404DD"
-	    "EF9519B3" "CD3A431B" "302B0A6D" "F25F1437" "4FE1356D" "6D51C245"
-	    "E485B576" "625E7EC6" "F44C42E9" "A637ED6B" "0BFF5CB6" "F406B7ED"
-	    "EE386BFB" "5A899FA5" "AE9F2411" "7C4B1FE6" "49286651" "ECE65381"
-	    "FFFFFFFF" "FFFFFFFF";
+		"FFFFFFFF" "FFFFFFFF" "C90FDAA2" "2168C234" "C4C6628B" "80DC1CD1"
+		"29024E08" "8A67CC74" "020BBEA6" "3B139B22" "514A0879" "8E3404DD"
+		"EF9519B3" "CD3A431B" "302B0A6D" "F25F1437" "4FE1356D" "6D51C245"
+		"E485B576" "625E7EC6" "F44C42E9" "A637ED6B" "0BFF5CB6" "F406B7ED"
+		"EE386BFB" "5A899FA5" "AE9F2411" "7C4B1FE6" "49286651" "ECE65381"
+		"FFFFFFFF" "FFFFFFFF";
 	return CreateDHByString(gen1, group1);
 }
 
 static DH* __stdcall CreateDH14()
 {
 	static const char* gen14 = "2", * group14 =
-	    "FFFFFFFF" "FFFFFFFF" "C90FDAA2" "2168C234" "C4C6628B" "80DC1CD1"
-	    "29024E08" "8A67CC74" "020BBEA6" "3B139B22" "514A0879" "8E3404DD"
-	    "EF9519B3" "CD3A431B" "302B0A6D" "F25F1437" "4FE1356D" "6D51C245"
-	    "E485B576" "625E7EC6" "F44C42E9" "A637ED6B" "0BFF5CB6" "F406B7ED"
-	    "EE386BFB" "5A899FA5" "AE9F2411" "7C4B1FE6" "49286651" "ECE45B3D"
-	    "C2007CB8" "A163BF05" "98DA4836" "1C55D39A" "69163FA8" "FD24CF5F"
-	    "83655D23" "DCA3AD96" "1C62F356" "208552BB" "9ED52907" "7096966D"
-	    "670C354E" "4ABC9804" "F1746C08" "CA18217C" "32905E46" "2E36CE3B"
-	    "E39E772C" "180E8603" "9B2783A2" "EC07A28F" "B5C55DF0" "6F4C52C9"
-	    "DE2BCBF6" "95581718" "3995497C" "EA956AE5" "15D22618" "98FA0510"
-	    "15728E5A" "8AACAA68" "FFFFFFFF" "FFFFFFFF";
+		"FFFFFFFF" "FFFFFFFF" "C90FDAA2" "2168C234" "C4C6628B" "80DC1CD1"
+		"29024E08" "8A67CC74" "020BBEA6" "3B139B22" "514A0879" "8E3404DD"
+		"EF9519B3" "CD3A431B" "302B0A6D" "F25F1437" "4FE1356D" "6D51C245"
+		"E485B576" "625E7EC6" "F44C42E9" "A637ED6B" "0BFF5CB6" "F406B7ED"
+		"EE386BFB" "5A899FA5" "AE9F2411" "7C4B1FE6" "49286651" "ECE45B3D"
+		"C2007CB8" "A163BF05" "98DA4836" "1C55D39A" "69163FA8" "FD24CF5F"
+		"83655D23" "DCA3AD96" "1C62F356" "208552BB" "9ED52907" "7096966D"
+		"670C354E" "4ABC9804" "F1746C08" "CA18217C" "32905E46" "2E36CE3B"
+		"E39E772C" "180E8603" "9B2783A2" "EC07A28F" "B5C55DF0" "6F4C52C9"
+		"DE2BCBF6" "95581718" "3995497C" "EA956AE5" "15D22618" "98FA0510"
+		"15728E5A" "8AACAA68" "FFFFFFFF" "FFFFFFFF";
 	return CreateDHByString(gen14, group14);
 }
 
@@ -598,22 +713,25 @@ static DH* __stdcall CreateDH(BIGNUM* gen, BIGNUM* modulus)
 	DH* dh = DH_new();
 	if (!dh)
 		return NULL;
-	dh->p = modulus;
-	dh->g = gen;
+	if (!DH_set0_pqg(dh, modulus, NULL, gen))
+	{
+		DH_free(dh);
+		return NULL;
+	}
 	return dh;
 }
 
-static bool __stdcall IsValidDHPubKey(DH* pDH, BIGNUM* pDHPubNum)
+static bool __stdcall IsValidDHPubKey(const DH* pDH, const BIGNUM* pDHPubNum)
 {
 	BIGNUM* pTemp;
 	int n = BN_num_bits(pDHPubNum), nBitsSet = 0;
-	if (pDHPubNum->neg)
+	if (BN_is_negative(pDHPubNum))
 		return false;
 	if (BN_cmp(pDHPubNum, BN_value_one()) != 1) // pub_exp <= 1
 		return false;
 	if (!(pTemp = BN_new()))
 		return false;
-	if (!BN_sub(pTemp, pDH->p, BN_value_one()) ||
+	if (!BN_sub(pTemp, DH_get0_p(pDH), BN_value_one()) ||
 		BN_cmp(pDHPubNum, pTemp) != -1) // pub_exp > p-2
 	{
 		BN_clear_free(pTemp);
@@ -629,26 +747,28 @@ static bool __stdcall IsValidDHPubKey(DH* pDH, BIGNUM* pDHPubNum)
 	return (nBitsSet > 1);
 }
 
-// DHåÆÇê∂ê¨Ç∑ÇÈ
+// DHÈçµ„ÇíÁîüÊàê„Åô„Çã
 static void __stdcall GenerateDHKey(DH* dh, int nNeedKeyBytes)
 {
 	int i;
 
-	dh->priv_key = NULL;
+	BIGNUM* priv_key = NULL;
 
-	// îÈñßÇ…Ç∑Ç◊Ç´óêêî(X)Çê∂ê¨
+	// ÁßòÂØÜ„Å´„Åô„Åπ„Åç‰π±Êï∞(X)„ÇíÁîüÊàê
 	for (i = 0 ; i < 10 ; i++) { // retry counter
-		if (dh->priv_key != NULL) {
-			BN_clear_free(dh->priv_key);
+		if (priv_key != NULL) {
+			BN_clear_free(priv_key);
 		}
-		dh->priv_key = BN_new();
-		if (dh->priv_key == NULL)
+		priv_key = BN_new();
+		if (priv_key == NULL)
 			goto error;
-		if (BN_rand(dh->priv_key, 2 * nNeedKeyBytes, 0, 0) == 0)
+		if (BN_rand(priv_key, 2 * nNeedKeyBytes, 0, 0) == 0)
+			goto error;
+		if (!DH_set0_key(dh, NULL, priv_key))
 			goto error;
 		if (DH_generate_key(dh) == 0)
 			goto error;
-		if (IsValidDHPubKey(dh, dh->pub_key))
+		if (IsValidDHPubKey(dh, DH_get0_pub_key(dh)))
 			break;
 	}
 	if (i >= 10) {
@@ -658,7 +778,8 @@ static void __stdcall GenerateDHKey(DH* dh, int nNeedKeyBytes)
 
 error:
 	//notify_fatal_error(pvar, "error occurred @ dh_gen_key()");
-;
+	if (priv_key != NULL)
+		BN_clear_free(priv_key);
 }
 
 /*
@@ -689,14 +810,14 @@ static BYTE* __stdcall GetFingerPrint(KeyType keyType, const KeyData& keyData, s
 	{
 		case KEY_RSA1:
 		{
-			size_t n = BN_num_bytes(keyData.rsa()->n);
-			size_t e = BN_num_bytes(keyData.rsa()->e);
+			size_t n = BN_num_bytes(RSA_get0_n(keyData.rsa()));
+			size_t e = BN_num_bytes(RSA_get0_e(keyData.rsa()));
 			nLen = n + e;
 			pBlob = (BYTE*) malloc(nLen);
 			if (!pBlob)
 				return NULL;
-			BN_bn2bin(keyData.rsa()->n, pBlob);
-			BN_bn2bin(keyData.rsa()->e, pBlob + n);
+			BN_bn2bin(RSA_get0_n(keyData.rsa()), pBlob);
+			BN_bn2bin(RSA_get0_e(keyData.rsa()), pBlob + n);
 		}
 		break;
 		case KEY_DSA:
@@ -710,12 +831,21 @@ static BYTE* __stdcall GetFingerPrint(KeyType keyType, const KeyData& keyData, s
 	}
 	if (pBlob)
 	{
-		EVP_MD_CTX ctx;
+		EVP_MD_CTX* pctx;
 		unsigned int u;
 		pRet = (BYTE*) malloc(EVP_MAX_MD_SIZE);
-		::EVP_DigestInit(&ctx, md);
-		::EVP_DigestUpdate(&ctx, pBlob, nLen);
-		::EVP_DigestFinal(&ctx, pRet, &u);
+		if (!pRet)
+			return NULL;
+		pctx = EVP_MD_CTX_new();
+		if (!pctx)
+		{
+			free(pRet);
+			return NULL;
+		}
+		::EVP_DigestInit(pctx, md);
+		::EVP_DigestUpdate(pctx, pBlob, nLen);
+		::EVP_DigestFinal(pctx, pRet, &u);
+		EVP_MD_CTX_free(pctx);
 		*pnRetLen = (size_t) u;
 		memset(pBlob, 0, nLen);
 		free(pBlob);
@@ -762,7 +892,7 @@ bool CDHKeyExchangeClient::Init(CKeyExchange* pKex, CSSH2Socket* pSocket)
 	GenerateDHKey(m_pDH, (int) (pKex->m_nNeedKeyBytes * 8));
 
 	CExBuffer buf;
-	if (!AppendBigNumToBuffer(&buf, m_pDH->pub_key))
+	if (!AppendBigNumToBuffer(&buf, DH_get0_pub_key(m_pDH)))
 		return false;
 	if (!pSocket->SendPacket(SSH2_MSG_KEXDH_INIT, buf, buf.GetLength()))
 		return false;
@@ -879,7 +1009,7 @@ int CDHKeyExchangeClient::OnReceiveKexMessages(CFingerPrintHandler* pHandler, CK
 		pKex->m_bufferMyProposals, pKex->m_bufferMyProposals.GetLength(),
 		pKex->m_bufferServerProposals, pKex->m_bufferServerProposals.GetLength(),
 		bufBlob, bufBlob.GetLength(),
-		m_pDH->pub_key, pDHServerPublic, pShared, &pHash, &nHashLen);
+		DH_get0_pub_key(m_pDH), pDHServerPublic, pShared, &pHash, &nHashLen);
 	BN_clear_free(pDHServerPublic);
 	DH_free(m_pDH);
 	m_pDH = NULL;
@@ -920,11 +1050,18 @@ void CDHKeyExchangeClient::Hash(
 	void** ppHash, size_t* pnHashLen)
 {
 	CExBuffer buf;
-	EVP_MD_CTX md;
+	EVP_MD_CTX* pmd;
 	const EVP_MD* evp_md = EVP_sha1();
 	void* pDigest = malloc(EVP_MAX_MD_SIZE);
 	if (!pDigest)
 	{
+		*ppHash = NULL;
+		return;
+	}
+	pmd = EVP_MD_CTX_new();
+	if (!pmd)
+	{
+		free(pDigest);
 		*ppHash = NULL;
 		return;
 	}
@@ -944,9 +1081,10 @@ void CDHKeyExchangeClient::Hash(
 	AppendBigNumToBuffer(&buf, pServerDHPub);
 	AppendBigNumToBuffer(&buf, pShared);
 
-	EVP_DigestInit(&md, evp_md);
-	EVP_DigestUpdate(&md, buf, buf.GetLength());
-	EVP_DigestFinal(&md, (unsigned char*) pDigest, NULL);
+	EVP_DigestInit(pmd, evp_md);
+	EVP_DigestUpdate(pmd, buf, buf.GetLength());
+	EVP_DigestFinal(pmd, (unsigned char*) pDigest, NULL);
+	EVP_MD_CTX_free(pmd);
 
 	*ppHash = pDigest;
 	*pnHashLen = EVP_MD_size(evp_md);
@@ -1040,7 +1178,7 @@ int CGEXKeyExchangeClient::OnReceiveKexMessages(CFingerPrintHandler* pHandler, C
 		GenerateDHKey(m_pDH, (int) (pKex->m_nNeedKeyBytes * 8));
 
 		buf.Empty();
-		if (!AppendBigNumToBuffer(&buf, m_pDH->pub_key))
+		if (!AppendBigNumToBuffer(&buf, DH_get0_pub_key(m_pDH)))
 			return -1;
 		pSocket->SendPacket(SSH2_MSG_KEX_DH_GEX_INIT, buf, buf.GetLength());
 		return 0;
@@ -1150,8 +1288,11 @@ int CGEXKeyExchangeClient::OnReceiveKexMessages(CFingerPrintHandler* pHandler, C
 			pKex->m_bufferMyProposals, pKex->m_bufferMyProposals.GetLength(),
 			pKex->m_bufferServerProposals, pKex->m_bufferServerProposals.GetLength(),
 			bufBlob, bufBlob.GetLength(),
-			m_nMin, m_nBits, m_nMax, m_pDH->p, m_pDH->g,
-			m_pDH->pub_key, pDHServerPublic, pShared, &pHash, &nHashLen);
+			m_nMin, m_nBits, m_nMax,
+			DH_get0_p(m_pDH),
+			DH_get0_g(m_pDH),
+			DH_get0_pub_key(m_pDH),
+			pDHServerPublic, pShared, &pHash, &nHashLen);
 		BN_clear_free(pDHServerPublic);
 		DH_free(m_pDH);
 		m_pDH = NULL;
@@ -1190,15 +1331,22 @@ void CGEXKeyExchangeClient::Hash(const EVP_MD* pEVPMD,
 	const void* pCKexInit, size_t nCKexInitLen,
 	const void* pSKexInit, size_t nSKexInitLen,
 	const void* pServerHostKeyBlob, size_t nServerHostKeyBlobLen,
-	int nMin, int nWantBits, int nMax, const BIGNUM* pPrimeNum, BIGNUM* pGenNum,
+	int nMin, int nWantBits, int nMax, const BIGNUM* pPrimeNum, const BIGNUM* pGenNum,
 	const BIGNUM* pClientDHPub, const BIGNUM* pServerDHPub, const BIGNUM* pShared,
 	void** ppHash, size_t* pnHashLen)
 {
 	CExBuffer buf;
-	EVP_MD_CTX md;
+	EVP_MD_CTX* pmd;
 	void* pDigest = malloc(EVP_MAX_MD_SIZE);
 	if (!pDigest)
 	{
+		*ppHash = NULL;
+		return;
+	}
+	pmd = EVP_MD_CTX_new();
+	if (!pmd)
+	{
+		free(pDigest);
 		*ppHash = NULL;
 		return;
 	}
@@ -1228,9 +1376,10 @@ void CGEXKeyExchangeClient::Hash(const EVP_MD* pEVPMD,
 	AppendBigNumToBuffer(&buf, pServerDHPub);
 	AppendBigNumToBuffer(&buf, pShared);
 
-	EVP_DigestInit(&md, pEVPMD);
-	EVP_DigestUpdate(&md, buf, buf.GetLength());
-	EVP_DigestFinal(&md, (unsigned char*) pDigest, NULL);
+	EVP_DigestInit(pmd, pEVPMD);
+	EVP_DigestUpdate(pmd, buf, buf.GetLength());
+	EVP_DigestFinal(pmd, (unsigned char*) pDigest, NULL);
+	EVP_MD_CTX_free(pmd);
 
 	*ppHash = pDigest;
 	*pnHashLen = EVP_MD_size(pEVPMD);

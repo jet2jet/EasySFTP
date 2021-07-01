@@ -1,18 +1,18 @@
-// stdafx.h : •W€‚ÌƒVƒXƒeƒ€ ƒCƒ“ƒNƒ‹[ƒh ƒtƒ@ƒCƒ‹‚ÌƒCƒ“ƒNƒ‹[ƒh ƒtƒ@ƒCƒ‹A‚Ü‚½‚Í
-// ŽQÆ‰ñ”‚ª‘½‚­A‚©‚Â‚ ‚Ü‚è•ÏX‚³‚ê‚È‚¢AƒvƒƒWƒFƒNƒgê—p‚ÌƒCƒ“ƒNƒ‹[ƒh ƒtƒ@ƒCƒ‹
-// ‚ð‹Lq‚µ‚Ü‚·B
+// stdafx.h : æ¨™æº–ã®ã‚·ã‚¹ãƒ†ãƒ  ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰ ãƒ•ã‚¡ã‚¤ãƒ«ã®ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰ ãƒ•ã‚¡ã‚¤ãƒ«ã€ã¾ãŸã¯
+// å‚ç…§å›žæ•°ãŒå¤šãã€ã‹ã¤ã‚ã¾ã‚Šå¤‰æ›´ã•ã‚Œãªã„ã€ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆå°‚ç”¨ã®ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰ ãƒ•ã‚¡ã‚¤ãƒ«
+// ã‚’è¨˜è¿°ã—ã¾ã™ã€‚
 //
 
 #pragma once
 
 #include "targetver.h"
 
-#define WIN32_LEAN_AND_MEAN             // Windows ƒwƒbƒ_[‚©‚çŽg—p‚³‚ê‚Ä‚¢‚È‚¢•”•ª‚ðœŠO‚µ‚Ü‚·B
+#define WIN32_LEAN_AND_MEAN             // Windows ãƒ˜ãƒƒãƒ€ãƒ¼ã‹ã‚‰ä½¿ç”¨ã•ã‚Œã¦ã„ãªã„éƒ¨åˆ†ã‚’é™¤å¤–ã—ã¾ã™ã€‚
 #define STRICT_TYPED_ITEMIDS
 
 #define EASYSFTP_SHELLDLL
 
-// Windows ƒwƒbƒ_[ ƒtƒ@ƒCƒ‹:
+// Windows ãƒ˜ãƒƒãƒ€ãƒ¼ ãƒ•ã‚¡ã‚¤ãƒ«:
 #include <windows.h>
 
 #include <commdlg.h>
@@ -34,9 +34,9 @@ typedef IDataObjectAsyncCapability IAsyncOperation;
 #define IID_IAsyncOperation IID_IDataObjectAsyncCapability
 #endif
 
-// TODO: ƒvƒƒOƒ‰ƒ€‚É•K—v‚È’Ç‰Áƒwƒbƒ_[‚ð‚±‚±‚ÅŽQÆ‚µ‚Ä‚­‚¾‚³‚¢B
+// TODO: ãƒ—ãƒ­ã‚°ãƒ©ãƒ ã«å¿…è¦ãªè¿½åŠ ãƒ˜ãƒƒãƒ€ãƒ¼ã‚’ã“ã“ã§å‚ç…§ã—ã¦ãã ã•ã„ã€‚
 
-// C ƒ‰ƒ“ƒ^ƒCƒ€ ƒwƒbƒ_[ ƒtƒ@ƒCƒ‹
+// C ãƒ©ãƒ³ã‚¿ã‚¤ãƒ  ãƒ˜ãƒƒãƒ€ãƒ¼ ãƒ•ã‚¡ã‚¤ãƒ«
 #include <stdlib.h>
 #include <stdio.h>
 #include <malloc.h>
@@ -66,6 +66,7 @@ typedef IDataObjectAsyncCapability IAsyncOperation;
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/hmac.h>
 
 #ifndef CDSIZEOF_STRUCT
 #define CDSIZEOF_STRUCT(structname, member)      (((int)((LPBYTE)(&((structname*)0)->member) - ((LPBYTE)((structname*)0)))) + sizeof(((structname*)0)->member))
@@ -101,8 +102,7 @@ template <class T> inline T __stdcall ROUNDUP(T val, T align)
 #define NONCLIENTMETRICS_SIZE_V1   sizeof(NONCLIENTMETRICS)
 #endif
 
-// TODO: ƒvƒƒOƒ‰ƒ€‚É•K—v‚È’Ç‰Áƒwƒbƒ_[‚ð‚±‚±‚ÅŽQÆ‚µ‚Ä‚­‚¾‚³‚¢B
-#include "MyFunc.h"
+// TODO: ãƒ—ãƒ­ã‚°ãƒ©ãƒ ã«å¿…è¦ãªè¿½åŠ ãƒ˜ãƒƒãƒ€ãƒ¼ã‚’ã“ã“ã§å‚ç…§ã—ã¦ãã ã•ã„ã€‚
 
 #ifndef __PLACEMENT_NEW_INLINE
 #define __PLACEMENT_NEW_INLINE

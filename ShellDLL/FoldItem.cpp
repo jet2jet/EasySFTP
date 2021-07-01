@@ -70,10 +70,11 @@ STDMETHODIMP CFolderShellItem::BindToHandler(IBindCtx* pbc, REFGUID bhid, REFIID
 		return m_pParent->BindToObject(m_pidlChild, pbc, riid, ppv);
 	else if (IsEqualGUID(bhid, BHID_SFViewObject))
 		return m_pParent->CreateViewObject(NULL, riid, ppv);
-	else if (IsEqualGUID(bhid, BHID_SFUIObject))
-		return m_pParent->GetUIObjectOf(NULL, 1, &m_pidlChild, riid, NULL, ppv);
-	else if (IsEqualGUID(bhid, BHID_DataObject))
-		return m_pParent->GetUIObjectOf(NULL, 1, &m_pidlChild, riid, NULL, ppv);
+	else if (IsEqualGUID(bhid, BHID_SFUIObject) || IsEqualGUID(bhid, BHID_DataObject))
+	{
+		PCITEMID_CHILD pidlChild = m_pidlChild;
+		return m_pParent->GetUIObjectOf(NULL, 1, &pidlChild, riid, NULL, ppv);
+	}
 	return E_NOTIMPL;
 }
 
@@ -133,7 +134,8 @@ STDMETHODIMP CFolderShellItem::GetAttributes(SFGAOF sfgaoMask, SFGAOF* psfgaoAtt
 	if (!psfgaoAttribs)
 		return E_POINTER;
 	attrs = sfgaoMask;
-	HRESULT hr = m_pParent->GetAttributesOf(1, &m_pidlChild, &attrs);
+	PCITEMID_CHILD pidlChild = m_pidlChild;
+	HRESULT hr = m_pParent->GetAttributesOf(1, &pidlChild, &attrs);
 	*psfgaoAttribs = attrs;
 	return hr;
 }
@@ -186,7 +188,7 @@ STDMETHODIMP CFolderShellItem::Compare(IShellItem* psi, SICHINTF hint, int* piOr
 		case SICHINT_CANONICAL:
 			hr = m_pParent->CompareIDs(SHCIDS_CANONICALONLY, m_pidlChild, pidlItem);
 			break;
-		case SICHINT_ALLFIELDS:
+		case static_cast<SICHINTF>(SICHINT_ALLFIELDS):
 			hr = m_pParent->CompareIDs(SHCIDS_ALLFIELDS, m_pidlChild, pidlItem);
 			break;
 		default:

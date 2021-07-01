@@ -359,7 +359,8 @@ STDMETHODIMP CFolderBase::BindToHandler(IBindCtx* pbc, REFGUID bhid, REFIID riid
 		PITEMID_CHILD pChild = ::GetChildItemIDList(m_pidlMe);
 		if (!pChild)
 			return E_OUTOFMEMORY;
-		HRESULT hr = pParent->GetUIObjectOf(NULL, 1, &pChild, riid, NULL, ppv);
+		PCITEMID_CHILD pcChild = pChild;
+		HRESULT hr = pParent->GetUIObjectOf(NULL, 1, &pcChild, riid, NULL, ppv);
 		::CoTaskMemFree(pChild);
 		return hr;
 	}
