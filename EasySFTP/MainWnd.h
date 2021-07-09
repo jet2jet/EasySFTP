@@ -38,7 +38,7 @@ public:
 	virtual void PostNcDestroy();
 	virtual bool PreTranslateMessage(LPMSG lpMsg);
 
-	// CMainApplication Ç©ÇÁåƒÇ—èoÇ≥ÇÍÇÈ
+	// called from CMainApplication
 	bool OnIdle(long lCount);
 
 	// IEasySFTPListener
@@ -219,6 +219,7 @@ public:
 	void SetStatusSecureIcon(bool bSecure);
 
 protected:
+	void ShowAboutDialog();
 	void UpdateUIItem(CCommandUIItem* pUIItem);
 	void UpdateToolBarEnable();
 	void UpdateStatusParts();

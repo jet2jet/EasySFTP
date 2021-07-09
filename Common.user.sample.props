@@ -4,10 +4,12 @@
   <PropertyGroup>
 	<!-- (Must be end with '\') -->
     <OpenSSLRoot>\OpenSSL\</OpenSSLRoot>
+    <LibSSH2Root>\libssh2\</LibSSH2Root>
     <OpenSSLLibraryNames>libcrypto.lib;libssl.lib</OpenSSLLibraryNames>
-    <LibraryPath Condition="'$(Platform)'=='x64'">$(OpenSSLRoot)x64\lib;$(LibraryPath)</LibraryPath>
-    <LibraryPath Condition="'$(Platform)'!='x64'">$(OpenSSLRoot)x86\lib;$(LibraryPath)</LibraryPath>
-	<IncludePath Condition="'$(Platform)'=='x64'">$(OpenSSLRoot)x64\include;$(IncludePath)</IncludePath>
-	<IncludePath Condition="'$(Platform)'!='x64'">$(OpenSSLRoot)x86\include;$(IncludePath)</IncludePath>
+    <LibSSH2LibraryNames>libssh2.lib</LibSSH2LibraryNames>
+    <LibraryPath Condition="'$(Platform)'=='x64'">$(OpenSSLRoot)x64\lib;$(LibSSH2Root)x64\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath Condition="'$(Platform)'!='x64'">$(OpenSSLRoot)x86\lib;$(LibSSH2Root)x86\lib;$(LibraryPath)</LibraryPath>
+	<IncludePath Condition="'$(Platform)'=='x64'">$(OpenSSLRoot)x64\include;$(LibSSH2Root)x64\include;$(IncludePath)</IncludePath>
+	<IncludePath Condition="'$(Platform)'!='x64'">$(OpenSSLRoot)x86\include;$(LibSSH2Root)x86\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
 </Project>

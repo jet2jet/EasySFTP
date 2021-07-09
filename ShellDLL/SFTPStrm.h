@@ -9,11 +9,17 @@
 #include "SSHCli.h"
 #include "SFTPChan.h"
 
+class __declspec(novtable) CPumpMessageProcessor
+{
+public:
+	virtual HRESULT PumpSocketAndMessage(DWORD dwWaitTime = 0xFFFFFFFF) = 0;
+};
+
 class CSFTPSyncMessenger : public CSFTPChannelListener
 {
 public:
-	CSFTPSyncMessenger(CSSH2Client* pClient, CSFTPChannel* pChannel, LPCWSTR lpszDirectory)
-		: m_pClient(pClient)
+	CSFTPSyncMessenger(CPumpMessageProcessor* pProcessor, CSFTPChannel* pChannel, LPCWSTR lpszDirectory)
+		: m_pProcessor(pProcessor)
 		, m_pChannel(pChannel)
 		, m_strDirectory(lpszDirectory)
 		, m_bFailed(false)
@@ -21,13 +27,9 @@ public:
 		, m_uRef(1)
 	{
 		pChannel->AddRef();
-		pClient->AddRef();
-		pClient->m_socket.EnableAsyncSelect(false, true);
 	}
 	virtual ~CSFTPSyncMessenger()
 	{
-		m_pClient->m_socket.EnableAsyncSelect(true, true);
-		m_pClient->Release();
 		m_pChannel->Release();
 	}
 
@@ -45,20 +47,18 @@ public:
 
 	// CSFTPChannelListener
 public:
-	virtual DWORD ChannelGetServerCompatible()
-		{ return m_pClient->m_socket.GetServerCompatible(); }
-	virtual bool ChannelSendPacket(BYTE bType, const void* pData, size_t nSize)
-		{ return m_pClient->m_socket.SendPacket(bType, pData, nSize); }
-	virtual void ChannelOpenFailure(CSSH2Channel* pChannel, int nReason, const CMyStringW& strMessage)
+	virtual void ChannelOpenFailure(CSSHChannel* pChannel, int nReason)
 		{ }
-	virtual void ChannelOpened(CSSH2Channel* pChannel)
+	virtual void ChannelError(CSSHChannel* pChannel, int nReason)
 		{ }
-	virtual void ChannelClosed(CSSH2Channel* pChannel);
-	virtual void ChannelExitStatus(CSSH2Channel* pChannel, int nExitCode)
+	virtual void ChannelOpened(CSSHChannel* pChannel)
 		{ }
-	virtual void ChannelConfirm(CSSH2Channel* pChannel, bool bSucceeded)
+	virtual void ChannelClosed(CSSHChannel* pChannel);
+	virtual void ChannelExitStatus(CSSHChannel* pChannel, int nExitCode)
 		{ }
-	virtual void ChannelDataReceived(CSSH2Channel* pChannel, const void* pvData, size_t nSize)
+	virtual void ChannelConfirm(CSSHChannel* pChannel, bool bSucceeded, int nReason)
+		{ }
+	virtual void ChannelDataReceived(CSSHChannel* pChannel, const void* pvData, size_t nSize)
 		{ }
 	virtual void SFTPOpened(CSFTPChannel* pChannel)
 		{ }
@@ -91,7 +91,7 @@ public:
 	ULONG m_uMsgID;
 	ULARGE_INTEGER m_uliDataSize;
 	FILETIME m_ftModTime;
-	CSSH2Client* m_pClient;
+	CPumpMessageProcessor* m_pProcessor;
 	CSFTPChannel* m_pChannel;
 	CMyStringW m_strDirectory;
 
@@ -103,7 +103,7 @@ protected:
 class CSFTPStream : public CUnknownImplT<IStream>, public CSFTPSyncMessenger
 {
 public:
-	CSFTPStream(IUnknown* pUnkOuter, CSSH2Client* pClient, CSFTPChannel* pChannel, LPCWSTR lpszDirectory);
+	CSFTPStream(IUnknown* pUnkOuter, CPumpMessageProcessor* pProcessor, CSFTPChannel* pChannel, LPCWSTR lpszDirectory);
 	virtual ~CSFTPStream();
 
 public:

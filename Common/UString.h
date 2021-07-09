@@ -96,7 +96,7 @@ typedef __nullterminated CONST WCHAR *LPCUWSTR, *PCUWSTR;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
-// CMyStringW - ������N���X (Unicode)
+// CMyStringW - 文字列クラス (Unicode)
 
 class CMyStringW
 {
@@ -198,11 +198,11 @@ public:
 #endif
 	size_t AppendString(const CMyStringW& strInsert);
 	size_t InsertChar(char ch, size_t uPos);
-	size_t InsertChar(wchar_t wch, size_t uPos);				// uPos �� Unicode ������ł̈ʒu
+	size_t InsertChar(wchar_t wch, size_t uPos);				// uPos は Unicode 文字列での位置
 	size_t InsertString(LPCSTR lpszString, size_t uPos, size_t uLength = (size_t) -1);
-	size_t InsertString(LPCWSTR lpszString, size_t uPos, size_t uLength = (size_t) -1);	// uPos �� Unicode ������ł̈ʒu
+	size_t InsertString(LPCWSTR lpszString, size_t uPos, size_t uLength = (size_t) -1);	// uPos は Unicode 文字列での位置
 #ifdef ALIGNMENT_MACHINE
-	size_t InsertString(LPCUWSTR lpszString, size_t uPos, size_t uLength = (size_t) -1);	// uPos �� Unicode ������ł̈ʒu
+	size_t InsertString(LPCUWSTR lpszString, size_t uPos, size_t uLength = (size_t) -1);	// uPos は Unicode 文字列での位置
 #endif
 	size_t InsertString(const CMyStringW& strInsert, size_t uPos);
 	wchar_t DeleteChar(size_t uPos);
@@ -232,8 +232,8 @@ public:
 	void SetUTF8String(LPCBYTE lpBuffer, size_t dwByteLength);
 	// not necessary to call free() (can't modify returned buffer)
 	LPCBYTE AllocUTF8String(size_t* lpdwLength = NULL);
-	//// need to call free()
-	//LPBYTE AllocUTF8StringC(size_t* lpdwLength = NULL) const;
+	// need to call free()
+	LPBYTE AllocUTF8StringC(size_t* lpdwLength = NULL) const;
 };
 
 CMyStringW operator + (LPCWSTR lpszString, const CMyStringW& _string);

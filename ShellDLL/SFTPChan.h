@@ -6,10 +6,9 @@
 
 #pragma once
 
-#include "Channel.h"
+#include "MySocket.h"
+#include "SSHChan.h"
 #include "Array.h"
-
-#include "SSHSock.h"
 
 // use S_IF***
 #include "FileList.h"
@@ -339,7 +338,7 @@ struct CSFTPMessage
 	BYTE bRecvMsg;
 };
 
-class __declspec(novtable) CSFTPChannelListener : public CSSH2ChannelListener
+class __declspec(novtable) CSFTPChannelListener : public CSSHChannelListener
 {
 public:
 	virtual void SFTPOpened(CSFTPChannel* pChannel) = 0;
@@ -357,13 +356,14 @@ public:
 		const struct sftp_statvfs& statvfs) = 0;
 };
 
-class CSFTPChannel : public CSSH2Channel
+class CSFTPChannel : public CSSHChannel
 {
 public:
 	CSFTPChannel(CSFTPChannelListener* pListener);
 	virtual ~CSFTPChannel();
 
 public:
+	bool Startup();
 	bool InitSFTP();
 	void SetCharset(ServerCharset nCharset);
 	ULONG OpenDirectory(LPCWSTR lpszPath);
@@ -425,6 +425,7 @@ public:
 	void UnregisterMessageListener(ULONG uMsgID, CSFTPChannelListener* pListener);
 
 private:
+	bool m_bStartingSubsystem;
 	bool m_bInitializing;
 	bool m_bSymLinkBug;
 	ServerCharset m_nCharset;
@@ -458,7 +459,7 @@ private:
 
 protected:
 	bool SendSFTPChannelData(const void* pvBuffer, size_t nLen);
-	virtual bool ProcessChannelData(CExBuffer& buffer);
+	virtual void ProcessChannelData(CExBuffer& buffer);
 
 	bool ProcessSFTPVersion(CSFTPChannelListener* pListener, CExBuffer& buffer);
 	bool ProcessSFTPStatus(CSFTPChannelListener* pListener, CExBuffer& buffer);

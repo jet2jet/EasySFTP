@@ -14,9 +14,6 @@
 
 bool CSFTPSyncMessenger::WaitForCurrentMessage()
 {
-	BYTE bType;
-	size_t nLen;
-	void* pv;
 	bool bRet;
 	ULONG uRegID = m_uMsgID;
 	m_bFailed = false;
@@ -24,41 +21,15 @@ bool CSFTPSyncMessenger::WaitForCurrentMessage()
 	if (!m_pChannel->RegisterMessageListener(uRegID, this))
 		return false;
 
-	MSG msg;
 	DWORD dwStart = GetTickCount();
 	while (true)
 	{
-		if (::PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE))
+		auto hr = m_pProcessor->PumpSocketAndMessage(0);
+		if (FAILED(hr))
 		{
-			if (!theApp.MyPumpMessage())
-			{
-				::PostQuitMessage((int) theApp.m_msg.wParam);
-				m_bFailed = true;
-				bRet = false;
-				break;
-			}
-		}
-		if (m_pClient->m_socket.HasReceivedData() || m_pClient->m_socket.CanReceive(0))
-		{
-			// if timeout, returns NULL
-			pv = m_pClient->m_socket.ReceivePacket(bType, nLen);
-			if (!pv)
-			{
-				bRet = false;
-				break;
-			}
-			if (!CSSH2Channel::ProcessChannelMsg(this, bType, pv, nLen))
-			{
-				free(pv);
-				bRet = false;
-				break;
-			}
-			free(pv);
-			if (!m_pChannel->FlushAllMessages())
-			{
-				bRet = false;
-				break;
-			}
+			m_bFailed = true;
+			bRet = false;
+			break;
 		}
 		//if (m_bFailed)
 		//	return false;
@@ -98,7 +69,7 @@ bool CSFTPSyncMessenger::TryFStat(HSFTPHANDLE hFile)
 	return WaitForCurrentMessage();
 }
 
-void CSFTPSyncMessenger::ChannelClosed(CSSH2Channel* pChannel)
+void CSFTPSyncMessenger::ChannelClosed(CSSHChannel* pChannel)
 {
 #ifdef _DEBUG
 	::OutputDebugString(_T("CSFTPSyncMessenger::ChannelClosed\n"));
@@ -167,8 +138,8 @@ void CSFTPSyncMessenger::SFTPReceiveAttributes(CSFTPChannel* pChannel, CSFTPMess
 
 ////////////////////////////////////////////////////////////////////////////////
 
-CSFTPStream::CSFTPStream(IUnknown* pUnkOuter, CSSH2Client* pClient, CSFTPChannel* pChannel, LPCWSTR lpszDirectory)
-	: CSFTPSyncMessenger(pClient, pChannel, lpszDirectory)
+CSFTPStream::CSFTPStream(IUnknown* pUnkOuter, CPumpMessageProcessor* pProcessor, CSFTPChannel* pChannel, LPCWSTR lpszDirectory)
+	: CSFTPSyncMessenger(pProcessor, pChannel, lpszDirectory)
 	, m_pUnkOuter(pUnkOuter)
 	, m_hFile(NULL)
 	, m_nCacheSize(CACHE_SIZE)
@@ -284,8 +255,8 @@ STDMETHODIMP CSFTPStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 {
 	if (!pv)
 		return E_POINTER;
-	if (!m_pClient || m_pClient->m_socket.IsRemoteClosed())
-		return E_ABORT;
+	//if (!m_pClient || m_pClient->m_socket.IsRemoteClosed())
+	//	return E_ABORT;
 	if (m_bufferCache.GetLength() >= (size_t) cb)
 	{
 		void* pv2 = m_bufferCache.GetCurrentBufferPermanentAndSkip((size_t) cb);

@@ -95,27 +95,27 @@ static bool __stdcall MyEnumModulesUsingPsapi(T_EnumProcessModules pfnEnumProces
 #define SIZE_OF_NT_SIGNATURE       (sizeof(DWORD))
 #define RVATOVA(base, offset) ( \
     (LPVOID)((DWORD_PTR)(base) + (DWORD_PTR)(offset)))
-// ÉIÉvÉVÉáÉìÉwÉbÉ_ÉIÉtÉZÉbÉg
+// „Ç™„Éó„Ç∑„Éß„É≥„Éò„ÉÉ„ÉÄ„Ç™„Éï„Çª„ÉÉ„Éà
 #define OPTHDROFFSET(ptr) ( \
 	(LPVOID)((PBYTE)(ptr) + \
 	((PIMAGE_DOS_HEADER)(ptr))->e_lfanew + \
 	SIZE_OF_NT_SIGNATURE +  \
 	sizeof(IMAGE_FILE_HEADER)))
 
-// DLLÇÃÉCÉìÉXÉ^ÉìÉXÉnÉìÉhÉãÇ∆ä÷êîñºÇ©ÇÁä÷êîÇéÊÇËèoÇ∑
+// DLL„ÅÆ„Ç§„É≥„Çπ„Çø„É≥„Çπ„Éè„É≥„Éâ„É´„Å®Èñ¢Êï∞Âêç„Åã„ÇâÈñ¢Êï∞„ÇíÂèñ„ÇäÂá∫„Åô
 static FARPROC __stdcall GetDLLProcAddress(HMODULE hModule, LPCSTR lpProcName)
 {
-	// hModuleÇ™NULLÇ»ÇÁÇŒÉGÉâÅ[
+	// hModule„ÅåNULL„Å™„Çâ„Å∞„Ç®„É©„Éº
 	if (hModule == NULL)
 		return NULL;
 	
-	// ÉfÉBÉåÉNÉgÉäÉJÉEÉìÉgéÊìæ
+	// „Éá„Ç£„É¨„ÇØ„Éà„É™„Ç´„Ç¶„É≥„ÉàÂèñÂæó
 	PIMAGE_OPTIONAL_HEADER poh = (PIMAGE_OPTIONAL_HEADER) OPTHDROFFSET(hModule);
 	int nDirCount = poh->NumberOfRvaAndSizes;
 	if (nDirCount < 16)
 		return FALSE;
 
-	// ÉGÉNÉXÉ|Å[ÉgÉfÉBÉåÉNÉgÉäÉeÅ[ÉuÉãéÊìæ
+	// „Ç®„ÇØ„Çπ„Éù„Éº„Éà„Éá„Ç£„É¨„ÇØ„Éà„É™„ÉÜ„Éº„Éñ„É´ÂèñÂæó
 	DWORD dwIDEE = IMAGE_DIRECTORY_ENTRY_EXPORT;
 	if (poh->DataDirectory[dwIDEE].Size == 0)
 		return NULL;
@@ -123,18 +123,18 @@ static FARPROC __stdcall GetDLLProcAddress(HMODULE hModule, LPCSTR lpProcName)
 	PIMAGE_EXPORT_DIRECTORY ped = 
 		(PIMAGE_EXPORT_DIRECTORY) RVATOVA(hModule, dwAddr);	
 
-	// èòêîéÊìæ
+	// Â∫èÊï∞ÂèñÂæó
 	int nOrdinal = (LOWORD(lpProcName)) - ped->Base;
 	
 	if (HIWORD(lpProcName) != 0)
 	{
 		int count = ped->NumberOfNames;
-		// ñºëOÇ∆èòêîÇéÊìæ
+		// ÂêçÂâç„Å®Â∫èÊï∞„ÇíÂèñÂæó
 		DWORD *pdwNamePtr = (PDWORD)
 			RVATOVA(hModule, ped->AddressOfNames);
 		WORD *pwOrdinalPtr = (PWORD)
 			RVATOVA(hModule, ped->AddressOfNameOrdinals);
-		// ä÷êîåüçı
+		// Èñ¢Êï∞Ê§úÁ¥¢
 		int i;
 		for (i=0; i < count; i++, pdwNamePtr++, pwOrdinalPtr++){
 			PTCHAR svName = (PTCHAR) RVATOVA(hModule, *pdwNamePtr);
@@ -143,18 +143,18 @@ static FARPROC __stdcall GetDLLProcAddress(HMODULE hModule, LPCSTR lpProcName)
 				break;
 			}
 		}
-		// å©Ç¬Ç©ÇÁÇ»ÇØÇÍÇŒNULLÇï‘ãp
+		// Ë¶ã„Å§„Åã„Çâ„Å™„Åë„Çå„Å∞NULL„ÇíËøîÂç¥
 		if (i == count)
 			return NULL;
 	}
 	
-	// î≠å©ÇµÇΩä÷êîÇï‘Ç∑
+	// Áô∫Ë¶ã„Åó„ÅüÈñ¢Êï∞„ÇíËøî„Åô
 	PDWORD pAddrTable = (PDWORD)
 		RVATOVA(hModule, ped->AddressOfFunctions);
 	return (FARPROC) RVATOVA(hModule, pAddrTable[nOrdinal]);
 }
 
-// Ç–Ç∆Ç¬ÇÃÉÇÉWÉÖÅ[ÉãÇ…ëŒÇµÇƒAPIÉtÉbÉNÇçsÇ§ä÷êî
+// „Å≤„Å®„Å§„ÅÆ„É¢„Ç∏„É•„Éº„É´„Å´ÂØæ„Åó„Å¶API„Éï„ÉÉ„ÇØ„ÇíË°å„ÅÜÈñ¢Êï∞
 static void __stdcall ReplaceIATEntryInOneMod(PCSTR pszModuleName, FARPROC pfnCurrent, FARPROC pfnNew, HMODULE hModCaller) 
 {
 	ULONG ulSize;
@@ -820,14 +820,14 @@ static LPCWSTR __stdcall _MatchKeyName(LPCWSTR lpszTarget, LPCWSTR lpszTest)
 			register size_t nLen = (((DWORD_PTR) lpszEnd - (DWORD_PTR) lpszTarget) / sizeof(WCHAR));
 			if (_wcsnicmp(lpszTarget, lpszTest, nLen) == 0)
 			{
-				// lpszTest Ç™äÆëSÇ…àÍívÇµÉTÉuÉLÅ[Çä‹ÇÒÇ≈Ç¢Ç»Ç¢Ç©Ç«Ç§Ç©
+				// lpszTest „ÅåÂÆåÂÖ®„Å´‰∏ÄËá¥„Åó„Çµ„Éñ„Ç≠„Éº„ÇíÂê´„Çì„Åß„ÅÑ„Å™„ÅÑ„Åã„Å©„ÅÜ„Åã
 				if (!lpszTest[nLen])
 				{
 					while (*lpszEnd == L'\\')
 						lpszEnd++;
 					return lpszEnd;
 				}
-				// lpszTest ÇÃÉLÅ[ñºÇ™àÍívÇµÉTÉuÉLÅ[Çä‹ÇÒÇ≈Ç¢ÇÈÇ©Ç«Ç§Ç©
+				// lpszTest „ÅÆ„Ç≠„ÉºÂêç„Åå‰∏ÄËá¥„Åó„Çµ„Éñ„Ç≠„Éº„ÇíÂê´„Çì„Åß„ÅÑ„Çã„Åã„Å©„ÅÜ„Åã
 				else if (lpszTest[nLen] == L'\\')
 				{
 					lpszTest += nLen;
@@ -956,11 +956,11 @@ static bool __stdcall MyParseKeyData(HKEY hKey, LPCWSTR lpSubKey, HKEY* phKeyRoo
 
 LSTATUS APIENTRY MyHookRegCloseKey(HKEY hKey)
 {
-	{
-		CMyStringW str;
-		str.Format(L"MyHookRegCloseKey: hKey = 0x%p\n", hKey);
-		OutputDebugStringW(str);
-	}
+	//{
+	//	CMyStringW str;
+	//	str.Format(L"MyHookRegCloseKey: hKey = 0x%p\n", hKey);
+	//	OutputDebugStringW(str);
+	//}
 	if (s_pRegData)
 	{
 		::EnterCriticalSection(&s_csRegData);
@@ -1069,12 +1069,12 @@ LSTATUS APIENTRY MyHookRegEnumKeyExA(HKEY hKey, DWORD dwIndex, LPSTR lpName, LPD
 {
 	LSTATUS ret = s_pfnRegEnumKeyExA(hKey, dwIndex, lpName, lpcchName,
 		lpReserved, lpClass, lpcchClass, lpftLastWriteTime);
-	if (ret == ERROR_SUCCESS)
-	{
-		CMyStringW str;
-		str.Format("MyHookRegEnumKeyExA: hKey = 0x%p, index = %lu, result = %s\n", hKey, dwIndex, lpName);
-		OutputDebugString(str);
-	}
+	//if (ret == ERROR_SUCCESS)
+	//{
+	//	CMyStringW str;
+	//	str.Format("MyHookRegEnumKeyExA: hKey = 0x%p, index = %lu, result = %s\n", hKey, dwIndex, lpName);
+	//	OutputDebugString(str);
+	//}
 	return ret;
 }
 
@@ -1083,36 +1083,36 @@ LSTATUS APIENTRY MyHookRegEnumKeyExW(HKEY hKey, DWORD dwIndex, LPWSTR lpName, LP
 {
 	LSTATUS ret = s_pfnRegEnumKeyExW(hKey, dwIndex, lpName, lpcchName,
 		lpReserved, lpClass, lpcchClass, lpftLastWriteTime);
-	if (ret == ERROR_SUCCESS)
-	{
-		CMyStringW str;
-		str.Format(L"MyHookRegEnumKeyExW: hKey = 0x%p, index = %lu, result = %s\n", hKey, dwIndex, lpName);
-		OutputDebugString(str);
-	}
+	//if (ret == ERROR_SUCCESS)
+	//{
+	//	CMyStringW str;
+	//	str.Format(L"MyHookRegEnumKeyExW: hKey = 0x%p, index = %lu, result = %s\n", hKey, dwIndex, lpName);
+	//	OutputDebugString(str);
+	//}
 	return ret;
 }
 
 LSTATUS APIENTRY MyHookRegEnumValueA(HKEY hKey, DWORD dwIndex, LPSTR lpValueName, LPDWORD lpcchValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData)
 {
 	LSTATUS ret = s_pfnRegEnumValueA(hKey, dwIndex, lpValueName, lpcchValueName, lpReserved, lpType, lpData, lpcbData);
-	if (ret == ERROR_SUCCESS)
-	{
-		CMyStringW str;
-		str.Format("MyHookRegEnumValueA: hKey = 0x%p, index = %lu, valueName = %s\n", hKey, dwIndex, lpValueName);
-		OutputDebugString(str);
-	}
+	//if (ret == ERROR_SUCCESS)
+	//{
+	//	CMyStringW str;
+	//	str.Format("MyHookRegEnumValueA: hKey = 0x%p, index = %lu, valueName = %s\n", hKey, dwIndex, lpValueName);
+	//	OutputDebugString(str);
+	//}
 	return ret;
 }
 
 LSTATUS APIENTRY MyHookRegEnumValueW(HKEY hKey, DWORD dwIndex, LPWSTR lpValueName, LPDWORD lpcchValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData)
 {
 	LSTATUS ret = s_pfnRegEnumValueW(hKey, dwIndex, lpValueName, lpcchValueName, lpReserved, lpType, lpData, lpcbData);
-	if (ret == ERROR_SUCCESS)
-	{
-		CMyStringW str;
-		str.Format(L"MyHookRegEnumValueW: hKey = 0x%p, index = %lu, valueName = %s\n", hKey, dwIndex, lpValueName);
-		OutputDebugString(str);
-	}
+	//if (ret == ERROR_SUCCESS)
+	//{
+	//	CMyStringW str;
+	//	str.Format(L"MyHookRegEnumValueW: hKey = 0x%p, index = %lu, valueName = %s\n", hKey, dwIndex, lpValueName);
+	//	OutputDebugString(str);
+	//}
 	return ret;
 }
 
@@ -1160,18 +1160,18 @@ LSTATUS APIENTRY MyHookRegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOption
 	}
 
 	LSTATUS ret = s_pfnRegOpenKeyExW(hKey, lpSubKey, ulOptions, samDesired, phkResult);
-	if (ret == ERROR_SUCCESS)
-	{
-		CMyStringW str;
-		str.Format(L"MyHookRegOpenKeyExW: opening key: hKey = 0x%p, out-hKey = 0x%p, key = '%s'\n", hKey, *phkResult, lpSubKey);
-		OutputDebugStringW(str);
-	}
-	else
-	{
-		CMyStringW str;
-		str.Format(L"MyHookRegOpenKeyExW: opening key: hKey = 0x%p, [not found] key = '%s'\n", hKey, lpSubKey);
-		OutputDebugStringW(str);
-	}
+	//if (ret == ERROR_SUCCESS)
+	//{
+	//	CMyStringW str;
+	//	str.Format(L"MyHookRegOpenKeyExW: opening key: hKey = 0x%p, out-hKey = 0x%p, key = '%s'\n", hKey, *phkResult, lpSubKey);
+	//	OutputDebugStringW(str);
+	//}
+	//else
+	//{
+	//	CMyStringW str;
+	//	str.Format(L"MyHookRegOpenKeyExW: opening key: hKey = 0x%p, [not found] key = '%s'\n", hKey, lpSubKey);
+	//	OutputDebugStringW(str);
+	//}
 	return ret;
 }
 
@@ -1249,18 +1249,18 @@ static LSTATUS __stdcall _MyHookRegQueryValueExAW(bool bUnicode, HKEY hKey, LPCV
 		return ERROR_INVALID_PARAMETER;
 	CMyHookRegKeyData* pData = MyFindHookRegKeyData(hKey, NULL);
 	CMyStringW str;
-	{
-		if (bUnicode)
-			str.Format(L"_MyHookRegQueryValueExAW: hKey = 0x%p, lpValueName = %s\n", (LPCVOID) hKey, (LPCWSTR) lpValueName);
-		else
-			str.Format(L"_MyHookRegQueryValueExAW: hKey = 0x%p, lpValueName = %S\n", (LPCVOID) hKey, (LPCSTR) lpValueName);
-		OutputDebugString(str);
-		if (pData)
-		{
-			str.Format(L"  hKey is a hooked data: %s\n", (LPCWSTR) pData->strKeyName);
-			OutputDebugString(str);
-		}
-	}
+	//{
+	//	if (bUnicode)
+	//		str.Format(L"_MyHookRegQueryValueExAW: hKey = 0x%p, lpValueName = %s\n", (LPCVOID) hKey, (LPCWSTR) lpValueName);
+	//	else
+	//		str.Format(L"_MyHookRegQueryValueExAW: hKey = 0x%p, lpValueName = %S\n", (LPCVOID) hKey, (LPCSTR) lpValueName);
+	//	OutputDebugString(str);
+	//	if (pData)
+	//	{
+	//		str.Format(L"  hKey is a hooked data: %s\n", (LPCWSTR) pData->strKeyName);
+	//		OutputDebugString(str);
+	//	}
+	//}
 	if (pData)
 	{
 		const CMyHookRegEntry* pEntry;
@@ -1380,14 +1380,14 @@ static LSTATUS __stdcall _MyHookRegGetValueAW(bool bUnicode, HKEY hKey, LPCVOID 
 	if (pvData && !pcbData)
 		return ERROR_INVALID_PARAMETER;
 	CMyStringW str;
-	{
-		if (bUnicode)
-			str.Format(L"_MyHookRegGetValueAW: hKey = 0x%p, lpSubKey = %s, lpValue = %s\n", (LPCVOID) hKey, (LPCWSTR) lpSubKey, (LPCWSTR) lpValue);
-		else
-			str.Format(L"_MyHookRegGetValueAW: hKey = 0x%p, lpSubKey = %S, lpValue = %S\n", (LPCVOID) hKey, (LPCSTR) lpSubKey, (LPCSTR) lpValue);
-		OutputDebugString(str);
-		str.Empty();
-	}
+	//{
+	//	if (bUnicode)
+	//		str.Format(L"_MyHookRegGetValueAW: hKey = 0x%p, lpSubKey = %s, lpValue = %s\n", (LPCVOID) hKey, (LPCWSTR) lpSubKey, (LPCWSTR) lpValue);
+	//	else
+	//		str.Format(L"_MyHookRegGetValueAW: hKey = 0x%p, lpSubKey = %S, lpValue = %S\n", (LPCVOID) hKey, (LPCSTR) lpSubKey, (LPCSTR) lpValue);
+	//	OutputDebugString(str);
+	//	str.Empty();
+	//}
 	CMyHookRegKeyData* pData = MyFindHookRegKeyData(hKey, NULL);
 	const CMyHookRegEntry* pEntry = NULL;
 	if (pData)

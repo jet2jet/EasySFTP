@@ -12,6 +12,7 @@
 #include "Folder.h"
 #include "FTPFldr.h"
 //#include "Transfer.h"
+#include "SFTPFldr.h"
 #include "SFTPStrm.h"
 
 class CFTPStreamWrapper;
@@ -271,7 +272,7 @@ CFTPDataObject::CFTPDataObject(//IFTPDataObjectListener* pListener,
 	//, m_pListener(pListener)
 	, m_pMalloc(pMalloc)
 	, m_strHostName(lpszHostName)
-	// DROPEFFECT_COPY ‚É‰Šú‰» (CFSTR_PERFORMEDDROPEFFECT ‚ğŒÄ‚Ño‚³‚È‚¢ƒ^[ƒQƒbƒg‚É‘Î‚·‚é‘[’u)
+	// DROPEFFECT_COPY ã«åˆæœŸåŒ– (CFSTR_PERFORMEDDROPEFFECT ã‚’å‘¼ã³å‡ºã•ãªã„ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã«å¯¾ã™ã‚‹æªç½®)
 	, m_dwPerformedDropEffect(DROPEFFECT_COPY)
 	, m_dwPreferredDropEffect(DROPEFFECT_NONE)
 	, m_nCFPerformed(0)
@@ -282,7 +283,7 @@ CFTPDataObject::CFTPDataObject(//IFTPDataObjectListener* pListener,
 	, m_fTextMode(TEXTMODE_NO_CONVERT)
 	, m_pConnection(pConnection)
 	, m_pFTPRoot(pRoot)
-	, m_pClient(NULL)
+	, m_pSFTPRoot(NULL)
 	, m_pChannel(NULL)
 	, m_pDirectory(pDirectory)
 	, m_pHolder(NULL)
@@ -309,7 +310,7 @@ CFTPDataObject::CFTPDataObject(//IFTPDataObjectListener* pListener,
 		IMalloc* pMalloc,
 		PIDLIST_ABSOLUTE pidlBase,
 		LPCWSTR lpszHostName,
-		CSSH2Client* pClient,
+		CSFTPFolderSFTP* pRoot,
 		CSFTPChannel* pChannel,
 		CFTPDirectoryBase* pDirectory,
 		const CMyPtrArrayT<CFTPFileItem>& aFiles)
@@ -317,7 +318,7 @@ CFTPDataObject::CFTPDataObject(//IFTPDataObjectListener* pListener,
 	//, m_pListener(pListener)
 	, m_pMalloc(pMalloc)
 	, m_strHostName(lpszHostName)
-	// DROPEFFECT_COPY ‚É‰Šú‰» (CFSTR_PERFORMEDDROPEFFECT ‚ğŒÄ‚Ño‚³‚È‚¢ƒ^[ƒQƒbƒg‚É‘Î‚·‚é‘[’u)
+	// DROPEFFECT_COPY ã«åˆæœŸåŒ– (CFSTR_PERFORMEDDROPEFFECT ã‚’å‘¼ã³å‡ºã•ãªã„ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã«å¯¾ã™ã‚‹æªç½®)
 	, m_dwPerformedDropEffect(DROPEFFECT_COPY)
 	, m_dwPreferredDropEffect(DROPEFFECT_NONE)
 	, m_nCFPerformed(0)
@@ -326,7 +327,7 @@ CFTPDataObject::CFTPDataObject(//IFTPDataObjectListener* pListener,
 	, m_bInOperation(false)
 	, m_bSFTPMode(true)
 	, m_fTextMode(TEXTMODE_NO_CONVERT)
-	, m_pClient(pClient)
+	, m_pSFTPRoot(pRoot)
 	, m_pChannel(pChannel)
 	, m_pConnection(NULL)
 	, m_pFTPRoot(NULL)
@@ -340,7 +341,7 @@ CFTPDataObject::CFTPDataObject(//IFTPDataObjectListener* pListener,
 	pDirectory->AddRef();
 	m_pidlBase = (PIDLIST_ABSOLUTE) ::DuplicateItemIDList((PCUIDLIST_RELATIVE) pidlBase);
 
-	pClient->AddRef();
+	pRoot->AddRef();
 	pChannel->AddRef();
 	int i = m_aFiles.GetCount();
 	while (i--)
@@ -353,11 +354,11 @@ CFTPDataObject::CFTPDataObject(//IFTPDataObjectListener* pListener,
 
 CFTPDataObject::~CFTPDataObject()
 {
-	// m_nCFPerformed == 0 ‚Í‰½‚àƒf[ƒ^‚ªæ“¾‚³‚ê‚Ä‚È‚¢ó‘Ô
+	// m_nCFPerformed == 0 ã¯ä½•ã‚‚ãƒ‡ãƒ¼ã‚¿ãŒå–å¾—ã•ã‚Œã¦ãªã„çŠ¶æ…‹
 	if (m_nCFPerformed != 0 && m_nCFPerformed != theApp.m_nCFFTPData)
 	{
-		// CFSTR_PERFORMEDDROPEFFECT ‚ğŒÄ‚Ño‚·ƒ^[ƒQƒbƒg‚ª -_MOVE ‚ğİ’è‚µ‚½ê‡‚Í
-		// unoptimized move ‚ªs‚í‚ê‚Ä‚¢‚é‚Ì‚Å‚±‚¿‚ç‚Åíœ‚·‚é
+		// CFSTR_PERFORMEDDROPEFFECT ã‚’å‘¼ã³å‡ºã™ã‚¿ãƒ¼ã‚²ãƒƒãƒˆãŒ -_MOVE ã‚’è¨­å®šã—ãŸå ´åˆã¯
+		// unoptimized move ãŒè¡Œã‚ã‚Œã¦ã„ã‚‹ã®ã§ã“ã¡ã‚‰ã§å‰Šé™¤ã™ã‚‹
 		if (m_dwPerformedDropEffect == DROPEFFECT_MOVE)
 		{
 			for (int i = 0; i < m_aAllFileData.GetCount(); i++)
@@ -391,8 +392,8 @@ CFTPDataObject::~CFTPDataObject()
 		m_pHolder->Release();
 	if (m_pChannel)
 		m_pChannel->Release();
-	if (m_pClient)
-		m_pClient->Release();
+	if (m_pSFTPRoot)
+		m_pSFTPRoot->Release();
 	if (m_pFTPRoot)
 		m_pFTPRoot->Release();
 	if (m_pConnection)
@@ -639,7 +640,7 @@ HRESULT CFTPDataObject::GetFileDescriptorCountAndInitFileList(
 				}
 				CSFTPSyncMessenger* pSyncMsg2;
 				if (m_bSFTPMode)
-					pSyncMsg2 = new CSFTPSyncMessenger(m_pClient, m_pChannel, pDir->m_strDirectory);
+					pSyncMsg2 = new CSFTPSyncMessenger(m_pSFTPRoot, m_pChannel, pDir->m_strDirectory);
 				hr = GetFileDescriptorCountAndInitFileList(pData->strRelativeFileName,
 					pDir, pDir->m_aFiles, pSyncMsg2, puItems);
 				if (m_bSFTPMode)
@@ -659,11 +660,11 @@ STDMETHODIMP CFTPDataObject::GetData(FORMATETC* pfmtIn, STGMEDIUM* pmdm)
 	HRESULT hr = QueryGetData(pfmtIn);
 	if (FAILED(hr))
 		return hr;
-	// Šù‚ÉÚ‘±‚©‚çØ‚è—£‚³‚ê‚Ä‚¢‚éê‡‚ÍƒGƒ‰[‚ğ•Ô‚·
-	// (—á: IAsyncOperation::EndOperation ‚ÌŒã)
+	// æ—¢ã«æ¥ç¶šã‹ã‚‰åˆ‡ã‚Šé›¢ã•ã‚Œã¦ã„ã‚‹å ´åˆã¯ã‚¨ãƒ©ãƒ¼ã‚’è¿”ã™
+	// (ä¾‹: IAsyncOperation::EndOperation ã®å¾Œ)
 	if (m_bSFTPMode)
 	{
-		if (!m_pClient || !m_pChannel)
+		if (!m_pSFTPRoot || !m_pChannel)
 			return OLE_E_NOTRUNNING;
 	}
 	else
@@ -800,7 +801,7 @@ STDMETHODIMP CFTPDataObject::GetData(FORMATETC* pfmtIn, STGMEDIUM* pmdm)
 		{
 			CSFTPSyncMessenger* pSyncMsg;
 			if (m_bSFTPMode)
-				pSyncMsg = new CSFTPSyncMessenger(m_pClient, m_pChannel, m_pDirectory->m_strDirectory);
+				pSyncMsg = new CSFTPSyncMessenger(m_pSFTPRoot, m_pChannel, m_pDirectory->m_strDirectory);
 			hr = GetFileDescriptorCountAndInitFileList(NULL, m_pDirectory, m_aFiles, pSyncMsg, NULL);
 			if (m_bSFTPMode)
 				delete pSyncMsg;
@@ -869,7 +870,7 @@ STDMETHODIMP CFTPDataObject::GetData(FORMATETC* pfmtIn, STGMEDIUM* pmdm)
 		{
 			CSFTPSyncMessenger* pSyncMsg;
 			if (m_bSFTPMode)
-				pSyncMsg = new CSFTPSyncMessenger(m_pClient, m_pChannel, m_pDirectory->m_strDirectory);
+				pSyncMsg = new CSFTPSyncMessenger(m_pSFTPRoot, m_pChannel, m_pDirectory->m_strDirectory);
 			else
 				pSyncMsg = NULL;
 			uCount = 0;
@@ -1094,7 +1095,7 @@ STDMETHODIMP CFTPDataObject::SetData(FORMATETC* pfmt, STGMEDIUM* pmdm, BOOL fRel
 		{
 			if (m_nCFPerformed != theApp.m_nCFFTPData)
 			{
-				// ‚Ç‚¿‚ç‚à DROPEFFECT_MOVE ‚Ìê‡‚Í unoptimized move
+				// ã©ã¡ã‚‰ã‚‚ DROPEFFECT_MOVE ã®å ´åˆã¯ unoptimized move
 				if (dwEffects == DROPEFFECT_MOVE)
 				{
 					if (m_dwPerformedDropEffect == DROPEFFECT_MOVE)
@@ -1180,7 +1181,7 @@ STDMETHODIMP CFTPDataObject::StartOperation(IBindCtx* pbcReserved)
 {
 	if (m_bSFTPMode)
 	{
-		if (!m_pClient || !m_pChannel)
+		if (!m_pSFTPRoot || !m_pChannel)
 			return OLE_E_NOTRUNNING;
 	}
 	else
@@ -1216,7 +1217,7 @@ STDMETHODIMP CFTPDataObject::EndOperation(HRESULT hResult, IBindCtx* pbcReserved
 
 		if (m_nCFPerformed != theApp.m_nCFFTPData)
 		{
-			// optimized move —p‚Ì SetData ‚Í EndOperation ‚Ì‘O‚ÉŒÄ‚Ño‚³‚ê‚é
+			// optimized move ç”¨ã® SetData ã¯ EndOperation ã®å‰ã«å‘¼ã³å‡ºã•ã‚Œã‚‹
 			if (dwEffects == DROPEFFECT_MOVE)
 			{
 				if (m_dwPerformedDropEffect == DROPEFFECT_MOVE)
@@ -1233,7 +1234,7 @@ STDMETHODIMP CFTPDataObject::EndOperation(HRESULT hResult, IBindCtx* pbcReserved
 
 	if (!m_bIsClipboardData)
 	{
-		// Ú‘±‚ğØ‚è—£‚·
+		// æ¥ç¶šã‚’åˆ‡ã‚Šé›¢ã™
 		if (m_bSFTPMode)
 		{
 			if (m_pChannel)
@@ -1241,10 +1242,10 @@ STDMETHODIMP CFTPDataObject::EndOperation(HRESULT hResult, IBindCtx* pbcReserved
 				m_pChannel->Release();
 				m_pChannel = NULL;
 			}
-			if (m_pClient)
+			if (m_pSFTPRoot)
 			{
-				m_pClient->Release();
-				m_pClient = NULL;
+				m_pSFTPRoot->Release();
+				m_pSFTPRoot = NULL;
 			}
 		}
 		else

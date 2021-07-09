@@ -210,9 +210,9 @@ STDMETHODIMP CEasySFTPFolderRoot::QueryInterface(REFIID riid, void** ppv)
 		AddRef();
 		return S_OK;
 	}
-	if (IsEqualIID(riid, IID_IEasySFTPRoot))
+	if (IsEqualIID(riid, IID_IEasySFTPRoot) || IsEqualIID(riid, IID_IEasySFTPRoot2))
 	{
-		*ppv = (IEasySFTPRoot*) this;
+		*ppv = (IEasySFTPRoot2*) this;
 		AddRef();
 		return S_OK;
 	}
@@ -1514,6 +1514,27 @@ STDMETHODIMP CEasySFTPFolderRoot::QuickConnectDialog(HWND hWndOwner, IShellFolde
 	return S_OK;
 }
 
+STDMETHODIMP CEasySFTPFolderRoot::GetDependencyLibraryInfo(BSTR* poutLibraryInfo)
+{
+	if (!poutLibraryInfo)
+		return E_POINTER;
+
+	CMyStringW str;
+
+	str = L"* OpenSSL: ";
+	str += OPENSSL_VERSION_TEXT;
+	str += L"\r\n";
+
+	str += L"* libssh2: ";
+	str += LIBSSH2_VERSION;
+	str += L"\r\n";
+
+	str += L"* containing part of PuTTY source code\r\n";
+
+	*poutLibraryInfo = ::SysAllocStringLen(str, static_cast<UINT>(str.GetLength()));
+	return *poutLibraryInfo ? S_OK : E_OUTOFMEMORY;
+}
+
 STDMETHODIMP CEasySFTPFolderRoot::SetEmulateRegMode(bool bEmulate)
 {
 	theApp.m_bEmulateRegMode = bEmulate;
@@ -1573,28 +1594,12 @@ bool CEasySFTPFolderRoot::ConnectDialog(HWND hWndOwner, CUserInfo* pUser)
 			pUser->nAuthType = m_dlgConnect.m_nAuthType;
 			if (m_dlgConnect.m_pPKey)
 			{
-				auto pkeyType = EVP_PKEY_base_id(m_dlgConnect.m_pPKey);
-				if (pkeyType == EVP_PKEY_RSA)
-				{
-					pUser->keyType = KEY_RSA;
-					pUser->keyData = EVP_PKEY_get1_RSA(m_dlgConnect.m_pPKey);
-				}
-				else if (pkeyType == EVP_PKEY_DSA)
-				{
-					pUser->keyType = KEY_DSA;
-					pUser->keyData = EVP_PKEY_get1_DSA(m_dlgConnect.m_pPKey);
-				}
-				else
-				{
-					pUser->keyData = (void*) NULL;
-					pUser->nAuthType = AUTHTYPE_PASSWORD;
-				}
+				pUser->strPKeyFileName = m_dlgConnect.m_strPKeyFileName;
 			}
 			else if (m_dlgConnect.m_nAuthType == AUTHTYPE_PAGEANT)
 				pUser->lpPageantKeyList = m_dlgConnect.m_lpPageantKeyList;
 			else
 			{
-				pUser->keyData = (void*) NULL;
 				pUser->nAuthType = AUTHTYPE_PASSWORD;
 			}
 		}
@@ -1668,28 +1673,12 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, CUserInfo* pUser,
 			pUser->nAuthType = m_dlgConnect.m_nAuthType;
 			if (m_dlgConnect.m_pPKey)
 			{
-				auto pkeyType = EVP_PKEY_base_id(m_dlgConnect.m_pPKey);
-				if (pkeyType == EVP_PKEY_RSA)
-				{
-					pUser->keyType = KEY_RSA;
-					pUser->keyData = EVP_PKEY_get1_RSA(m_dlgConnect.m_pPKey);
-				}
-				else if (pkeyType == EVP_PKEY_DSA)
-				{
-					pUser->keyType = KEY_DSA;
-					pUser->keyData = EVP_PKEY_get1_DSA(m_dlgConnect.m_pPKey);
-				}
-				else
-				{
-					pUser->keyData = (void*) NULL;
-					pUser->nAuthType = AUTHTYPE_PASSWORD;
-				}
+				pUser->strPKeyFileName = m_dlgConnect.m_strPKeyFileName;
 			}
 			else if (m_dlgConnect.m_nAuthType == AUTHTYPE_PAGEANT)
 				pUser->lpPageantKeyList = m_dlgConnect.m_lpPageantKeyList;
 			else
 			{
-				pUser->keyData = (void*) NULL;
 				pUser->nAuthType = AUTHTYPE_PASSWORD;
 			}
 		}

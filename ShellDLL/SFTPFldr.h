@@ -3,6 +3,7 @@
 
 #include "SFTPChan.h"
 #include "SSHCli.h"
+#include "SFTPStrm.h"
 
 #include "RFolder.h"
 
@@ -128,7 +129,8 @@ protected:
 
 class CSFTPFolderSFTP : public CFTPDirectoryRootBase,
 	public CSFTPChannelListener,
-	public CFingerPrintHandler
+	public CSSH2FingerPrintHandler,
+	public CPumpMessageProcessor
 {
 public:
 	friend class CSFTPFolderSFTPDirectory;
@@ -186,16 +188,13 @@ public:
 
 	// CSFTPChannelListener
 public:
-	virtual DWORD ChannelGetServerCompatible()
-		{ return m_pClient ? m_pClient->m_socket.GetServerCompatible() : 0; }
-	virtual bool ChannelSendPacket(BYTE bType, const void* pData, size_t nSize)
-		{ return m_pClient ? m_pClient->m_socket.SendPacket(bType, pData, nSize) : false; }
-	virtual void ChannelOpenFailure(CSSH2Channel* pChannel, int nReason, const CMyStringW& strMessage);
-	virtual void ChannelOpened(CSSH2Channel* pChannel);
-	virtual void ChannelClosed(CSSH2Channel* pChannel);
-	virtual void ChannelExitStatus(CSSH2Channel* pChannel, int nExitCode);
-	virtual void ChannelConfirm(CSSH2Channel* pChannel, bool bSucceeded);
-	virtual void ChannelDataReceived(CSSH2Channel* pChannel, const void* pvData, size_t nSize)
+	virtual void ChannelOpenFailure(CSSHChannel* pChannel, int nReason);
+	virtual void ChannelError(CSSHChannel* pChannel, int nReason);
+	virtual void ChannelOpened(CSSHChannel* pChannel);
+	virtual void ChannelClosed(CSSHChannel* pChannel);
+	virtual void ChannelExitStatus(CSSHChannel* pChannel, int nExitCode);
+	virtual void ChannelConfirm(CSSHChannel* pChannel, bool bSucceeded, int nReason);
+	virtual void ChannelDataReceived(CSSHChannel* pChannel, const void* pvData, size_t nSize)
 		{ }
 	virtual void SFTPOpened(CSFTPChannel* pChannel);
 	virtual void SFTPConfirm(CSFTPChannel* pChannel, CSFTPMessage* pMsg,
@@ -215,10 +214,24 @@ public:
 public:
 	virtual bool __stdcall CheckFingerPrint(const BYTE* pFingerPrint, size_t nLen);
 
+	// CPumpMessageProcessor
+public:
+	virtual HRESULT PumpSocketAndMessage(DWORD dwWaitTime = 0xFFFFFFFF);
+
 public:
 	bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserInfo* pUser);
 	//void Disconnect();
 
+public:
+	enum class Phase : UINT
+	{
+		First = 0,
+		Handshake,
+		Authenticating,
+		Authenticated,
+		WaitingLoggedIn,
+		LoggedIn
+	};
 public:
 	//CMyStringW m_strHostName;
 	//int m_nPort;
@@ -227,11 +240,8 @@ public:
 	bool m_bMyUserInfo;
 	CUserInfo* m_pUser;
 	CSSH2Client* m_pClient;
-	bool m_bFirstReceive;
-	bool m_bFirstFollowKex;
+	Phase m_phase;
 	bool m_bFirstAuthenticate;
-	bool m_bAuthenticated;
-	bool m_bLoggedIn;
 	CSFTPChannel* m_pChannel;
 	//ULONG m_uDirMsg;
 	//CMyStringW m_strReceivingDirPath;
@@ -255,10 +265,11 @@ protected:
 	UINT_PTR m_idTimer;
 	CRITICAL_SECTION m_csSocket;
 	CRITICAL_SECTION m_csReceive;
+	bool m_bNextLoop;
 	static void CALLBACK KeepConnectionTimerProc(UINT_PTR idEvent, LPARAM lParam);
-	void OnSFTPSocketReceive();
+	void OnSFTPSocketReceive(bool isSocketReceived);
 	// return 0 for success, non-zero for failure (if its value is not (UINT) -1, it means message id)
-	UINT _OnSFTPSocketReceiveThreadUnsafe();
+	UINT _OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived);
 	void DoReceiveSocket();
 	inline int DoRetryAuthentication(const char* pszAuthList, bool bFirstAttempt)
 		{ return m_pFolderRoot->DoRetryAuthentication(m_hWndOwner, m_pUser, true, pszAuthList, bFirstAttempt); }

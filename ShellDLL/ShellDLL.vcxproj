@@ -104,7 +104,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.9</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -131,7 +131,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.9</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -155,7 +155,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.9</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -185,7 +185,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)PuTTYLib.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.9</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -200,8 +200,6 @@
   <ItemGroup>
     <ClCompile Include="Auth.cpp" />
     <ClCompile Include="CFactory.cpp" />
-    <ClCompile Include="Channel.cpp" />
-    <ClCompile Include="Cipher.cpp" />
     <ClCompile Include="Connect.cpp" />
     <ClCompile Include="CsetPage.cpp" />
     <ClCompile Include="DIMalloc.cpp" />
@@ -220,19 +218,17 @@
     <ClCompile Include="FTPMsg.cpp" />
     <ClCompile Include="Func.cpp" />
     <ClCompile Include="HostPage.cpp" />
-    <ClCompile Include="KexCore.cpp" />
     <ClCompile Include="LinkDlg.cpp" />
     <ClCompile Include="MErrDlg.cpp" />
     <ClCompile Include="MySocket.cpp" />
-    <ClCompile Include="OpenSSH.cpp" />
     <ClCompile Include="RFolder.cpp" />
     <ClCompile Include="SFilePrp.cpp" />
     <ClCompile Include="SFTPChan.cpp" />
     <ClCompile Include="SFTPFldr.cpp" />
     <ClCompile Include="SFTPStrm.cpp" />
     <ClCompile Include="ShellDLL.cpp" />
+    <ClCompile Include="SSHChan.cpp" />
     <ClCompile Include="SSHCli.cpp" />
-    <ClCompile Include="SSHSock.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -257,8 +253,6 @@
   <ItemGroup>
     <ClInclude Include="Auth.h" />
     <ClInclude Include="CFactory.h" />
-    <ClInclude Include="Channel.h" />
-    <ClInclude Include="Cipher.h" />
     <ClInclude Include="Connect.h" />
     <ClInclude Include="DIMalloc.h" />
     <ClInclude Include="DragData.h" />
@@ -275,7 +269,6 @@
     <ClInclude Include="FTPMsg.h" />
     <ClInclude Include="Func.h" />
     <ClInclude Include="HostPage.h" />
-    <ClInclude Include="KexCore.h" />
     <ClInclude Include="LinkDlg.h" />
     <ClInclude Include="MErrDlg.h" />
     <ClInclude Include="MsgData.h" />
@@ -287,8 +280,8 @@
     <ClInclude Include="SFTPFldr.h" />
     <ClInclude Include="SFTPStrm.h" />
     <ClInclude Include="ShellDLL.h" />
+    <ClInclude Include="SSHChan.h" />
     <ClInclude Include="SSHCli.h" />
-    <ClInclude Include="SSHSock.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="SvInfo.h" />
     <ClInclude Include="targetver.h" />

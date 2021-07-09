@@ -401,7 +401,8 @@ typedef CMyPtrArrayT<CSFTPMessage> CSFTPMessageArray;
 typedef CMyPtrArrayT<CExBuffer> CSFTPMessageQueue;
 
 CSFTPChannel::CSFTPChannel(CSFTPChannelListener* pListener)
-	: CSSH2Channel(pListener, "session", SSH_CHANNEL_OPENING, "client-session")
+	: CSSHChannel(pListener)
+	, m_bStartingSubsystem(false)
 	, m_bInitializing(false)
 	, m_bSymLinkBug(false)
 	, m_uMsgID(0)
@@ -609,6 +610,11 @@ void CSFTPChannel::UnregisterMessageListener(ULONG uMsgID, CSFTPChannelListener*
 		}
 	}
 	::LeaveCriticalSection(&m_csListeners);
+}
+
+bool CSFTPChannel::Startup()
+{
+	return SendProcessStartup("subsystem", "sftp", 4);
 }
 
 bool CSFTPChannel::InitSFTP()
@@ -1149,26 +1155,14 @@ ULONG CSFTPChannel::Unblock(HSFTPHANDLE hSFTP, ULONGLONG uliOffset, ULONGLONG ul
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CSFTPChannel::ProcessChannelData(CExBuffer& buffer)
+void CSFTPChannel::ProcessChannelData(CExBuffer& buffer)
 {
 	ULONG uSize, u;
 	void* pv;
-	if (!buffer.GetAndSkipCE(uSize) ||
-		!(pv = buffer.GetCurrentBufferPermanentAndSkip((size_t) uSize)) ||
-		!buffer.IsEmpty())
-		return false;
 
-	if (!CheckChannelWindow())
-		return false;
 	::EnterCriticalSection(&m_csBuffer);
-	//if (uSize > m_nLocalMaxPacket)
-	//	;
-	//if (uSize > m_nLocalWindow)
-	//	;
-	m_nLocalWindow -= uSize;
-	m_nLocalReceived += uSize;
 
-	m_bufferLastData.AppendToBuffer(pv, (size_t) uSize);
+	m_bufferLastData.AppendToBuffer(buffer, buffer.GetLength());
 	while (true)
 	{
 		pv = m_bufferLastData;
@@ -1188,7 +1182,7 @@ bool CSFTPChannel::ProcessChannelData(CExBuffer& buffer)
 			if (pBuf)
 				delete pBuf;
 			::LeaveCriticalSection(&m_csBuffer);
-			return false;
+			return;
 		}
 		::EnterCriticalSection(&m_csQueue);
 		((CSFTPMessageQueue*) m_pvMsgQueue)->Add(pBuf);
@@ -1199,7 +1193,6 @@ bool CSFTPChannel::ProcessChannelData(CExBuffer& buffer)
 			break;
 	}
 	::LeaveCriticalSection(&m_csBuffer);
-	return true;
 }
 
 bool CSFTPChannel::ProcessQueuedBuffer(CSFTPChannelListener* pListener, CExBuffer& buffer)
@@ -1279,7 +1272,7 @@ bool CSFTPChannel::ProcessSFTPVersion(CSFTPChannelListener* pListener, CExBuffer
 
 	m_uServerVersion = uVersion;
 	m_bInitializing = false;
-	m_bSymLinkBug = ((m_pListener->ChannelGetServerCompatible() & SSH_BUG_SYMLINK) != 0);
+	m_bSymLinkBug = false;
 	memset(&m_exts, 0, sizeof(m_exts));
 	while (!buffer.IsEmpty())
 	{
