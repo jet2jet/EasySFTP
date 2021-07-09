@@ -9,7 +9,7 @@
 
 class CEasySFTPFolderRoot : public CFolderBase,
 	public IDelegateFolder,
-	public IEasySFTPRoot,
+	public IEasySFTPRoot2,
 	public IEasySFTPInternal
 	//public IParentAndItem
 {
@@ -78,6 +78,10 @@ public:
 	STDMETHOD(Connect)(VARIANT_BOOL bSFTP, HWND hWnd, const void* pvReserved,
 		LPCWSTR lpszHostName, int nPort, IShellFolder FAR* FAR* ppFolder);
 	STDMETHOD(QuickConnectDialog)(HWND hWndOwner, IShellFolder FAR* FAR* ppFolder);
+
+	// IEasySFTPRoot2
+public:
+	STDMETHOD(GetDependencyLibraryInfo)(BSTR FAR* poutLibraryInfo);
 
 	// IEasySFTPInternal
 public:

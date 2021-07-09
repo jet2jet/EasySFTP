@@ -19,6 +19,7 @@ class CFTPDirectoryBase;
 class CFTPDataObject;
 
 class CSFTPFolderFTP;
+class CSFTPFolderSFTP;
 
 //class __declspec(novtable) IFTPDataObjectListener : public IUnknown
 //{
@@ -69,7 +70,7 @@ public:
 		LPCWSTR lpszHostName, CFTPConnection* pConnection, CSFTPFolderFTP* pRoot, CFTPDirectoryBase* pDirectory, const CMyPtrArrayT<CFTPFileItem>& aFiles);
 	CFTPDataObject(//IFTPDataObjectListener* pListener,
 		IMalloc* pMalloc, PIDLIST_ABSOLUTE pidlBase,
-		LPCWSTR lpszHostName, CSSH2Client* pClient, CSFTPChannel* pChannel, CFTPDirectoryBase* pDirectory, const CMyPtrArrayT<CFTPFileItem>& aFiles);
+		LPCWSTR lpszHostName, CSFTPFolderSFTP* pRoot, CSFTPChannel* pChannel, CFTPDirectoryBase* pDirectory, const CMyPtrArrayT<CFTPFileItem>& aFiles);
 	~CFTPDataObject();
 
 public:
@@ -131,7 +132,7 @@ protected:
 	BYTE m_fTextMode;
 	CFTPConnection* m_pConnection;
 	CSFTPFolderFTP* m_pFTPRoot;
-	CSSH2Client* m_pClient;
+	CSFTPFolderSFTP* m_pSFTPRoot;
 	CSFTPChannel* m_pChannel;
 public:
 	CFTPDirectoryBase* m_pDirectory;

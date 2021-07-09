@@ -138,11 +138,10 @@ BEGIN
     ICON            IDI_EASYFTP,IDC_STATIC,7,7,20,20
     LTEXT           "EasySFTP version 0.9.3.3",IDC_STATIC,33,8,186,8,SS_NOPREFIX
     LTEXT           "Copyright (C) 2011 Kuri-Applications",IDC_STATIC,33,17,186,8
-    LTEXT           "このプログラムは OpenSSL 1.1.1k を使用しています。",IDC_STATIC,33,31,186,8
-    LTEXT           "このプログラムは一部に OpenSSH 5.3p1 のコードを使用しています。",IDC_STATIC,33,42,186,18
-    LTEXT           "このプログラムは修正 BSD ライセンスに基づいて配布されています。ライセンスの詳細は license.txt をご覧ください。",IDC_STATIC,33,78,186,17
+    LTEXT           "このプログラムは修正 BSD ライセンスに基づいて配布されています。ライセンスの詳細は license.txt をご覧ください。",IDC_STATIC,33,30,186,17
+    LTEXT           "このプログラムは以下のライブラリ・機能を使用しています。",IDC_STATIC,33,50,186,8
+    EDITTEXT        IDC_FEATURES,33,60,186,33,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
     DEFPUSHBUTTON   "OK",IDOK,169,101,50,14,WS_GROUP
-    LTEXT           "このプログラムは Pageant の機能の一部に PuTTY のコードを使用しています。",IDC_STATIC,33,60,186,18
 END
 
 IDD_OPTION DIALOGEX 0, 0, 182, 128

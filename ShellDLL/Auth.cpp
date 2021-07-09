@@ -14,329 +14,172 @@
 #define new DEBUG_NEW
 #endif
 
-bool CPasswordAuthentication::Authenticate(CSSH2Socket* pSocket, CUserInfo* pUser, LPCSTR lpszService)
+CPasswordAuthentication::~CPasswordAuthentication()
 {
-	LPCSTR lpszUser;
+	if (m_lpszPassword)
+	{
+		_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
+		free(m_lpszPassword);
+	}
+}
 
-	lpszUser = (LPCSTR) pUser->strName.AllocUTF8String();
-
-	CExBuffer buf;
-	buf.AppendToBufferWithLenCE(lpszUser);
-	buf.AppendToBufferWithLenCE(lpszService);
-	buf.AppendToBufferWithLenCE("password");
-	buf.AppendToBuffer((BYTE) 0);
+AuthReturnType CPasswordAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
+{
+	if (!m_lpszUser)
+	{
+		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String(&m_dwUserLen));
+	}
+	if (!m_lpszPassword)
 	{
 		CMyStringW str;
 		pUser->strPassword.GetString(str);
-		buf.AppendToBufferWithLenCE(str);
+		m_lpszPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(&m_dwPasswordLen));
 		_SecureStringW::SecureEmptyString(str);
+		if (!m_lpszPassword)
+			return AuthReturnType::Error;
 	}
-	bool bRet = pSocket->SendPacket(SSH2_MSG_USERAUTH_REQUEST, buf, buf.GetLength(), 64);
-	return bRet;
+
+	auto ret = libssh2_userauth_password_ex(pSession, m_lpszUser, static_cast<UINT>(m_dwUserLen),
+		m_lpszPassword, static_cast<UINT>(m_dwPasswordLen), NULL);
+	if (ret == LIBSSH2_ERROR_EAGAIN)
+		return AuthReturnType::Again;
+
+	m_lpszUser = NULL;
+	_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
+	free(m_lpszPassword);
+	m_lpszPassword = NULL;
+
+	if (ret != 0)
+		return AuthReturnType::Error;
+	return AuthReturnType::Success;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CChangePasswordAuthentication::Authenticate(CSSH2Socket* pSocket, CUserInfo* pUser, LPCSTR lpszService)
+CChangePasswordAuthentication::~CChangePasswordAuthentication()
 {
-	LPCSTR lpszUser;
+	if (m_lpszPassword)
+	{
+		_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
+		free(m_lpszPassword);
+	}
+}
 
-	lpszUser = (LPCSTR) pUser->strName.AllocUTF8String();
-
-	CExBuffer buf;
-	buf.AppendToBufferWithLenCE(lpszUser);
-	buf.AppendToBufferWithLenCE(lpszService);
-	buf.AppendToBufferWithLenCE("password");
-	buf.AppendToBuffer((BYTE) 1);
+AuthReturnType CChangePasswordAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
+{
+	if (!m_lpszUser)
+	{
+		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String(&m_dwUserLen));
+	}
+	if (!m_lpszPassword)
 	{
 		CMyStringW str;
 		pUser->strPassword.GetString(str);
-		buf.AppendToBufferWithLenCE(str);
+		m_lpszPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(&m_dwPasswordLen));
 		_SecureStringW::SecureEmptyString(str);
+		if (!m_lpszPassword)
+			return AuthReturnType::Error;
+	}
+
+	auto cb = [](LIBSSH2_SESSION* pSession, char** newPassword, int* newPasswordLen, void** ppUserPtr) -> void
+	{
+		auto pUser = static_cast<CUserInfo*>(*ppUserPtr);
+		CMyStringW str;
 		pUser->strNewPassword.GetString(str);
-		buf.AppendToBufferWithLenCE(str);
+		*newPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(reinterpret_cast<size_t*>(newPasswordLen)));
 		_SecureStringW::SecureEmptyString(str);
-	}
-	bool bRet = pSocket->SendPacket(SSH2_MSG_USERAUTH_REQUEST, buf, buf.GetLength(), 64);
-	return bRet;
+	};
+	*libssh2_session_abstract(pSession) = pUser;
+	auto ret = libssh2_userauth_password_ex(pSession, m_lpszUser, static_cast<UINT>(m_dwUserLen),
+		m_lpszPassword, static_cast<UINT>(m_dwPasswordLen),
+		cb);
+	if (ret == LIBSSH2_ERROR_EAGAIN)
+		return AuthReturnType::Again;
+
+	m_lpszUser = NULL;
+	_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
+	free(m_lpszPassword);
+	m_lpszPassword = NULL;
+
+	if (ret != 0)
+		return AuthReturnType::Error;
+	return AuthReturnType::Success;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool __stdcall SignSSH2Key(DWORD dwCompat, const KeyData& keyData, KeyType keyType, const void* pData, size_t nDataLen, void** ppSigned, size_t* pnSignedLen)
+CPublicKeyAuthentication::~CPublicKeyAuthentication()
 {
-	void* pDigest;
-	CExBuffer buf;
-
-	if (!keyData.pKeyUnknown)
-		return false;
-	if (keyType != KEY_RSA && keyType != KEY_RSA1 && keyType != KEY_DSA)
-		return false;
-	pDigest = malloc(EVP_MAX_MD_SIZE);
-	if (!pDigest)
-		return false;
-	if (keyType == KEY_RSA || keyType == KEY_RSA1)
+	if (m_lpszPassword)
 	{
-		const EVP_MD *evp_md;
-		EVP_MD_CTX* pmd;
-		void* pSig;
-		UINT nSLen, nDLen;
-		size_t nLen;
-		int ret, nNID;
-
-		pmd = EVP_MD_CTX_new();
-		if (!pmd)
-		{
-			free(pDigest);
-			return false;
-		}
-
-		nNID = (dwCompat & SSH_BUG_RSASIGMD5) ? NID_md5 : NID_sha1;
-		if (!(evp_md = EVP_get_digestbynid(nNID)))
-		{
-			//error("ssh_rsa_sign: EVP_get_digestbynid %d failed", nNID);
-			EVP_MD_CTX_free(pmd);
-			free(pDigest);
-			return false;
-		}
-		EVP_DigestInit(pmd, evp_md);
-		EVP_DigestUpdate(pmd, pData, nDataLen);
-		EVP_DigestFinal(pmd, (unsigned char*) pDigest, &nDLen);
-		EVP_MD_CTX_free(pmd);
-
-		nSLen = RSA_size(keyData);
-		pSig = malloc(nSLen);
-		if (!pSig)
-		{
-			_SecureStringW::SecureEmptyBuffer(pDigest, EVP_MAX_MD_SIZE);
-			free(pDigest);
-			return false;
-		}
-
-		nLen = 0;
-		ret = RSA_sign(nNID, (unsigned char*) pDigest, nDLen, (unsigned char*) pSig, (UINT*) &nLen, keyData);
-		_SecureStringW::SecureEmptyBuffer(pDigest, EVP_MAX_MD_SIZE);
-		free(pDigest);
-
-		if (ret != 1)
-		{
-			//int ecode = ERR_get_error();
-
-			//error("ssh_rsa_sign: RSA_sign failed: %s",
-			//	ERR_error_string(ecode, NULL));
-			free(pSig);
-			return false;
-		}
-		if (nLen < (size_t) nSLen)
-		{
-			size_t nDiff = (size_t) nSLen - nLen;
-			//debug("nSLen %u > nLen %u", nSLen, nLen);
-			memmove((unsigned char*) pSig + nDiff, pSig, nLen);
-			memset(pSig, 0, nDiff);
-		}
-		else if (nLen > (size_t) nSLen)
-		{
-			//error("ssh_rsa_sign: nSLen %u nLen %u", nSLen, nLen);
-			free(pSig);
-			return false;
-		}
-
-		/// encode signature
-		buf.AppendToBufferWithLenCE("ssh-rsa");
-		buf.AppendToBufferWithLenCE(pSig, (size_t) nSLen);
-		nLen = buf.GetLength();
-		if (pnSignedLen != NULL)
-			*pnSignedLen = nLen;
-		if (ppSigned != NULL) {
-			*ppSigned = malloc(nLen);
-			memcpy(*ppSigned, buf, nLen);
-		}
-		_SecureStringW::SecureEmptyBuffer(pSig, (size_t) nSLen);
-		free(pSig);
+		_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
+		free(m_lpszPassword);
 	}
-	else if (keyType == KEY_DSA)
-	{
-		DSA_SIG* sig;
-		const EVP_MD* evp_md = EVP_sha1();
-		EVP_MD_CTX* pmd;
-		void* pSigBlob;
-		UINT nRLen, nSLen, nDLen;
-		size_t nLen;
-
-		pSigBlob = malloc(SIGBLOB_LEN);
-		if (!pSigBlob)
-		{
-			free(pDigest);
-			return false;
-		}
-		pmd = EVP_MD_CTX_new();
-		if (!pmd)
-		{
-			free(pSigBlob);
-			free(pDigest);
-			return false;
-		}
-		EVP_DigestInit(pmd, evp_md);
-		EVP_DigestUpdate(pmd, pData, nDataLen);
-		EVP_DigestFinal(pmd, (unsigned char*) pDigest, &nDLen);
-		EVP_MD_CTX_free(pmd);
-
-		sig = DSA_do_sign((unsigned char*) pDigest, nDLen, keyData);
-		_SecureStringW::SecureEmptyBuffer(pDigest, EVP_MAX_MD_SIZE);
-		free(pDigest);
-
-		if (sig == NULL)
-		{
-			//error("ssh_dss_sign: sign failed");
-			return false;
-		}
-
-		const BIGNUM* r, * s;
-		DSA_SIG_get0(sig, &r, &s);
-		nRLen = BN_num_bytes(r);
-		nSLen = BN_num_bytes(s);
-		if (nRLen > INTBLOB_LEN || nSLen > INTBLOB_LEN)
-		{
-			//error("bad sig size %u %u", nRLen, nSLen);
-			DSA_SIG_free(sig);
-			return false;
-		}
-		memset(pSigBlob, 0, SIGBLOB_LEN);
-		BN_bn2bin(r, (unsigned char*) pSigBlob + SIGBLOB_LEN - INTBLOB_LEN - nRLen);
-		BN_bn2bin(s, (unsigned char*) pSigBlob + SIGBLOB_LEN - nSLen);
-		DSA_SIG_free(sig);
-
-		if (dwCompat & SSH_BUG_SIGBLOB)
-		{
-			if (pnSignedLen != NULL)
-				*pnSignedLen = SIGBLOB_LEN;
-			if (ppSigned != NULL)
-			{
-				*ppSigned = malloc(SIGBLOB_LEN);
-				memcpy(*ppSigned, pSigBlob, SIGBLOB_LEN);
-			}
-		}
-		else
-		{
-			// ietf-drafts
-			buf.AppendToBufferWithLenCE("ssh-dss");
-			buf.AppendToBufferWithLenCE(pSigBlob, (size_t) SIGBLOB_LEN);
-
-			nLen = buf.GetLength();
-			if (pnSignedLen != NULL)
-				*pnSignedLen = nLen;
-			if (ppSigned != NULL)
-			{
-				*ppSigned = malloc(nLen);
-				memcpy(*ppSigned, buf, nLen);
-			}
-		}
-		_SecureStringW::SecureEmptyBuffer(pSigBlob, SIGBLOB_LEN);
-		free(pSigBlob);
-	}
-	return true;
 }
 
-bool CPublicKeyAuthentication::Authenticate(CSSH2Socket* pSocket, CUserInfo* pUser, LPCSTR lpszService)
+AuthReturnType CPublicKeyAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
 {
-	LPCSTR lpszUser, lpszKeyType;
-	void* pBlob, * pSign;
-	size_t nBlobLen, nSignLen;
-
-	lpszUser = (LPCSTR) pUser->strName.AllocUTF8String();
-
-	if (!(lpszKeyType = KeyTypeToName(pUser->keyType)))
-		return false;
-	if (!CreateBlobFromKey(pUser->keyType, &pUser->keyData, &pBlob, &nBlobLen))
+	if (!m_lpszUser)
 	{
-		return false;
+		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String(&m_dwUserLen));
+	}
+	if (!m_lpszPKeyFileName)
+	{
+		m_lpszPKeyFileName = reinterpret_cast<LPCSTR>(pUser->strPKeyFileName.AllocUTF8String());
+	}
+	if (!m_lpszPassword)
+	{
+		CMyStringW str;
+		pUser->strPassword.GetString(str);
+		m_lpszPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(&m_dwPasswordLen));
+		_SecureStringW::SecureEmptyString(str);
+		if (!m_lpszPassword)
+			return AuthReturnType::Error;
 	}
 
-	CExBuffer buf;
-	DWORD dwCompat = pSocket->GetServerCompatible();
-	size_t nSkipLen;
-	if (dwCompat & SSH_OLD_SESSIONID)
-	{
-		buf.AppendToBuffer(pUser->pvSessionID, pUser->nSessionIDLen);
-		nSkipLen = pUser->nSessionIDLen;
-	}
-	else
-	{
-		buf.AppendToBufferWithLenCE(pUser->pvSessionID, pUser->nSessionIDLen);
-		nSkipLen = buf.GetLength();
-	}
-	buf.AppendToBuffer((BYTE) SSH2_MSG_USERAUTH_REQUEST);
-	buf.AppendToBufferWithLenCE(lpszUser);
-	buf.AppendToBufferWithLenCE((dwCompat & SSH_BUG_PKSERVICE) ? "ssh-userauth" : lpszService);
-	if (dwCompat & SSH_BUG_PKAUTH)
-		buf.AppendToBuffer((BYTE) 1);   // bHaveSig
-	else
-	{
-		buf.AppendToBufferWithLenCE("publickey");
-		buf.AppendToBuffer((BYTE) 1);   // bHaveSig
-		buf.AppendToBufferWithLenCE(lpszKeyType);
-	}
-	buf.AppendToBufferWithLenCE(pBlob, nBlobLen);
+	auto ret = libssh2_userauth_publickey_fromfile_ex(pSession, m_lpszUser, static_cast<UINT>(m_dwUserLen), NULL, m_lpszPKeyFileName, m_lpszPassword);
+	if (ret == LIBSSH2_ERROR_EAGAIN)
+		return AuthReturnType::Again;
 
-	if (!SignSSH2Key(dwCompat, pUser->keyData, pUser->keyType, buf, buf.GetLength(), &pSign, &nSignLen))
-	{
-		return false;
-	}
+	m_lpszUser = NULL;
+	_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
+	free(m_lpszPassword);
+	m_lpszPassword = NULL;
 
-	if (dwCompat & SSH_BUG_PKSERVICE)
-	{
-		buf.Empty();
-		buf.AppendToBuffer(pUser->pvSessionID, pUser->nSessionIDLen);
-		nSkipLen = pUser->nSessionIDLen;
-		buf.AppendToBuffer((BYTE) SSH2_MSG_USERAUTH_REQUEST);
-		buf.AppendToBufferWithLenCE(lpszUser);
-		buf.AppendToBufferWithLenCE((dwCompat & SSH_BUG_PKSERVICE) ? "ssh-userauth" : lpszService);
-		buf.AppendToBufferWithLenCE("publickey");
-		buf.AppendToBuffer((BYTE) 1);   // bHaveSig
-		if (!(dwCompat & SSH_BUG_PKAUTH))
-			buf.AppendToBufferWithLenCE(lpszKeyType);
-		buf.AppendToBufferWithLenCE(pBlob, nBlobLen);
-	}
-	_SecureStringW::SecureEmptyBuffer(pBlob, nBlobLen);
-	free(pBlob);
-
-	buf.AppendToBufferWithLenCE(pSign, nSignLen);
-	_SecureStringW::SecureEmptyBuffer(pSign, nSignLen);
-	free(pSign);
-
-	register bool ret = false;
-	if (buf.GetLength() >= nSkipLen + 1)
-	{
-		buf.SkipPosition((long) (nSkipLen + 1));
-		ret = pSocket->SendPacket(SSH2_MSG_USERAUTH_REQUEST, buf, buf.GetLength());
-		buf.ResetPosition();
-	}
-	_SecureStringW::SecureEmptyBuffer(buf, buf.GetLength());
-
-	return ret;
+	if (ret != 0)
+		return AuthReturnType::Error;
+	return AuthReturnType::Success;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CPageantAuthentication::Authenticate(CSSH2Socket* pSocket, CUserInfo* pUser, LPCSTR lpszService)
+CPageantAuthentication::~CPageantAuthentication()
 {
+	if (m_lpPageantKeyList)
+		PuTTYFreeKeyList(m_lpPageantKeyList);
+}
+
+AuthReturnType CPageantAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
+{
+	if (!m_lpszUser)
+	{
+		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String());
+	}
 	if (!m_lpPageantKeyList)
 	{
 		m_lpPageantKeyList = pUser->lpPageantKeyList;
 		pUser->lpPageantKeyList = NULL;
 		if (!m_lpPageantKeyList)
-			return false;
+			return AuthReturnType::Error;
 		m_dwKeyCount = ConvertEndian(*((DWORD*) m_lpPageantKeyList));
 		m_dwKeyIndex = 0;
 		m_lpCurrentKey = m_lpPageantKeyList + 4;
 	}
 	LPBYTE p = m_lpCurrentKey;
 
-	LPCSTR lpszUser, lpszKeyType;
-	void* pBlob;
+	LPCSTR lpszKeyType;
+	LPCBYTE pBlob;
 	size_t nBlobLen;
-
-	lpszUser = (LPCSTR) pUser->strName.AllocUTF8String();
 
 	// get key type data (in the head of blob data)
 	DWORD dwKeyTypeLen = ConvertEndian(*((DWORD*) (p + 4)));
@@ -346,108 +189,27 @@ bool CPageantAuthentication::Authenticate(CSSH2Socket* pSocket, CUserInfo* pUser
 	pBlob = (p + 4);
 	p += nBlobLen + 4;
 
-	CExBuffer buf;
-	DWORD dwCompat = pSocket->GetServerCompatible();
-	size_t nSkipLen;
-	if (dwCompat & SSH_OLD_SESSIONID)
-	{
-		buf.AppendToBuffer(pUser->pvSessionID, pUser->nSessionIDLen);
-		nSkipLen = pUser->nSessionIDLen + 1;
-	}
-	else
-	{
-		buf.AppendToBufferWithLenCE(pUser->pvSessionID, pUser->nSessionIDLen);
-		nSkipLen = buf.GetLength() + 1;
-	}
-	buf.AppendToBuffer((BYTE) SSH2_MSG_USERAUTH_REQUEST);
-	buf.AppendToBufferWithLenCE(lpszUser);
-	buf.AppendToBufferWithLenCE((dwCompat & SSH_BUG_PKSERVICE) ? "ssh-userauth" : lpszService);
-	if (dwCompat & SSH_BUG_PKAUTH)
-		buf.AppendToBuffer((BYTE) (pUser->bSecondary ? 1 : 0));   // bHaveSig
-	else
-	{
-		buf.AppendToBufferWithLenCE("publickey");
-		buf.AppendToBuffer((BYTE) (pUser->bSecondary ? 1 : 0));   // bHaveSig
-		buf.AppendToBufferWithLenCE(lpszKeyType, dwKeyTypeLen);
-	}
-	buf.AppendToBufferWithLenCE(pBlob, nBlobLen);
-
-	if (pUser->bSecondary)
-	{
-		void* pSignMsg = malloc(buf.GetLength() + 4);
-		*((DWORD*) pSignMsg) = ConvertEndian((DWORD) buf.GetLength());
-		memcpy(((char*) pSignMsg) + 4, buf, buf.GetLength());
-		DWORD nSignedLen;
-		void* pSignedData = PuTTYSignSSH2Key(m_lpCurrentKey, (LPCBYTE) pSignMsg, &nSignedLen);
-		_SecureStringW::SecureEmptyBuffer(pSignMsg, buf.GetLength() + 4);
-		free(pSignMsg);
-		if (!pSignedData)
+	void* abstract = m_lpCurrentKey;
+	auto ret = libssh2_userauth_publickey(pSession, m_lpszUser, pBlob, nBlobLen,
+		[](LIBSSH2_SESSION*, LPBYTE* sig, size_t* sig_len, LPCBYTE data, size_t data_len, void** abstract) -> int
 		{
-			_SecureStringW::SecureEmptyBuffer(buf, buf.GetLength());
-			return false;
-		}
-		buf.Empty();
-		nSkipLen = 0;
-		buf.AppendToBufferWithLenCE(lpszUser);
-		buf.AppendToBufferWithLenCE((dwCompat & SSH_BUG_PKSERVICE) ? "ssh-userauth" : lpszService);
-		if (dwCompat & SSH_BUG_PKAUTH)
-			buf.AppendToBuffer((BYTE) 1);   // bHaveSig
-		else
-		{
-			buf.AppendToBufferWithLenCE("publickey");
-			buf.AppendToBuffer((BYTE) 1);   // bHaveSig
-			buf.AppendToBufferWithLenCE(lpszKeyType, dwKeyTypeLen);
-		}
-		buf.AppendToBufferWithLenCE(pBlob, nBlobLen);
-		DWORD dw = ConvertEndian(*((DWORD*) pSignedData));
-		buf.AppendToBufferWithLenCE(((LPBYTE) pSignedData) + 4, dw);
-		_SecureStringW::SecureEmptyBuffer(pSignedData, nSignedLen);
-		free(pSignedData);
-	}
-	//if (!SignSSH2Key(dwCompat, pUser->keyData, pUser->keyType, buf, buf.GetLength(), &pSign, &nSignLen))
-	//{
-	//	return false;
-	//}
+			LPBYTE lpCurrentKey = static_cast<LPBYTE>(*abstract);
+			DWORD nSignedLen;
+			void* pSignedData = PuTTYSignSSH2Key(lpCurrentKey, data, static_cast<DWORD>(data_len), &nSignedLen);
+			*sig = static_cast<LPBYTE>(pSignedData);
+			*sig_len = static_cast<size_t>(nSignedLen);
+			return 0;
+		},
+		&abstract);
+	
+	if (ret == LIBSSH2_ERROR_EAGAIN)
+		return AuthReturnType::Again;
 
-	//if (dwCompat & SSH_BUG_PKSERVICE)
-	//{
-	//	buf.Empty();
-	//	buf.AppendToBuffer(pUser->pvSessionID, pUser->nSessionIDLen);
-	//	nSkipLen = pUser->nSessionIDLen;
-	//	buf.AppendToBuffer((BYTE) SSH2_MSG_USERAUTH_REQUEST);
-	//	buf.AppendToBufferWithLenCE(lpszUser);
-	//	buf.AppendToBufferWithLenCE((dwCompat & SSH_BUG_PKSERVICE) ? "ssh-userauth" : lpszService);
-	//	buf.AppendToBufferWithLenCE("publickey");
-	//	buf.AppendToBuffer((BYTE) 1);   // bHaveSig
-	//	if (!(dwCompat & SSH_BUG_PKAUTH))
-	//		buf.AppendToBufferWithLenCE(lpszKeyType);
-	//	buf.AppendToBufferWithLenCE(pBlob, nBlobLen);
-	//}
-	//_SecureStringW::SecureEmptyBuffer(pBlob, nBlobLen);
-	//free(pBlob);
+	m_lpszUser = NULL;
 
-	//buf.AppendToBufferWithLenCE(pSign, nSignLen);
-	//_SecureStringW::SecureEmptyBuffer(pSign, nSignLen);
-	//free(pSign);
-
-	register bool ret = false;
-	if (buf.GetLength() >= nSkipLen)
-	{
-		if (nSkipLen)
-			buf.SkipPosition((long) (nSkipLen));
-		ret = pSocket->SendPacket(SSH2_MSG_USERAUTH_REQUEST, buf, buf.GetLength());
-		buf.ResetPosition();
-	}
-	_SecureStringW::SecureEmptyBuffer(buf, buf.GetLength());
-
-	return ret;
-}
-
-void CPageantAuthentication::FinishAndDelete()
-{
-	if (m_lpPageantKeyList)
-		PuTTYFreeKeyList(m_lpPageantKeyList);
-	delete this;
+	if (ret != 0)
+		return AuthReturnType::Error;
+	return AuthReturnType::Success;
 }
 
 bool CPageantAuthentication::CanRetry()
@@ -472,15 +234,42 @@ bool CPageantAuthentication::CanRetry()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CNoneAuthentication::Authenticate(CSSH2Socket* pSocket, CUserInfo* pUser, LPCSTR lpszService)
+CNoneAuthentication::~CNoneAuthentication()
 {
-	LPCSTR lpszUser;
+	if (m_lpAuthList)
+		free(m_lpAuthList);
+}
 
-	lpszUser = (LPCSTR) pUser->strName.AllocUTF8String();
+AuthReturnType CNoneAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
+{
+	if (!m_lpszUser)
+	{
+		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String(&m_dwUserLen));
+	}
 
-	CExBuffer buf;
-	buf.AppendToBufferWithLenCE(lpszUser ? lpszUser : "");
-	buf.AppendToBufferWithLenCE(lpszService);
-	buf.AppendToBufferWithLenCE("none");
-	return pSocket->SendPacket(SSH2_MSG_USERAUTH_REQUEST, buf, buf.GetLength());
+	auto ret = libssh2_userauth_list(pSession, m_lpszUser, static_cast<UINT>(m_dwUserLen));
+	if (!ret)
+	{
+		if (libssh2_userauth_authenticated(pSession))
+			return AuthReturnType::Success;
+		auto err = libssh2_session_last_errno(pSession);
+		if (err == LIBSSH2_ERROR_EAGAIN)
+			return AuthReturnType::Again;
+		m_lpAuthList = NULL;
+		return AuthReturnType::Error;
+	}
+
+	auto len = strlen(ret) + 1;
+	m_lpAuthList = static_cast<char*>(malloc(sizeof(char) * (len + 1)));
+	if (!m_lpAuthList)
+		return AuthReturnType::Error;
+	for (size_t i = 0; i < len; ++i)
+	{
+		if (ret[i] == ',')
+			m_lpAuthList[i] = 0;
+		else
+			m_lpAuthList[i] = ret[i];
+	}
+	m_lpAuthList[len] = 0;
+	return AuthReturnType::Error;
 }

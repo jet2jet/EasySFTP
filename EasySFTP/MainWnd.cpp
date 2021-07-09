@@ -265,7 +265,7 @@ void CMainWindow::UpdateCurrentFolderAbsolute(LPCWSTR lpszPath)
 //		if (m_hDirFile)
 //			return;
 //		//m_bInVerifyDirectory = true;
-//		// SSH_FXP_REALPATH ‚ğ‘—‚èA•Ô‚³‚ê‚½ƒpƒX‚Å SSH_FXP_OPENDIR ‚·‚é
+//		// SSH_FXP_REALPATH ã‚’é€ã‚Šã€è¿”ã•ã‚ŒãŸãƒ‘ã‚¹ã§ SSH_FXP_OPENDIR ã™ã‚‹
 //		m_uSFTPDirChangeMsgID = m_pChannel->RealPath(lpszPath);
 //	}
 //	else
@@ -273,8 +273,8 @@ void CMainWindow::UpdateCurrentFolderAbsolute(LPCWSTR lpszPath)
 //		if (!m_pConnection)
 //			return;
 //
-//		// CWaitMakeDirData ‚ğì¬‚µAƒŠƒXƒg‚É’Ç‰Á‚·‚é
-//		// (MKD ‚Å‚à CWD “¯‚¶ƒŒƒXƒ|ƒ“ƒXƒR[ƒh‚ª•Ô‚é‚½‚ßA‹æ•Ê‚Å‚«‚é‚æ‚¤‚És‚¤)
+//		// CWaitMakeDirData ã‚’ä½œæˆã—ã€ãƒªã‚¹ãƒˆã«è¿½åŠ ã™ã‚‹
+//		// (MKD ã§ã‚‚ CWD åŒã˜ãƒ¬ã‚¹ãƒãƒ³ã‚¹ã‚³ãƒ¼ãƒ‰ãŒè¿”ã‚‹ãŸã‚ã€åŒºåˆ¥ã§ãã‚‹ã‚ˆã†ã«è¡Œã†)
 //		CWaitMakeDirData* pDir = new CWaitMakeDirData();
 //		pDir->nWaitFlags = 0;
 //		pDir->strRemoteDirectory = lpszPath;
@@ -1682,7 +1682,7 @@ LRESULT CMainWindow::OnCommand(WPARAM wParam, LPARAM lParam)
 			ShowOption();
 			break;
 		case ID_HELP_ABOUT:
-			ExDialogBoxParam(theApp.m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), m_hWnd, NULL, 0);
+			ShowAboutDialog();
 			break;
 		default:
 			return Default(wParam, lParam);
@@ -1744,6 +1744,45 @@ void CMainWindow::UpdateToolBarEnable()
 			UpdateUIItem(&item);
 		}
 	}
+}
+
+static INT_PTR CALLBACK _AboutDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	switch (message)
+	{
+		case WM_INITDIALOG:
+		{
+			IEasySFTPRoot2* pRoot2 = NULL;
+			auto hr = theApp.m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPRoot2, reinterpret_cast<void**>(&pRoot2));
+			if (SUCCEEDED(hr))
+			{
+				BSTR bstr = NULL;
+				hr = pRoot2->GetDependencyLibraryInfo(&bstr);
+				pRoot2->Release();
+				if (SUCCEEDED(hr))
+				{
+					CMyStringW str;
+					str.SetString(bstr, ::SysStringLen(bstr));
+					::SysFreeString(bstr);
+					::MySetDlgItemTextW(hDlg, IDC_FEATURES, str);
+				}
+			}
+		}
+		break;
+		case WM_COMMAND:
+			if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+			{
+				EndDialog(hDlg, LOWORD(wParam));
+				return (INT_PTR) TRUE;
+			}
+			break;
+	}
+	return (INT_PTR) FALSE;
+}
+
+void CMainWindow::ShowAboutDialog()
+{
+	ExDialogBoxParam(theApp.m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), m_hWnd, _AboutDlgProc, 0);
 }
 
 void CMainWindow::UpdateUIItem(CCommandUIItem* pUIItem)
@@ -2194,7 +2233,7 @@ static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR 
 			//			pidlRet = ::AppendItemIDList(theApp.m_pidlEasySFTP, pidlRel);
 			//		::SysFreeString(bstr2);
 			//	}
-			//	// ƒzƒXƒg‚ªˆê’v‚µ‚È‚­‚Ä‚à sftp ƒ‚[ƒh‚Å‚ ‚ê‚Î IDLIST ‚ğ¶¬‚µ‚Ä¬Œ÷‚É‚·‚é
+			//	// ãƒ›ã‚¹ãƒˆãŒä¸€è‡´ã—ãªãã¦ã‚‚ sftp ãƒ¢ãƒ¼ãƒ‰ã§ã‚ã‚Œã° IDLIST ã‚’ç”Ÿæˆã—ã¦æˆåŠŸã«ã™ã‚‹
 			//	if (!pidlRet && b1)
 					pidlRet = ::AppendItemIDList(theApp.m_pidlEasySFTP, pidlRel);
 			//	::SysFreeString(bstr1);

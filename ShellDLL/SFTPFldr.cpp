@@ -4,7 +4,6 @@
 #include "SFTPFldr.h"
 
 #include "DragData.h"
-#include "SFTPStrm.h"
 
 static void __stdcall GetSFTPStatusMessage(int nStatus, LPCWSTR lpszMessage, CMyStringW& rstrMessage)
 {
@@ -83,16 +82,8 @@ STDMETHODIMP_(void) CSFTPFolderSFTPDirectory::UpdateItem(CFTPFileItem* pOldItem,
 
 			while (pAttr->uMsgID)
 			{
-				if (pRoot->m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
-				{
-					pRoot->DoReceiveSocket();
-					if (!pRoot->m_pClient || !theApp.MyPumpMessage())
-					{
-						pAttr->nResult = SSH_FX_NO_CONNECTION;
-						break;
-					}
-				}
-				else
+				auto hr = pRoot->PumpSocketAndMessage();
+				if (FAILED(hr) || hr == S_FALSE)
 				{
 					pAttr->nResult = SSH_FX_NO_CONNECTION;
 					break;
@@ -140,16 +131,8 @@ STDMETHODIMP_(void) CSFTPFolderSFTPDirectory::UpdateItem(CFTPFileItem* pOldItem,
 
 			while (pAttr->uMsgID)
 			{
-				if (pRoot->m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
-				{
-					pRoot->DoReceiveSocket();
-					if (!pRoot->m_pClient || !theApp.MyPumpMessage())
-					{
-						pAttr->nResult = SSH_FX_NO_CONNECTION;
-						break;
-					}
-				}
-				else
+				auto hr = pRoot->PumpSocketAndMessage();
+				if (FAILED(hr) || hr == S_FALSE)
 				{
 					pAttr->nResult = SSH_FX_NO_CONNECTION;
 					break;
@@ -183,6 +166,7 @@ CSFTPFolderSFTP::CSFTPFolderSFTP(CDelegateMallocData* pMallocData, CFTPDirectory
 	m_nServerCharset = scsUTF8;
 	::InitializeCriticalSection(&m_csSocket);
 	::InitializeCriticalSection(&m_csReceive);
+	m_bNextLoop = false;
 	m_pFolderRoot->AddRef();
 	m_hWndOwnerCache = pFolderRoot->GetHwndOwnerCache();
 	m_dwTransferringCount = 0;
@@ -229,7 +213,7 @@ STDMETHODIMP CSFTPFolderSFTP::GetFTPItemUIObjectOf(HWND hWndOwner, CFTPDirectory
 		m_pMallocData->pMalloc,
 		pDirectory->m_pidlMe,
 		m_strHostName,
-		m_pClient, m_pChannel,
+		this, m_pChannel,
 		pDirectory, aItems);
 	if (!pObject)
 		return E_OUTOFMEMORY;
@@ -270,17 +254,13 @@ STDMETHODIMP CSFTPFolderSFTP::SetFTPItemNameOf(HWND hWnd, CFTPDirectoryBase* pDi
 
 		while (pData->uMsgID)
 		{
-			if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+			auto hr = PumpSocketAndMessage();
+			if (FAILED(hr))
 			{
-				DoReceiveSocket();
-				if (!m_pClient || !theApp.MyPumpMessage())
-				{
-					delete pData;
-					//pDirectory->Release();
-					return E_FAIL;
-				}
+				delete pData;
+				return hr;
 			}
-			else
+			if (hr == S_FALSE)
 			{
 				pData->nResult = SSH_FX_NO_CONNECTION;
 				break;
@@ -352,17 +332,14 @@ STDMETHODIMP CSFTPFolderSFTP::DoDeleteFTPItems(HWND hWndOwner, CFTPDirectoryBase
 
 				while (pData->uMsgID)
 				{
-					if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+					auto hr = PumpSocketAndMessage();
+					if (FAILED(hr))
 					{
-						DoReceiveSocket();
-						if (!m_pClient || !theApp.MyPumpMessage())
-						{
-							delete pData;
-							//pDirectory->Release();
-							return E_FAIL;
-						}
+						delete pData;
+						//pDirectory->Release();
+						return hr;
 					}
-					else
+					if (hr == S_FALSE)
 					{
 						pData->nResult = SSH_FX_NO_CONNECTION;
 						break;
@@ -462,17 +439,14 @@ STDMETHODIMP CSFTPFolderSFTP::MoveFTPItems(HWND hWndOwner, CFTPDirectoryBase* pD
 
 		while (pAttr->uMsgID)
 		{
-			if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+			auto hr = PumpSocketAndMessage();
+			if (FAILED(hr))
 			{
-				DoReceiveSocket();
-				if (!m_pClient || !theApp.MyPumpMessage())
-				{
-					delete pAttr;
-					//pDirectory->Release();
-					return E_FAIL;
-				}
+				delete pAttr;
+				//pDirectory->Release();
+				return hr;
 			}
-			else
+			if (hr == S_FALSE)
 			{
 				pAttr->nResult = SSH_FX_NO_CONNECTION;
 				break;
@@ -536,18 +510,15 @@ STDMETHODIMP CSFTPFolderSFTP::MoveFTPItems(HWND hWndOwner, CFTPDirectoryBase* pD
 
 		while (pData->uMsgID)
 		{
-			if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+			auto hr = PumpSocketAndMessage();
+			if (FAILED(hr))
 			{
-				DoReceiveSocket();
-				if (!m_pClient || !theApp.MyPumpMessage())
-				{
-					delete pData;
-					//pDirectory->Release();
-					::MyMessageBoxW(hWndOwner, MAKEINTRESOURCEW(IDS_SFTP_CONNECTION_LOST), NULL, MB_ICONEXCLAMATION);
-					return E_FAIL;
-				}
+				delete pData;
+				//pDirectory->Release();
+				::MyMessageBoxW(hWndOwner, MAKEINTRESOURCEW(IDS_SFTP_CONNECTION_LOST), NULL, MB_ICONEXCLAMATION);
+				return hr;
 			}
-			else
+			if (hr == S_FALSE)
 			{
 				pData->nResult = SSH_FX_NO_CONNECTION;
 				break;
@@ -664,18 +635,15 @@ STDMETHODIMP CSFTPFolderSFTP::UpdateFTPItemAttributes(HWND hWndOwner, CFTPDirect
 
 		while (pWait->uMsgID)
 		{
-			if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+			auto hr = PumpSocketAndMessage();
+			if (FAILED(hr))
 			{
-				DoReceiveSocket();
-				if (!m_pClient || !theApp.MyPumpMessage())
-				{
-					delete pWait;
-					//pDirectory->Release();
-					::MyMessageBoxW(hWndOwner, MAKEINTRESOURCEW(IDS_SFTP_CONNECTION_LOST), NULL, MB_ICONEXCLAMATION);
-					return E_ABORT;
-				}
+				delete pWait;
+				//pDirectory->Release();
+				::MyMessageBoxW(hWndOwner, MAKEINTRESOURCEW(IDS_SFTP_CONNECTION_LOST), NULL, MB_ICONEXCLAMATION);
+				return hr;
 			}
-			else
+			if (hr == S_FALSE)
 			{
 				pWait->nResult = SSH_FX_NO_CONNECTION;
 				break;
@@ -757,17 +725,14 @@ STDMETHODIMP CSFTPFolderSFTP::CreateFTPDirectory(HWND hWndOwner, CFTPDirectoryBa
 
 			while (pData->uMsgID)
 			{
-				if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+				auto hr = PumpSocketAndMessage();
+				if (FAILED(hr))
 				{
-					DoReceiveSocket();
-					if (!m_pClient || !theApp.MyPumpMessage())
-					{
-						delete pData;
-						//pDirectory->Release();
-						return E_FAIL;
-					}
+					delete pData;
+					//pDirectory->Release();
+					return hr;
 				}
-				else
+				if (hr == S_FALSE)
 				{
 					pData->nResult = SSH_FX_NO_CONNECTION;
 					break;
@@ -848,17 +813,14 @@ STDMETHODIMP CSFTPFolderSFTP::CreateShortcut(HWND hWndOwner, CFTPDirectoryBase* 
 
 			while (pData->uMsgID)
 			{
-				if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+				auto hr = PumpSocketAndMessage();
+				if (FAILED(hr))
 				{
-					DoReceiveSocket();
-					if (!m_pClient || !theApp.MyPumpMessage())
-					{
-						delete pData;
-						//pDirectory->Release();
-						return E_FAIL;
-					}
+					delete pData;
+					//pDirectory->Release();
+					return hr;
 				}
-				else
+				if (hr == S_FALSE)
 				{
 					pData->nResult = SSH_FX_NO_CONNECTION;
 					break;
@@ -905,7 +867,7 @@ STDMETHODIMP CSFTPFolderSFTP::CreateShortcut(HWND hWndOwner, CFTPDirectoryBase* 
 STDMETHODIMP CSFTPFolderSFTP::CreateFTPItemStream(CFTPDirectoryBase* pDirectory, CFTPFileItem* pItem, IStream** ppStream)
 {
 	CSFTPStream* pStream = new CSFTPStream(&m_xStreamCounter,
-		m_pClient,
+		this,
 		m_pChannel,
 		pDirectory->m_strDirectory);
 	if (!pStream)
@@ -961,17 +923,14 @@ STDMETHODIMP CSFTPFolderSFTP::WriteFTPItem(
 
 			while (pHandleData->uMsgID)
 			{
-				if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+				auto hr = PumpSocketAndMessage();
+				if (FAILED(hr))
 				{
-					DoReceiveSocket();
-					if (!m_pClient || !theApp.MyPumpMessage())
-					{
-						delete pHandleData;
-						//pDirectory->Release();
-						return E_FAIL;
-					}
+					delete pHandleData;
+					//pDirectory->Release();
+					return hr;
 				}
-				else
+				if (hr == S_FALSE)
 				{
 					pHandleData->nResult = SSH_FX_NO_CONNECTION;
 					break;
@@ -1077,18 +1036,15 @@ STDMETHODIMP CSFTPFolderSFTP::WriteFTPItem(
 							hr2 = S_OK;
 							while (pData->uMsgID)
 							{
-								if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+								hr2 = PumpSocketAndMessage();
+								if (FAILED(hr2))
 								{
-									DoReceiveSocket();
-									if (!m_pClient || !theApp.MyPumpMessage())
-									{
-										//pDirectory->Release();
-										hr2 = E_FAIL;
-										break;
-									}
+									//pDirectory->Release();
+									break;
 								}
-								else
+								if (hr2 == S_FALSE)
 								{
+									hr2 = S_OK;
 									pData->nResult = SSH_FX_NO_CONNECTION;
 									break;
 								}
@@ -1168,6 +1124,7 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserI
 		//m_bMyUserInfo = false;
 		m_pUser = pUser;
 		pUser->AddRef();
+		m_bFirstAuthenticate = false;
 		//m_pUser = new CUserInfo();
 		//m_pUser->strName = pBase->strName;
 		//m_pUser->strPassword = pBase->strPassword;
@@ -1175,21 +1132,19 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserI
 		//m_pUser->nAuthType = pBase->nAuthType;
 		//m_pUser->keyData = pBase->keyData;
 		//m_pUser->keyType = pBase->keyType;
-		m_bFirstAuthenticate = false;
 		//m_nServerCharset = scsUTF8;
 	}
 	else
 	{
 		m_pUser = new CUserInfo();
 		//// set this flag to show password dialog when connected
-		//m_bFirstAuthenticate = true;
-		if (!DoRetryAuthentication(NULL, true))
-		{
-			m_pUser->Release();
-			m_pUser = NULL;
-			return false;
-		}
-		m_bFirstAuthenticate = false;
+		m_bFirstAuthenticate = true;
+		//if (!DoRetryAuthentication(NULL, true))
+		//{
+		//	m_pUser->Release();
+		//	m_pUser = NULL;
+		//	return false;
+		//}
 		//m_nServerCharset = scsUTF8;
 	}
 	{
@@ -1232,27 +1187,21 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserI
 	}
 
 	//pSocket->AsyncSelect(m_hWnd, MY_WM_SOCKETMESSAGE, FD_READ | FD_CLOSE);
-	m_bLoggedIn = false;
-	m_bFirstReceive = true;
-	m_bFirstFollowKex = false;
-	m_bAuthenticated = false;
+	m_phase = Phase::First;
 	//m_bFirstAuthenticate = false;
 
 	m_idTimer = theApp.RegisterTimer(KEEP_CONNECTION_TIME_SPAN,
 		(PFNEASYSFTPTIMERPROC) KeepConnectionTimerProc, (LPARAM) this);
 
-	while (!m_bLoggedIn)
+	while (m_phase < Phase::LoggedIn)
 	{
-		if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+		auto hr = PumpSocketAndMessage();
+		if (FAILED(hr))
 		{
-			DoReceiveSocket();
-			if (!m_pClient || !theApp.MyPumpMessage())
-			{
-				Disconnect();
-				return false;
-			}
+			Disconnect();
+			return false;
 		}
-		else if (!m_bAuthenticated)
+		if (hr == S_FALSE)
 		{
 			Disconnect();
 			return false;
@@ -1414,17 +1363,43 @@ void CSFTPFolderSFTP::PreShowServerInfoDialog(CServerInfoDialog* pDialog)
 		pDialog->m_strInfo += L": ";
 		pDialog->m_strInfo += m_pClient->m_strServerName;
 		pDialog->m_strInfo += L"\r\n";
-		if (m_pClient->m_pKex)
+		if (m_phase >= Phase::Authenticating)
 		{
 			str.LoadString(IDS_SSH_KEY_TYPE);
 			pDialog->m_strInfo += str;
 			pDialog->m_strInfo += L": ";
-			pDialog->m_strInfo += KeyTypeToName((KeyType) m_pClient->m_pKex->m_nKeyType);
+			size_t keyLen = 0;
+			int nType = 0;
+			libssh2_session_hostkey(m_pClient->GetSession(), &keyLen, &nType);
+			switch (nType)
+			{
+				case LIBSSH2_HOSTKEY_TYPE_RSA:
+					pDialog->m_strInfo += L"rsa";
+					break;
+				case LIBSSH2_HOSTKEY_TYPE_DSS:
+					pDialog->m_strInfo += L"dss";
+					break;
+				case LIBSSH2_HOSTKEY_TYPE_ECDSA_256:
+					pDialog->m_strInfo += L"ecdsa-256";
+					break;
+				case LIBSSH2_HOSTKEY_TYPE_ECDSA_384:
+					pDialog->m_strInfo += L"ecdsa-384";
+					break;
+				case LIBSSH2_HOSTKEY_TYPE_ECDSA_521:
+					pDialog->m_strInfo += L"ecdsa-521";
+					break;
+				case LIBSSH2_HOSTKEY_TYPE_ED25519:
+					pDialog->m_strInfo += L"ed25519";
+					break;
+				default:
+					pDialog->m_strInfo += L"unknown";
+					break;
+			}
 			pDialog->m_strInfo += L"\r\n";
 			str.LoadString(IDS_SSH_KEX);
 			pDialog->m_strInfo += str;
 			pDialog->m_strInfo += L": ";
-			pDialog->m_strInfo += m_pClient->m_pKex->m_pKexClient->GetKexTypeName();
+			pDialog->m_strInfo += libssh2_session_methods(m_pClient->GetSession(), LIBSSH2_METHOD_KEX);
 			pDialog->m_strInfo += L"\r\n";
 		}
 	}
@@ -1484,20 +1459,17 @@ bool CSFTPFolderSFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirec
 	pDirectory->AddRef();
 	while (pData->nStep)
 	{
-		if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+		auto hr = PumpSocketAndMessage();
+		if (FAILED(hr))
 		{
-			DoReceiveSocket();
-			if (!m_pClient || !theApp.MyPumpMessage())
-			{
-				if (m_pChannel && pData->hSFTPHandle)
-					m_pChannel->CloseHandle(pData->hSFTPHandle);
-				delete pData;
-				pDirectory->Release();
-				::LeaveCriticalSection(&m_csSocket);
-				return false;
-			}
+			if (m_pChannel && pData->hSFTPHandle)
+				m_pChannel->CloseHandle(pData->hSFTPHandle);
+			delete pData;
+			pDirectory->Release();
+			::LeaveCriticalSection(&m_csSocket);
+			return false;
 		}
-		else
+		if (hr == S_FALSE)
 		{
 			pData->bResult = false;
 			break;
@@ -1558,17 +1530,14 @@ bool CSFTPFolderSFTP::ValidateDirectory(LPCWSTR lpszParentDirectory, PCUIDLIST_R
 		m_listWaitResponse.Add(pAttr, uMsg);
 		while (pAttr->nType != CSFTPWaitAttrData::typeEnd)
 		{
-			if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+			auto hr = PumpSocketAndMessage();
+			if (FAILED(hr))
 			{
-				DoReceiveSocket();
-				if (!m_pClient || !theApp.MyPumpMessage())
-				{
-					delete pAttr;
-					::LeaveCriticalSection(&m_csSocket);
-					return false;
-				}
+				delete pAttr;
+				::LeaveCriticalSection(&m_csSocket);
+				return false;
 			}
-			else
+			if (hr == S_FALSE)
 			{
 				if (pAttr->uMsgID)
 					m_listWaitResponse.Remove(pAttr->uMsgID);
@@ -1616,17 +1585,14 @@ CFTPFileItem* CSFTPFolderSFTP::RetrieveFileItem(CFTPDirectoryBase* pDirectory, L
 	m_listWaitResponse.Add(pAttr, uMsg);
 	while (pAttr->uMsgID)
 	{
-		if (m_pClient->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+		auto hr = PumpSocketAndMessage();
+		if (FAILED(hr))
 		{
-			DoReceiveSocket();
-			if (!m_pClient || !theApp.MyPumpMessage())
-			{
-				delete pAttr;
-				::LeaveCriticalSection(&m_csSocket);
-				return false;
-			}
+			delete pAttr;
+			::LeaveCriticalSection(&m_csSocket);
+			return false;
 		}
-		else
+		if (hr == S_FALSE)
 		{
 			if (pAttr->uMsgID)
 				m_listWaitResponse.Remove(pAttr->uMsgID);
@@ -1661,17 +1627,43 @@ void CALLBACK CSFTPFolderSFTP::KeepConnectionTimerProc(UINT_PTR idEvent, LPARAM 
 	CSFTPFolderSFTP* pThis = (CSFTPFolderSFTP*) lParam;
 
 	// send 'ignore'/no-op message to keep connection
-	pThis->m_pClient->m_socket.SendPacket(SSH2_MSG_IGNORE, NULL, 0);
+	// pThis->m_pClient->m_socket.SendPacket(SSH2_MSG_IGNORE, NULL, 0);
+}
+
+HRESULT CSFTPFolderSFTP::PumpSocketAndMessage(DWORD dwWaitTime)
+{
+	if (dwWaitTime == 0xFFFFFFFF)
+		dwWaitTime = WAIT_RECEIVE_TIME;
+	if (m_bNextLoop || m_pClient->m_socket.CanReceive(dwWaitTime))
+	{
+		if (m_bNextLoop)
+		{
+			OutputDebugStringW(L"Pump cached receive\n");
+		}
+		DoReceiveSocket();
+		if (!m_pClient || !theApp.MyPumpMessage())
+		{
+			return E_ABORT;
+		}
+		return S_OK;
+	}
+	else
+	{
+		return S_FALSE;
+	}
 }
 
 void CSFTPFolderSFTP::DoReceiveSocket()
 {
-	while (true)
-	{
-		OnSFTPSocketReceive();
-		if (!m_pClient || !m_pClient->m_socket.HasReceivedData())
-			break;
-	}
+	//while (true)
+	//{
+		m_bNextLoop = false;
+		OnSFTPSocketReceive(m_pClient->m_socket.CanReceive());
+	//	if (!m_pClient || !m_pClient->m_socket.CanReceive())
+	//	{
+	//		break;
+	//	}
+	//}
 }
 
 void CSFTPFolderSFTP::DoNextReadDirectory(CSFTPWaitDirectoryData* pData)
@@ -1690,10 +1682,10 @@ void CSFTPFolderSFTP::DoNextReadDirectory(CSFTPWaitDirectoryData* pData)
 
 #define SSH_AUTH_SERVICE "ssh-userauth"
 
-void CSFTPFolderSFTP::OnSFTPSocketReceive()
+void CSFTPFolderSFTP::OnSFTPSocketReceive(bool isSocketReceived)
 {
 	::EnterCriticalSection(&m_csReceive);
-	UINT u = _OnSFTPSocketReceiveThreadUnsafe();
+	UINT u = _OnSFTPSocketReceiveThreadUnsafe(isSocketReceived);
 	::LeaveCriticalSection(&m_csReceive);
 	if (u)
 	{
@@ -1703,166 +1695,95 @@ void CSFTPFolderSFTP::OnSFTPSocketReceive()
 	}
 }
 
-UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe()
+UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 {
-	if (m_bFirstReceive)
+	if (m_phase == Phase::First)
 	{
-		m_bFirstReceive = false;
-		m_bFirstFollowKex = false;
 		//m_bFirstMessageReceived = true;
 		if (!m_pClient->OnFirstReceive())
 			return IDS_FAILED_TO_CONNECT;
+		m_phase = Phase::Handshake;
 	}
 
-	BYTE bType;
-	size_t nLen;
-	void* pv = m_pClient->m_socket.ReceivePacket(bType, nLen);
-	if (!pv)
+	if (m_phase == Phase::Handshake)
 	{
-		return (UINT) -1;
-	}
-
-	if (m_bFirstFollowKex)
-	{
-		m_bFirstFollowKex = false;
-		if (m_pClient->OnKeyExchangeInit(pv, nLen, true) < 1)
+		auto r = m_pClient->OnHandshake(this);
+		if (r < 0)
 		{
-			free(pv);
 			return IDS_FAILED_TO_CONNECT;
 		}
-	}
-	UINT ret = 0;
-	switch (bType)
-	{
-		case SSH2_MSG_KEXINIT:
+		if (r == 0)
 		{
-			int r = m_pClient->OnKeyExchangeInit(pv, nLen);
-			if (r < 0)
-			{
-				ret = IDS_FAILED_TO_CONNECT;
-			}
-			else if (r == 0)
-				m_bFirstFollowKex = true;
+			m_bNextLoop = true;
+			return 0;
 		}
-		break;
-		case SSH2_MSG_KEXDH_REPLY:
-#if (SSH2_MSG_KEX_DH_GEX_GROUP != SSH2_MSG_KEXDH_REPLY)
-		case SSH2_MSG_KEX_DH_GEX_GROUP:
-#endif
-		case SSH2_MSG_KEX_DH_GEX_REPLY:
-		{
-			int r = m_pClient->OnReceiveKexMessages(this, bType, pv, nLen);
-			if (r < 0)
-			{
-				ret = IDS_FAILED_TO_CONNECT;
-			}
-		}
-		break;
-		case SSH2_MSG_NEWKEYS:
-			m_pClient->UpdateServerReceiveKeyData();
-			m_pClient->m_socket.SendPacketString(SSH2_MSG_SERVICE_REQUEST, SSH_AUTH_SERVICE);
-			break;
-		case SSH2_MSG_SERVICE_ACCEPT:
-			m_pUser->pvSessionID = m_pClient->m_pKex->m_pvSessionID;
-			m_pUser->nSessionIDLen = m_pClient->m_pKex->m_nSessionIDLen;
-			m_pUser->bSecondary = false;
-			// m_bFirstAuthenticate ‚ª true ‚Ì‚Æ‚«‚Í none ”FØ‚ðs‚¢A
-			// ŽÀÛ‚É‰Â”\‚È”FØ•û–@‚ð“¾‚é
-			m_pClient->Authenticate(SSH_AUTH_SERVICE,
-				m_bFirstAuthenticate ? AUTHTYPE_NONE : m_pUser->nAuthType,
-				pv, nLen, m_pUser);
-			break;
-		case SSH2_MSG_USERAUTH_INFO_REQUEST:
-#if (SSH2_MSG_USERAUTH_PK_OK != SSH2_MSG_USERAUTH_INFO_REQUEST)
-		case SSH2_MSG_USERAUTH_PK_OK:
-#endif
-			if (m_pUser->nAuthType == AUTHTYPE_PAGEANT)
-			{
-				m_pUser->bSecondary = true;
-				m_pClient->DoAuthenticate(m_pUser->nAuthType, m_pUser);
-			}
-			break;
-		case SSH2_MSG_USERAUTH_FAILURE:
-		{
-			CExBuffer buf;
-			ULONG uSize;
-			BYTE bPartial;
-			void* pv2;
-			if (!buf.SetDataToBuffer(pv, nLen) ||
-				!buf.GetAndSkipCE(uSize) ||
-				!(pv2 = buf.GetCurrentBufferPermanentAndSkip((size_t) uSize)) ||
-				!buf.GetAndSkip(bPartial) ||
-				!buf.IsEmpty())
-			{
-				ret = IDS_FAILED_TO_CONNECT;
-			}
-			else
-			{
-				if (!m_pClient->CanRetryAuthenticate())
-				{
-					m_pClient->EndAuthenticate();
-					// "type1,type2,type3" ‚ð "type1\0type2\0type3\0" ‚É‚·‚é
-					char* psz = (char*) malloc(sizeof(char) * 2 + (size_t) uSize);
-					memcpy(psz, pv2, (size_t) uSize);
-					*((char*) (((BYTE*) psz) + uSize)) = 0;
-					*(((char*) (((BYTE*) psz) + uSize)) + 1) = 0;
-					char* psz2 = psz;
-					while (*psz2)
-					{
-						if (*psz2 == ',')
-							*psz2 = 0;
-						psz2++;
-					}
-					if (DoRetryAuthentication(psz, m_bFirstAuthenticate))
-					{
-						m_bFirstAuthenticate = false;
-						m_pUser->bSecondary = false;
-						m_pClient->DoAuthenticate(m_pUser->nAuthType, m_pUser);
-					}
-					else
-					{
-						ret = (UINT) -1;
-					}
-					free(psz);
-				}
-				else
-				{
-					m_bFirstAuthenticate = false;
-					m_pUser->bSecondary = false;
-					m_pClient->DoAuthenticate(m_pUser->nAuthType, m_pUser);
-				}
-			}
-		}
-		break;
-		case SSH2_MSG_USERAUTH_BANNER:
-			m_pClient->EndAuthenticate();
-			ret = IDS_FAILED_TO_CONNECT_BANNED;
-			break;
-		case SSH2_MSG_USERAUTH_SUCCESS:
-			m_pClient->EndAuthenticate();
-			//SetStatusText(MAKEINTRESOURCEW(IDS_CONNECTED));
-			if (m_pUser)
-			{
-				m_pUser->Release();
-				m_pUser = NULL;
-			}
-			m_bAuthenticated = true;
-			m_pChannel = new CSFTPChannel(this);
-			m_pChannel->OpenChannel();
-			break;
-		default:
-			CSSH2Channel::ProcessChannelMsg(this, bType, pv, nLen);
-			if (m_pChannel && !m_pChannel->FlushAllMessages())
-			{
-#ifdef _DEBUG
-				OutputDebugString(_T("\tFlushAllMessages() returned false\n"));
-#endif
-			}
-			break;
+		m_phase = Phase::Authenticating;
+		m_pUser->bSecondary = false;
 	}
 
-	free(pv);
-	return ret;
+	if (m_phase == Phase::Authenticating)
+	{
+		// m_bFirstAuthenticate ãŒ true ã®ã¨ãã¯ none èªè¨¼ã‚’è¡Œã„ã€
+		// å®Ÿéš›ã«å¯èƒ½ãªèªè¨¼æ–¹æ³•ã‚’å¾—ã‚‹
+		auto r = m_pClient->Authenticate(
+			m_bFirstAuthenticate ? AUTHTYPE_NONE : m_pUser->nAuthType,
+			m_pUser);
+		if (r == AuthReturnType::Again)
+			return 0;
+		else if (r == AuthReturnType::Error)
+		{
+			char* msg;
+			libssh2_session_last_error(m_pClient->GetSession(), &msg, NULL, 0);
+			OutputDebugStringA(msg);
+			if (m_pClient->CanRetryAuthenticate())
+			{
+				m_bFirstAuthenticate = false;
+				m_bNextLoop = true;
+				m_pUser->bSecondary = false;
+				return 0;
+			}
+			else if (m_bFirstAuthenticate)
+			{
+				auto lpAuthTypes = m_pClient->AvailableAuthTypes();
+				if (DoRetryAuthentication(lpAuthTypes, m_bFirstAuthenticate))
+				{
+					m_pClient->EndAuthenticate();
+					m_bFirstAuthenticate = false;
+					m_bNextLoop = true;
+					m_pUser->bSecondary = false;
+					return 0;
+				}
+				m_pClient->EndAuthenticate();
+				return (UINT) -1;
+			}
+			m_pClient->EndAuthenticate();
+			return IDS_FAILED_TO_CONNECT;
+		}
+		else
+		{
+			m_pClient->EndAuthenticate();
+
+			m_phase = Phase::Authenticated;
+			m_pChannel = new CSFTPChannel(this);
+		}
+	}
+	if (m_phase == Phase::Authenticated)
+	{
+		auto r = m_pChannel->InitializeChannel(m_pClient->GetSession());
+		if (r == SSHChannelReturnType::Error)
+			return IDS_FAILED_TO_CONNECT;
+		if (r == SSHChannelReturnType::Again)
+		{
+			m_bNextLoop = true;
+			return 0;
+		}
+		m_phase = Phase::WaitingLoggedIn;
+	}
+	if (m_pChannel->Process(isSocketReceived))
+		m_bNextLoop = true;
+	m_pChannel->FlushAllMessages();
+
+	return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1992,39 +1913,46 @@ bool __stdcall CSFTPFolderSFTP::CheckFingerPrint(const BYTE* pFingerPrint, size_
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void CSFTPFolderSFTP::ChannelOpenFailure(CSSH2Channel* pChannel, int nReason, const CMyStringW& strMessage)
+void CSFTPFolderSFTP::ChannelOpenFailure(CSSHChannel* pChannel, int nReason)
 {
-	if (pChannel != (CSSH2Channel*) m_pChannel)
+	if (pChannel != (CSSHChannel*) m_pChannel)
 		return;
 	Disconnect();
 	//::MyMessageBoxW(m_hWndOwner, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
 }
 
-void CSFTPFolderSFTP::ChannelOpened(CSSH2Channel* pChannel)
+void CSFTPFolderSFTP::ChannelError(CSSHChannel* pChannel, int nReason)
 {
-	if (pChannel != (CSSH2Channel*) m_pChannel)
-		return;
-
-	//m_pClient->NoMoreSessions();
-	m_pChannel->SendChannelRequest("subsystem", true, "sftp", 4);
-}
-
-void CSFTPFolderSFTP::ChannelClosed(CSSH2Channel* pChannel)
-{
-	if (pChannel != (CSSH2Channel*) m_pChannel)
+	if (pChannel != (CSSHChannel*)m_pChannel)
 		return;
 	Disconnect();
 }
 
-void CSFTPFolderSFTP::ChannelExitStatus(CSSH2Channel* pChannel, int nExitCode)
+void CSFTPFolderSFTP::ChannelOpened(CSSHChannel* pChannel)
 {
-	if (pChannel != (CSSH2Channel*) m_pChannel)
+	if (pChannel != (CSSHChannel*) m_pChannel)
+		return;
+
+	//m_pClient->NoMoreSessions();
+	m_pChannel->Startup();
+}
+
+void CSFTPFolderSFTP::ChannelClosed(CSSHChannel* pChannel)
+{
+	if (pChannel != (CSSHChannel*) m_pChannel)
+		return;
+	Disconnect();
+}
+
+void CSFTPFolderSFTP::ChannelExitStatus(CSSHChannel* pChannel, int nExitCode)
+{
+	if (pChannel != (CSSHChannel*) m_pChannel)
 		return;
 }
 
-void CSFTPFolderSFTP::ChannelConfirm(CSSH2Channel* pChannel, bool bSucceeded)
+void CSFTPFolderSFTP::ChannelConfirm(CSSHChannel* pChannel, bool bSucceeded, int nReason)
 {
-	if (pChannel != (CSSH2Channel*) m_pChannel)
+	if (pChannel != (CSSHChannel*) m_pChannel)
 		return;
 	if (!bSucceeded)
 	{
@@ -2039,7 +1967,7 @@ void CSFTPFolderSFTP::SFTPOpened(CSFTPChannel* pChannel)
 {
 	if (pChannel != m_pChannel)
 		return;
-	m_bLoggedIn = true;
+	m_phase = Phase::LoggedIn;
 	pChannel->SetCharset((ServerCharset) m_nServerCharset);
 	////UpdateServerFolderAbsolute(L"/");
 	//UpdateServerFolderAbsolute(L".");

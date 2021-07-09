@@ -104,4 +104,26 @@ DECLARE_INTERFACE_IID_(IEasySFTPRoot, IUnknown, "AD29C042-B9E3-463c-9DF6-D7DA5B8
 EXTERN_C const IID IID_IEasySFTPRoot;
 EXTERN_C const CLSID CLSID_EasySFTP;
 
+#undef INTERFACE
+#define INTERFACE IEasySFTPRoot2
+
+DECLARE_INTERFACE_IID_(IEasySFTPRoot2, IEasySFTPRoot, "AD29C042-B9E3-4636-9DF6-D7DA5B8D0199")
+{
+	// *** IUnknown methods ***
+	STDMETHOD(QueryInterface)(THIS_ REFIID riid, void FAR* FAR* ppv) PURE;
+	STDMETHOD_(ULONG, AddRef)(THIS) PURE;
+	STDMETHOD_(ULONG, Release)(THIS) PURE;
+
+	// *** IEasySFTPRoot methods ***
+	//STDMETHOD(SetListener)(THIS_ IEasySFTPListener* pListener) PURE;
+	STDMETHOD(Connect)(THIS_ VARIANT_BOOL bSFTP, HWND hWnd, const void* pvReserved,
+		LPCWSTR lpszHostName, int nPort, IShellFolder FAR* FAR* ppFolder) PURE;
+	STDMETHOD(QuickConnectDialog)(THIS_ HWND hWndOwner, IShellFolder FAR* FAR* ppFolder) PURE;
+
+	// *** IEasySFTPRoot2 methods ***
+	STDMETHOD(GetDependencyLibraryInfo)(THIS_ BSTR FAR* poutLibraryInfo) PURE;
+};
+
+EXTERN_C const IID IID_IEasySFTPRoot2;
+
 STDAPI EasySFTPCreateRoot(IEasySFTPRoot** ppRoot);

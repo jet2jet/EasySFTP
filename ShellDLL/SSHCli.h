@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "SSHSock.h"
-#include "KexCore.h"
+#include "MySocket.h"
 #include "Auth.h"
 #include "ExBuffer.h"
 
@@ -18,6 +17,12 @@
 #define AUTHTYPE_PUBLICKEY    2
 #define AUTHTYPE_PAGEANT      3
 
+class __declspec(novtable) CSSH2FingerPrintHandler
+{
+public:
+	virtual bool __stdcall CheckFingerPrint(const BYTE* pFingerPrint, size_t nLen) = 0;
+};
+
 class CSSH2Client : public CUnknownImpl
 {
 public:
@@ -25,29 +30,23 @@ public:
 	~CSSH2Client(void);
 
 public:
+	LIBSSH2_SESSION* GetSession() const { return m_pSession; }
 	bool OnFirstReceive();
 	// <0 : error, =0 : wait for first kex, >0 : succeeded
-	int OnKeyExchangeInit(const void* pv, size_t nLen, bool bIgnoreMsg = false);
-	// <0: error, =0: try again, >0: succeeded
-	int OnReceiveKexMessages(CFingerPrintHandler* pHandler, BYTE bType, const void* pv, size_t nLen);
-	void UpdateServerReceiveKeyData()
-		{ m_socket.UpdateServerKeyData(false, m_keyDataStoC); }
-	bool Authenticate(LPCSTR lpszAuthService, char nAuthType, const void* pvServiceData, size_t nDataLen, CUserInfo* pUserInfo);
-	bool DoAuthenticate(char nAuthType, CUserInfo* pUserInfo);
+	int OnHandshake(CSSH2FingerPrintHandler* pHandler);
+	AuthReturnType Authenticate(char nAuthType, CUserInfo* pUserInfo);
 	bool CanRetryAuthenticate();
 	void EndAuthenticate();
-	bool NoMoreSessions();
+	LPSTR AvailableAuthTypes();
 
 public:
-	CSSH2Socket m_socket;
-	CKeyExchange* m_pKex;
-	CNewKeyData m_keyDataCtoS;
-	CNewKeyData m_keyDataStoC;
+	CMySocket m_socket;
 	CMyStringW m_strServerName;
 
 private:
+	LIBSSH2_SESSION* m_pSession;
 	CExBuffer m_bufferMyProposal, m_bufferSvProposal;
-	EVP_PKEY* m_pPKey;
 	CAuthentication* m_pAuth;
+	char m_nAuthType;
 	bool StartKeyExchange();
 };

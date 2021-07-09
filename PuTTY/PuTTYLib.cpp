@@ -95,19 +95,18 @@ EXTERN_C int WINAPI PuTTYGetKeyList2(LPBYTE* ppKeyList)
 
 /*
  * for SSH2
- *   ŒöŠJŒ®‚Æƒf[ƒ^(“¯‚¶‚­ŒöŠJŒ®)‚ğ“n‚µA
- *   ŒöŠJŒ®‚É‚æ‚Á‚Ä–¼‚³‚ê‚½ƒf[ƒ^‚ğ“¾‚é
+ *   å…¬é–‹éµã¨ãƒ‡ãƒ¼ã‚¿(åŒã˜ãå…¬é–‹éµ)ã‚’æ¸¡ã—ã€
+ *   å…¬é–‹éµã«ã‚ˆã£ã¦ç½²åã•ã‚ŒãŸãƒ‡ãƒ¼ã‚¿ã‚’å¾—ã‚‹
  */
-EXTERN_C void* PuTTYSignSSH2Key(LPCBYTE pszPubKey, LPCBYTE pszData, DWORD* pnOutLen)
+EXTERN_C void* PuTTYSignSSH2Key(LPCBYTE pszPubKey, LPCBYTE pszData, DWORD nDataLen, DWORD* pnOutLen)
 {
 	void* ret;
 
 	LPBYTE pRequest, pResponse;
 	int nResponseLen, retval;
-	DWORD nPubKeyLen, nDataLen, nReqLen;
+	DWORD nPubKeyLen, nReqLen;
 
 	nPubKeyLen = GET_32BIT(pszPubKey);
-	nDataLen = GET_32BIT(pszData);
 	nReqLen = 4 + 1 + (4 + nPubKeyLen) + (4 + nDataLen);
 	pRequest = (LPBYTE) malloc((size_t) nReqLen);
 
@@ -118,7 +117,8 @@ EXTERN_C void* PuTTYSignSSH2Key(LPCBYTE pszPubKey, LPCBYTE pszData, DWORD* pnOut
 	// public key (length + data)
 	memcpy(pRequest + 5, pszPubKey, 4 + nPubKeyLen);
 	// sign data (length + data)
-	memcpy(pRequest + 5 + 4 + nPubKeyLen, pszData, 4 + nDataLen);
+	PUT_32BIT(pRequest + 5 + 4 + nPubKeyLen, nDataLen);
+	memcpy(pRequest + 5 + 4 + nPubKeyLen + 4, pszData, nDataLen);
 
 	retval = agent_query(pRequest, (int) nReqLen, (void**) &pResponse, &nResponseLen, NULL, NULL);
 	if (retval != 1)
@@ -145,8 +145,8 @@ EXTERN_C void* PuTTYSignSSH2Key(LPCBYTE pszPubKey, LPCBYTE pszData, DWORD* pnOut
 
 /*
  * for SSH1
- *   ŒöŠJŒ®‚ÆˆÃ†‰»ƒf[ƒ^‚ğ“n‚µ
- *   •œ†ƒf[ƒ^‚ÌƒnƒbƒVƒ…‚ğ“¾‚é
+ *   å…¬é–‹éµã¨æš—å·åŒ–ãƒ‡ãƒ¼ã‚¿ã‚’æ¸¡ã—
+ *   å¾©å·ãƒ‡ãƒ¼ã‚¿ã®ãƒãƒƒã‚·ãƒ¥ã‚’å¾—ã‚‹
  */
 EXTERN_C void* WINAPI PuTTYHashSSH1Challenge(LPCBYTE pPubKey, DWORD nPubKeyLen,
 	LPCBYTE pData, DWORD nDataLen, LPCSTR pszSessionId, DWORD* pnOutLen)

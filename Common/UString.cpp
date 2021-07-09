@@ -2096,20 +2096,20 @@ LPCBYTE CMyStringW::AllocUTF8String(size_t* lpdwLength)
 		*lpdwLength = dwLength - 1;
 	return (LPCBYTE) lp;
 }
-//
-//LPBYTE CMyStringW::AllocUTF8StringC(size_t* lpdwLength) const
-//{
-//	LPBYTE lp;
-//	size_t dwLength;
-//
-//	if (IsEmpty())
-//		return NULL;
-//
-//	dwLength = ::UnicodeToUTF8(m_lpszData, GetLength(), NULL, 0) + 1;
-//	lp = (LPBYTE) _fmalloc(sizeof(BYTE) * dwLength);
-//	::UnicodeToUTF8(m_lpszData, GetLength(), lp, dwLength);
-//	lp[dwLength - 1] = 0;
-//	if (lpdwLength)
-//		*lpdwLength = dwLength - 1;
-//	return (LPBYTE) lp;
-//}
+
+LPBYTE CMyStringW::AllocUTF8StringC(size_t* lpdwLength) const
+{
+	LPBYTE lp;
+	size_t dwLength;
+
+	if (IsEmpty())
+		return NULL;
+
+	dwLength = ::UnicodeToUTF8(m_lpszData, GetLength(), NULL, 0) + 1;
+	lp = (LPBYTE) _fmalloc(sizeof(BYTE) * dwLength);
+	::UnicodeToUTF8(m_lpszData, GetLength(), lp, dwLength);
+	lp[dwLength - 1] = 0;
+	if (lpdwLength)
+		*lpdwLength = dwLength - 1;
+	return (LPBYTE) lp;
+}

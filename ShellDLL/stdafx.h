@@ -68,6 +68,10 @@ typedef IDataObjectAsyncCapability IAsyncOperation;
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 
+// libssh2
+#include <libssh2.h>
+#include <libssh2_sftp.h>
+
 #ifndef CDSIZEOF_STRUCT
 #define CDSIZEOF_STRUCT(structname, member)      (((int)((LPBYTE)(&((structname*)0)->member) - ((LPBYTE)((structname*)0)))) + sizeof(((structname*)0)->member))
 #endif
