@@ -4,9 +4,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ShellDLL", "ShellDLL\ShellDLL.vcxproj", "{09C3BA79-E5C0-4922-A0E5-DC9DD7242343}"
-	ProjectSection(ProjectDependencies) = postProject
-		{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A} = {FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EasySFTP", "EasySFTP\EasySFTP.vcxproj", "{FEC252CE-05D6-4091-9999-32DABA402A65}"
 EndProject
@@ -17,8 +14,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RegESFTP", "RegESFTP\RegESF
 		{E3CBE15B-C6C0-4025-9B6B-49F7E49176CE} = {E3CBE15B-C6C0-4025-9B6B-49F7E49176CE}
 		{09C3BA79-E5C0-4922-A0E5-DC9DD7242343} = {09C3BA79-E5C0-4922-A0E5-DC9DD7242343}
 	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PuTTYLib", "PuTTY\PuTTY.vcxproj", "{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -60,14 +55,6 @@ Global
 		{72C1FF51-22AF-4DA9-8D24-3390F1A79A23}.Release|Win32.Build.0 = Release|Win32
 		{72C1FF51-22AF-4DA9-8D24-3390F1A79A23}.Release|x64.ActiveCfg = Release|x64
 		{72C1FF51-22AF-4DA9-8D24-3390F1A79A23}.Release|x64.Build.0 = Release|x64
-		{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}.Debug|Win32.ActiveCfg = Debug|Win32
-		{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}.Debug|Win32.Build.0 = Debug|Win32
-		{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}.Debug|x64.ActiveCfg = Debug|x64
-		{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}.Debug|x64.Build.0 = Debug|x64
-		{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}.Release|Win32.ActiveCfg = Release|Win32
-		{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}.Release|Win32.Build.0 = Release|Win32
-		{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}.Release|x64.ActiveCfg = Release|x64
-		{FA0AFE2B-6B90-49CA-AF29-6F939AA5F72A}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
