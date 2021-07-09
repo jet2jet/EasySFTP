@@ -9,7 +9,7 @@
 #include "Connect.h"
 
 #include "SSHCli.h"
-#include "PuTTYLib.h"
+#include "Pageant.h"
 
 extern EVP_PKEY* __stdcall GetPrivateKey(FILE* pFileKey, const _SecureStringW& strPassword)
 {
@@ -91,7 +91,6 @@ bool CConnectDialog::OnInitDialog(HWND hWndFocus)
 		else if (m_strPassword.IsEmpty())
 			::SetDlgItemFocus(m_hWnd, IDC_PASSWORD);
 	}
-	m_lpPageantKeyList = NULL;
 	return false;
 }
 
@@ -190,7 +189,7 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 		::MyMessageBoxW(m_hWnd, MAKEINTRESOURCEW(IDS_NO_USER_NAME), NULL, MB_ICONEXCLAMATION);
 		return 0;
 	}
-	// IsEmpty() ”»’è‚Í‚µ‚È‚¢
+	// Do not use IsEmpty() here
 	if (!strPassword.GetStringFromWindowText(::GetDlgItem(m_hWnd, IDC_PASSWORD)))
 	{
 		::MessageBeep(MB_ICONEXCLAMATION);
@@ -204,7 +203,8 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 			nAuthType = AUTHTYPE_PUBLICKEY;
 		else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PAGEANT) == BST_CHECKED)
 			nAuthType = AUTHTYPE_PAGEANT;
-		m_lpPageantKeyList = NULL;
+		else
+			nAuthType = AUTHTYPE_PASSWORD;
 		if (nAuthType == AUTHTYPE_PUBLICKEY)
 		{
 			::SyncDialogData(m_hWnd, IDC_PKEY_FILE, strPKey, true);
@@ -237,8 +237,7 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 		}
 		else if (nAuthType == AUTHTYPE_PAGEANT)
 		{
-			m_lpPageantKeyList = NULL;
-			if (!::PuTTYGetKeyList2(&m_lpPageantKeyList) || !m_lpPageantKeyList)
+			if (!CPageantAgent::IsAvailable())
 			{
 				::MyMessageBoxW(m_hWnd, MAKEINTRESOURCEW(IDS_PAGEANT_NOT_AVAILABLE), NULL, MB_ICONEXCLAMATION);
 				return 0;
@@ -252,7 +251,6 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 	{
 		nAuthType = AUTHTYPE_PASSWORD;
 		pPKey = NULL;
-		m_lpPageantKeyList = NULL;
 	}
 
 	if (!m_bPasswordDialog)

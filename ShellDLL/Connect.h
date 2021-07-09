@@ -25,7 +25,6 @@ public:
 	char m_nAuthType;
 	CMyStringW m_strPKeyFileName;
 	EVP_PKEY* m_pPKey;
-	LPBYTE m_lpPageantKeyList;
 
 	CMyStringW m_strMessage;
 	bool m_bDisableAuthPassword;

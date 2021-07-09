@@ -8,7 +8,7 @@
 #include "Auth.h"
 
 #include "ExBuffer.h"
-#include "PuTTYLib.h"
+#include "Pageant.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -153,10 +153,17 @@ AuthReturnType CPublicKeyAuthentication::Authenticate(LIBSSH2_SESSION* pSession,
 
 ////////////////////////////////////////////////////////////////////////////////
 
+CPageantAuthentication::CPageantAuthentication()
+	: m_lpszUser(NULL), m_lpPageantKeyList(NULL), m_lpCurrentKey(NULL), m_dwKeyCount(0), m_dwKeyIndex(0)
+{
+	m_pAgent = new CPageantAgent();
+}
+
 CPageantAuthentication::~CPageantAuthentication()
 {
 	if (m_lpPageantKeyList)
-		PuTTYFreeKeyList(m_lpPageantKeyList);
+		m_pAgent->FreeKeyList(m_lpPageantKeyList);
+	delete m_pAgent;
 }
 
 AuthReturnType CPageantAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
@@ -167,10 +174,11 @@ AuthReturnType CPageantAuthentication::Authenticate(LIBSSH2_SESSION* pSession, C
 	}
 	if (!m_lpPageantKeyList)
 	{
-		m_lpPageantKeyList = pUser->lpPageantKeyList;
-		pUser->lpPageantKeyList = NULL;
-		if (!m_lpPageantKeyList)
+		LPBYTE lpKeyList = NULL;
+		auto r = m_pAgent->GetKeyList2(&lpKeyList);
+		if (!lpKeyList)
 			return AuthReturnType::Error;
+		m_lpPageantKeyList = lpKeyList;
 		m_dwKeyCount = ConvertEndian(*((DWORD*) m_lpPageantKeyList));
 		m_dwKeyIndex = 0;
 		m_lpCurrentKey = m_lpPageantKeyList + 4;
@@ -189,15 +197,69 @@ AuthReturnType CPageantAuthentication::Authenticate(LIBSSH2_SESSION* pSession, C
 	pBlob = (p + 4);
 	p += nBlobLen + 4;
 
-	void* abstract = m_lpCurrentKey;
+	void* abstract = this;
 	auto ret = libssh2_userauth_publickey(pSession, m_lpszUser, pBlob, nBlobLen,
 		[](LIBSSH2_SESSION*, LPBYTE* sig, size_t* sig_len, LPCBYTE data, size_t data_len, void** abstract) -> int
 		{
-			LPBYTE lpCurrentKey = static_cast<LPBYTE>(*abstract);
-			DWORD nSignedLen;
-			void* pSignedData = PuTTYSignSSH2Key(lpCurrentKey, data, static_cast<DWORD>(data_len), &nSignedLen);
-			*sig = static_cast<LPBYTE>(pSignedData);
-			*sig_len = static_cast<size_t>(nSignedLen);
+			*sig = NULL;
+			*sig_len = 0;
+			CPageantAuthentication* pThis = static_cast<CPageantAuthentication*>(*abstract);
+			LPBYTE lpCurrentKey = pThis->m_lpCurrentKey;
+			size_t nSignedLen;
+			auto buff = pThis->m_pAgent->SignSSH2Key(lpCurrentKey, data, data_len, &nSignedLen);
+			LPBYTE pSignedData = static_cast<LPBYTE>(buff);
+			if (nSignedLen < 4 || !buff)
+			{
+				if (buff)
+					free(buff);
+				return LIBSSH2_ERROR_AGENT_PROTOCOL;
+			}
+			// skip signature length
+			auto entireLen = ConvertEndian(*((DWORD*) pSignedData));
+			pSignedData += 4;
+			nSignedLen -= 4;
+			// skip signing method
+			if (nSignedLen < 4)
+			{
+				free(buff);
+				return LIBSSH2_ERROR_AGENT_PROTOCOL;
+			}
+			auto methodLen = ConvertEndian(*((DWORD*) pSignedData));
+			pSignedData += 4;
+			nSignedLen -= 4;
+			if (nSignedLen < methodLen)
+			{
+				free(buff);
+				return LIBSSH2_ERROR_AGENT_PROTOCOL;
+			}
+			pSignedData += methodLen;
+			nSignedLen -= methodLen;
+
+			// read signature
+			if (nSignedLen < 4)
+			{
+				free(buff);
+				return LIBSSH2_ERROR_AGENT_PROTOCOL;
+			}
+			auto signatureLen = ConvertEndian(*((DWORD*) pSignedData));
+			pSignedData += 4;
+			nSignedLen -= 4;
+			if (nSignedLen < signatureLen)
+			{
+				free(buff);
+				return LIBSSH2_ERROR_AGENT_PROTOCOL;
+			}
+			auto newSig = malloc(sizeof(BYTE) * signatureLen);
+			if (!newSig)
+			{
+				free(buff);
+				return LIBSSH2_ERROR_ALLOC;
+			}
+			memcpy(newSig, pSignedData, sizeof(BYTE) * signatureLen);
+
+			free(buff);
+			*sig = static_cast<LPBYTE>(newSig);
+			*sig_len = static_cast<size_t>(signatureLen);
 			return 0;
 		},
 		&abstract);
@@ -219,7 +281,7 @@ bool CPageantAuthentication::CanRetry()
 	m_dwKeyIndex++;
 	if (m_dwKeyIndex >= m_dwKeyCount)
 	{
-		PuTTYFreeKeyList(m_lpPageantKeyList);
+		m_pAgent->FreeKeyList(m_lpPageantKeyList);
 		m_lpPageantKeyList = NULL;
 		m_dwKeyCount = 0;
 		return false;

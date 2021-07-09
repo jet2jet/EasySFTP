@@ -1597,7 +1597,9 @@ bool CEasySFTPFolderRoot::ConnectDialog(HWND hWndOwner, CUserInfo* pUser)
 				pUser->strPKeyFileName = m_dlgConnect.m_strPKeyFileName;
 			}
 			else if (m_dlgConnect.m_nAuthType == AUTHTYPE_PAGEANT)
-				pUser->lpPageantKeyList = m_dlgConnect.m_lpPageantKeyList;
+			{
+				// do nothing
+			}
 			else
 			{
 				pUser->nAuthType = AUTHTYPE_PASSWORD;
@@ -1676,7 +1678,9 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, CUserInfo* pUser,
 				pUser->strPKeyFileName = m_dlgConnect.m_strPKeyFileName;
 			}
 			else if (m_dlgConnect.m_nAuthType == AUTHTYPE_PAGEANT)
-				pUser->lpPageantKeyList = m_dlgConnect.m_lpPageantKeyList;
+			{
+				// do nothing
+			}
 			else
 			{
 				pUser->nAuthType = AUTHTYPE_PASSWORD;

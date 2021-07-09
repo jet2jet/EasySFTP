@@ -24,8 +24,6 @@ public:
 	CMyStringW strPKeyFileName;
 	const void* pvSessionID;
 	size_t nSessionIDLen;
-	// freed by CPageantAuthentication
-	LPBYTE lpPageantKeyList;
 	bool bSecondary;
 };
 
@@ -99,10 +97,12 @@ private:
 	size_t m_dwPasswordLen;
 };
 
+class CSSHAgent;
+
 class CPageantAuthentication : public CAuthentication
 {
 public:
-	CPageantAuthentication() : m_lpszUser(NULL), m_lpPageantKeyList(NULL), m_lpCurrentKey(NULL), m_dwKeyCount(0) { }
+	CPageantAuthentication();
 	~CPageantAuthentication();
 	virtual const char* GetAuthenticationType()
 		{ return "publickey"; }
@@ -112,6 +112,7 @@ public:
 	virtual bool CanRetry();
 
 private:
+	CSSHAgent* m_pAgent;
 	LPCSTR m_lpszUser;
 	LPBYTE m_lpPageantKeyList;
 	LPBYTE m_lpCurrentKey;

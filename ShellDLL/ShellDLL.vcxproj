@@ -221,12 +221,14 @@
     <ClCompile Include="LinkDlg.cpp" />
     <ClCompile Include="MErrDlg.cpp" />
     <ClCompile Include="MySocket.cpp" />
+    <ClCompile Include="Pageant.cpp" />
     <ClCompile Include="RFolder.cpp" />
     <ClCompile Include="SFilePrp.cpp" />
     <ClCompile Include="SFTPChan.cpp" />
     <ClCompile Include="SFTPFldr.cpp" />
     <ClCompile Include="SFTPStrm.cpp" />
     <ClCompile Include="ShellDLL.cpp" />
+    <ClCompile Include="SSHAgent.cpp" />
     <ClCompile Include="SSHChan.cpp" />
     <ClCompile Include="SSHCli.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -273,6 +275,7 @@
     <ClInclude Include="MErrDlg.h" />
     <ClInclude Include="MsgData.h" />
     <ClInclude Include="MySocket.h" />
+    <ClInclude Include="Pageant.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="RFolder.h" />
     <ClInclude Include="SFilePrp.h" />
@@ -280,6 +283,7 @@
     <ClInclude Include="SFTPFldr.h" />
     <ClInclude Include="SFTPStrm.h" />
     <ClInclude Include="ShellDLL.h" />
+    <ClInclude Include="SSHAgent.h" />
     <ClInclude Include="SSHChan.h" />
     <ClInclude Include="SSHCli.h" />
     <ClInclude Include="stdafx.h" />
