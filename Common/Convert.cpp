@@ -39,7 +39,7 @@ extern "C" size_t __stdcall UnicodeToUTF8(LPCWSTR lpszUnicode, size_t dwLength, 
 					dwCalcLength += 3 + 3;
 				else
 				{
-					// Ç±Ç±Ç©ÇÁ UCS-4
+					// „Åì„Åì„Åã„Çâ UCS-4
 					wSurrogate -= 0xD800ul;
 					dw = (dw - 0xDC00) | ((DWORD) wSurrogate << 10);
 					if (dw < 0x00200000ul)
@@ -100,7 +100,7 @@ extern "C" size_t __stdcall UnicodeToUTF8(LPCWSTR lpszUnicode, size_t dwLength, 
 			}
 			else
 			{
-				// Ç±Ç±Ç©ÇÁ UCS-4
+				// „Åì„Åì„Åã„Çâ UCS-4
 				wSurrogate -= 0xD800ul;
 				dw = (dw - 0xDC00) | ((DWORD) wSurrogate << 10);
 				if (dw < 0x00200000ul)
@@ -247,7 +247,7 @@ extern "C" size_t __stdcall UnicodeToUTF8File(LPCWSTR lpszUnicode, size_t dwLeng
 			}
 			else
 			{
-				// Ç±Ç±Ç©ÇÁ UCS-4
+				// „Åì„Åì„Åã„Çâ UCS-4
 				wSurrogate -= 0xD800ul;
 				dw = (dw - 0xDC00) | ((DWORD) wSurrogate << 10);
 				if (dw < 0x00200000ul)
@@ -384,7 +384,7 @@ extern "C" size_t __stdcall UnicodeFileToUTF8(HANDLE hFile, LPBYTE lpBuffer, siz
 					dwCalcLength += 3 + 3;
 				else
 				{
-					// Ç±Ç±Ç©ÇÁ UCS-4
+					// „Åì„Åì„Åã„Çâ UCS-4
 					wSurrogate -= 0xD800ul;
 					dw = (dw - 0xDC00) | ((DWORD) wSurrogate << 10);
 					if (dw < 0x00200000ul)
@@ -413,7 +413,7 @@ extern "C" size_t __stdcall UnicodeFileToUTF8(HANDLE hFile, LPBYTE lpBuffer, siz
 				else //if (dw < 0xD800ul || dw >= 0xDC00ul)
 					dwCalcLength += 3;
 			}
-			// êÑèßÉTÉCÉYÇ™éwíËÇ≥ÇÍÇƒÇ¢ÇÈÇ∆Ç´ÅAÇªÇÍà»è„ÇÃç≈è¨ÉTÉCÉYÇï‘Ç∑
+			// Êé®Â•®„Çµ„Ç§„Ç∫„ÅåÊåáÂÆö„Åï„Çå„Å¶„ÅÑ„Çã„Å®„Åç„ÄÅ„Åù„Çå‰ª•‰∏ä„ÅÆÊúÄÂ∞è„Çµ„Ç§„Ç∫„ÇíËøî„Åô
 			if (!lpBuffer && dwBufferLength && dwCalcLength >= dwBufferLength)
 				break;
 		}
@@ -455,7 +455,7 @@ extern "C" size_t __stdcall UnicodeFileToUTF8(HANDLE hFile, LPBYTE lpBuffer, siz
 			}
 			else
 			{
-				// Ç±Ç±Ç©ÇÁ UCS-4
+				// „Åì„Åì„Åã„Çâ UCS-4
 				wSurrogate -= 0xD800ul;
 				dw = (dw - 0xDC00) | ((DWORD) wSurrogate << 10);
 				if (dw < 0x00200000ul)
@@ -624,7 +624,7 @@ extern "C" bool __stdcall IsUTF8Data(LPCBYTE lpszUTF8, size_t dwByteLength)
 			dwIndex += 1;
 	}
 
-	// UTF-8 ì¡óLÇÃÉfÅ[É^Çì«ÇÒÇ≈Ç¢Ç»Ç¢èÍçáÇÕÅAâpåÍÇÃÇ›ÇÃÉtÉ@ÉCÉã
+	// UTF-8 ÁâπÊúâ„ÅÆ„Éá„Éº„Çø„ÇíË™≠„Çì„Åß„ÅÑ„Å™„ÅÑÂ†¥Âêà„ÅØ„ÄÅËã±Ë™û„ÅÆ„Åø„ÅÆ„Éï„Ç°„Ç§„É´
 	return bReadUTF8Flag;
 }
 
@@ -734,7 +734,7 @@ extern "C" bool __stdcall IsUTF8File(HANDLE hFile)
 			break;
 		}
 		else
-			{ /* âΩÇ‡ÇµÇ»Ç¢ */ }
+			{ /* ‰Ωï„ÇÇ„Åó„Å™„ÅÑ */ }
 	}
 
 	SetFilePointer(hFile, lnNowPointer1, &lnNowPointer2, FILE_BEGIN);
@@ -780,7 +780,7 @@ extern "C" size_t __stdcall UTF8ToUnicode(LPCBYTE lpszUTF8, size_t dwByteLength,
 				dwIndex += 2;
 			else if ((lpszUTF8[dwIndex] & 0x80) == 0x80)
 			{
-				// ïsê≥Ç»ÉfÅ[É^
+				// ‰∏çÊ≠£„Å™„Éá„Éº„Çø
 				dw = 0xFFFFFFFF;
 				dwIndex += 1;
 			}
@@ -805,7 +805,7 @@ extern "C" size_t __stdcall UTF8ToUnicode(LPCBYTE lpszUTF8, size_t dwByteLength,
 		if (dwCalcLength >= dwBufferLength - 1)
 			break;
 		wSurrogate = 0;
-		// Ç±Ç±Ç©ÇÁ UCS-4
+		// „Åì„Åì„Åã„Çâ UCS-4
 		if ((lpszUTF8[dwIndex] & 0xFC) == 0xFC)
 		{
 			// 1111110u 10vvvvvv 10wwwwww 10xxxxxx 10yyyyyy 10zzzzzz: 0uvvvvvv.wwwwwwxx.xxxxyyyy.yyzzzzzz
@@ -833,7 +833,7 @@ extern "C" size_t __stdcall UTF8ToUnicode(LPCBYTE lpszUTF8, size_t dwByteLength,
 			dw |= (DWORD)(lpszUTF8[dwIndex++] & 0x3F) << 6;
 			dw |= (DWORD)(lpszUTF8[dwIndex++] & 0x3F);
 		}
-		// Ç±Ç±Ç‹Ç≈ UCS-4
+		// „Åì„Åì„Åæ„Åß UCS-4
 		else if ((lpszUTF8[dwIndex] & 0xE0) == 0xE0)
 		{
 			// 1110xxxx 10yyyyyy 10zzzzzz: xxxxyyyy.yyzzzzzz
@@ -849,7 +849,7 @@ extern "C" size_t __stdcall UTF8ToUnicode(LPCBYTE lpszUTF8, size_t dwByteLength,
 		}
 		else if ((lpszUTF8[dwIndex] & 0x80) == 0x80)
 		{
-			// ïsê≥Ç»ÉfÅ[É^: ÉpÉX
+			// ‰∏çÊ≠£„Å™„Éá„Éº„Çø: „Éë„Çπ
 			dw = 0xFFFFFFFF;
 			dwIndex++;
 		}
@@ -888,7 +888,7 @@ extern "C" size_t __stdcall UTF8ToUnicodeFile(LPCBYTE lpszUTF8, size_t dwByteLen
 	for (dwIndex = 0; dwIndex < dwByteLength;)
 	{
 		wSurrogate = 0;
-		// Ç±Ç±Ç©ÇÁ UCS-4
+		// „Åì„Åì„Åã„Çâ UCS-4
 		if ((lpszUTF8[dwIndex] & 0xFC) == 0xFC)
 		{
 			// 1111110u 10vvvvvv 10wwwwww 10xxxxxx 10yyyyyy 10zzzzzz: 0uvvvvvv.wwwwwwxx.xxxxyyyy.yyzzzzzz
@@ -916,7 +916,7 @@ extern "C" size_t __stdcall UTF8ToUnicodeFile(LPCBYTE lpszUTF8, size_t dwByteLen
 			dw |= (DWORD)(lpszUTF8[dwIndex++] & 0x3F) << 6;
 			dw |= (DWORD)(lpszUTF8[dwIndex++] & 0x3F);
 		}
-		// Ç±Ç±Ç‹Ç≈ UCS-4
+		// „Åì„Åì„Åæ„Åß UCS-4
 		else if ((lpszUTF8[dwIndex] & 0xE0) == 0xE0)
 		{
 			// 1110xxxx 10yyyyyy 10zzzzzz: xxxxyyyy.yyzzzzzz
@@ -932,7 +932,7 @@ extern "C" size_t __stdcall UTF8ToUnicodeFile(LPCBYTE lpszUTF8, size_t dwByteLen
 		}
 		else if ((lpszUTF8[dwIndex] & 0x80) == 0x80)
 		{
-			// ïsê≥Ç»ÉfÅ[É^: ÉpÉX
+			// ‰∏çÊ≠£„Å™„Éá„Éº„Çø: „Éë„Çπ
 			dw = 0xFFFFFFFF;
 			dwIndex++;
 		}
@@ -1031,7 +1031,7 @@ extern "C" size_t __stdcall UTF8FileToUnicode(HANDLE hFile, LPWSTR lpBuffer, siz
 				dwCalcLength++;
 				if (wSurrogate)
 					dwCalcLength++;
-				// êÑèßÉTÉCÉYÇ™éwíËÇ≥ÇÍÇƒÇ¢ÇÈÇ∆Ç´ÅAÇªÇÍà»è„ÇÃç≈è¨ÉTÉCÉYÇï‘Ç∑
+				// Êé®Â•®„Çµ„Ç§„Ç∫„ÅåÊåáÂÆö„Åï„Çå„Å¶„ÅÑ„Çã„Å®„Åç„ÄÅ„Åù„Çå‰ª•‰∏ä„ÅÆÊúÄÂ∞è„Çµ„Ç§„Ç∫„ÇíËøî„Åô
 				if (!lpBuffer && dwBufferLength && dwCalcLength >= dwBufferLength)
 					break;
 			}
@@ -1047,7 +1047,7 @@ extern "C" size_t __stdcall UTF8FileToUnicode(HANDLE hFile, LPWSTR lpBuffer, siz
 	while (::ReadFile(hFile, &b, 1, &dwTemp, NULL) && dwTemp)
 	{
 		wSurrogate = 0;
-		// Ç±Ç±Ç©ÇÁ UCS-4
+		// „Åì„Åì„Åã„Çâ UCS-4
 		if ((b & 0xFC) == 0xFC)
 		{
 			// 1111110u 10vvvvvv 10wwwwww 10xxxxxx 10yyyyyy 10zzzzzz: 0uvvvvvv.wwwwwwxx.xxxxyyyy.yyzzzzzz
@@ -1084,7 +1084,7 @@ extern "C" size_t __stdcall UTF8FileToUnicode(HANDLE hFile, LPWSTR lpBuffer, siz
 			dw |= (DWORD)(bData[1] & 0x3F) << 6;
 			dw |= (DWORD)(bData[2] & 0x3F);
 		}
-		// Ç±Ç±Ç‹Ç≈ UCS-4
+		// „Åì„Åì„Åæ„Åß UCS-4
 		else if ((b & 0xE0) == 0xE0)
 		{
 			// 1110xxxx 10yyyyyy 10zzzzzz: xxxxyyyy.yyzzzzzz
@@ -1106,7 +1106,7 @@ extern "C" size_t __stdcall UTF8FileToUnicode(HANDLE hFile, LPWSTR lpBuffer, siz
 		}
 		else if ((b & 0x80) == 0x80)
 		{
-			// ïsê≥Ç»ÉfÅ[É^: ÉpÉX
+			// ‰∏çÊ≠£„Å™„Éá„Éº„Çø: „Éë„Çπ
 			dw = 0xFFFFFFFF;
 		}
 		else
@@ -1207,7 +1207,7 @@ extern "C" size_t __stdcall UTF32ToUnicode(const char* pszBuffer, size_t nLen, s
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// îºäpÇ…Ç»Ç¡ÇΩÇ∆Ç´ÇÕ ch2 Ç 0 Ç…Ç∑ÇÈ
+// ÂçäËßí„Å´„Å™„Å£„Åü„Å®„Åç„ÅØ ch2 „Çí 0 „Å´„Åô„Çã
 static void __stdcall EUCCharsToShiftJISChars(BYTE& ch1, BYTE& ch2)
 {
 	if (!IsEUCFirstChar(ch1))
@@ -1223,7 +1223,7 @@ static void __stdcall EUCCharsToShiftJISChars(BYTE& ch1, BYTE& ch2)
 	}
 	else if (ch1 == 0x8F)
 	{
-		// íËã`Ç≥ÇÍÇƒÇ¢Ç»Ç¢ Å® ÅuÅ¨ÅvÇê›íË
+		// ÂÆöÁæ©„Åï„Çå„Å¶„ÅÑ„Å™„ÅÑ ‚Üí „Äå„Äì„Äç„ÇíË®≠ÂÆö
 		ch1 = 0x81;
 		ch2 = 0xAC;
 		return;
@@ -1255,7 +1255,7 @@ static void __stdcall EUCCharsToShiftJISChars(BYTE& ch1, BYTE& ch2)
 	ch1 = (ch1 < 0xDF ? 0x30 : 0x70) + (ch1 & 0x01) + (ch1 >> 1);
 }
 
-// îºäpÇ…Ç»Ç¡ÇΩÇ∆Ç´ÇÕ ch2 Ç 0 Ç…Ç∑ÇÈ
+// ÂçäËßí„Å´„Å™„Å£„Åü„Å®„Åç„ÅØ ch2 „Çí 0 „Å´„Åô„Çã
 static void __stdcall ShiftJISCharsToEUCChars(BYTE& ch1, BYTE& ch2)
 {
 	if (!IsShiftJISFirstChar(ch1))
@@ -1367,7 +1367,7 @@ OnLoopCalcLength:
 					dwTemp++;
 			}
 
-			// êÑèßÉTÉCÉYÇ™éwíËÇ≥ÇÍÇƒÇ¢ÇÈÇ∆Ç´ÅAÇªÇÍà»â∫ÇÃç≈ëÂÉTÉCÉYÇï‘Ç∑
+			// Êé®Â•®„Çµ„Ç§„Ç∫„ÅåÊåáÂÆö„Åï„Çå„Å¶„ÅÑ„Çã„Å®„Åç„ÄÅ„Åù„Çå‰ª•‰∏ã„ÅÆÊúÄÂ§ß„Çµ„Ç§„Ç∫„ÇíËøî„Åô
 			if (!lpBuffer && dwBufferLength && dwCalcLength + dwTemp > dwBufferLength)
 				break;
 

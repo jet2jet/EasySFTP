@@ -94,7 +94,7 @@ static bool __stdcall MyEnumModulesUsingPsapi(T_EnumProcessModules pfnEnumProces
 
 #define SIZE_OF_NT_SIGNATURE       (sizeof(DWORD))
 #define RVATOVA(base, offset) ( \
-    (LPVOID)((DWORD_PTR)(base) + (DWORD_PTR)(offset)))
+	(LPVOID)((DWORD_PTR)(base) + (DWORD_PTR)(offset)))
 // オプションヘッダオフセット
 #define OPTHDROFFSET(ptr) ( \
 	(LPVOID)((PBYTE)(ptr) + \

@@ -37,12 +37,12 @@ public:
 	STDMETHOD(InvokeCommand)(CMINVOKECOMMANDINFO* pici);
 	STDMETHOD(GetCommandString)(UINT_PTR idCmd, UINT uType, UINT* pReserved, LPSTR pszName, UINT cchMax);
 
-    // IObjectWithSite
+	// IObjectWithSite
 public:
-    STDMETHOD(SetSite)(IUnknown* pUnkSite);
-    STDMETHOD(GetSite)(REFIID riid, void** ppvSite);
+	STDMETHOD(SetSite)(IUnknown* pUnkSite);
+	STDMETHOD(GetSite)(REFIID riid, void** ppvSite);
 
-    // CTransferDialogListener
+	// CTransferDialogListener
 public:
 	virtual void TransferCanceled(void* pvTransfer);
 
@@ -91,10 +91,10 @@ public:
 	STDMETHOD(InvokeCommand)(CMINVOKECOMMANDINFO* pici);
 	STDMETHOD(GetCommandString)(UINT_PTR idCmd, UINT uType, UINT* pReserved, LPSTR pszName, UINT cchMax);
 
-    // IObjectWithSite
+	// IObjectWithSite
 public:
-    STDMETHOD(SetSite)(IUnknown* pUnkSite);
-    STDMETHOD(GetSite)(REFIID riid, void** ppvSite);
+	STDMETHOD(SetSite)(IUnknown* pUnkSite);
+	STDMETHOD(GetSite)(REFIID riid, void** ppvSite);
 
 protected:
 	UINT _QueryContextMenu(HMENU hMenuTarget, HMENU hMenuCurrent, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags);

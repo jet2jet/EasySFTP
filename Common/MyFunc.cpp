@@ -9,7 +9,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// Windows API ‚Æ‚Ù‚Ú“¯—l‚Ìˆ—•û–@‚É‚æ‚é•¶š—ñƒRƒs[
+// Windows API ã¨ã»ã¼åŒæ§˜ã®å‡¦ç†æ–¹æ³•ã«ã‚ˆã‚‹æ–‡å­—åˆ—ã‚³ãƒ”ãƒ¼
 extern "C" int __stdcall MyCopyStringLenA(LPSTR lpszBuffer, LPCSTR lpszString, int nMaxLen)
 {
 	int nLen;
@@ -540,7 +540,7 @@ extern "C" int __stdcall MyGetFullPathA(LPCSTR lpszPath, LPCSTR lpszFile, LPSTR 
 	int n;
 	int nLen1, nLen2, nLen3;
 	bool bAddPath;
-	// lpszFile ‚ÌÅ‰‚ª "x:" ‚â "\\" ‚â "\" ‚Ì‚Í‚»‚Ì‚Ü‚ÜƒRƒs[
+	// lpszFile ã®æœ€åˆãŒ "x:" ã‚„ "\\" ã‚„ "\" ã®æ™‚ã¯ãã®ã¾ã¾ã‚³ãƒ”ãƒ¼
 	if (!*lpszFile && (MyIsBackSlashA(*lpszFile) || lpszFile[1] == _T(':')))
 		return MyCopyStringLenA(lpszBuffer, lpszFile, nMaxLen);
 	bAddPath = false;
@@ -574,7 +574,7 @@ extern "C" int __stdcall MyGetFullPathW(LPCWSTR lpszPath, LPCWSTR lpszFile, LPWS
 	int n;
 	int nLen1, nLen2, nLen3;
 	bool bAddPath;
-	// lpszFile ‚ÌÅ‰‚ª "x:" ‚â "\\" ‚â "\" ‚Ì‚Í‚»‚Ì‚Ü‚ÜƒRƒs[
+	// lpszFile ã®æœ€åˆãŒ "x:" ã‚„ "\\" ã‚„ "\" ã®æ™‚ã¯ãã®ã¾ã¾ã‚³ãƒ”ãƒ¼
 	if (MyIsBackSlashW(*lpszFile) || lpszFile[1] == L':')
 		return MyCopyStringLenW(lpszBuffer, lpszFile, nMaxLen);
 	bAddPath = false;
@@ -649,14 +649,14 @@ extern "C" int __stdcall MyGetAbsolutePathA(LPCSTR lpszRelativePathName, LPCSTR 
 {
 	LPSTR lp;
 	int n;
-	// lpszDirectory ‚ª‘Š‘ÎƒpƒX‚È‚ç‚»‚Ì‚Ü‚ÜƒRƒs[
-	// ¦ "\" ‚©‚çn‚Ü‚é‚à‚Ì‚Íâ‘ÎƒpƒX‚Æ‚İ‚È‚·
+	// lpszDirectory ãŒç›¸å¯¾ãƒ‘ã‚¹ãªã‚‰ãã®ã¾ã¾ã‚³ãƒ”ãƒ¼
+	// â€» "\" ã‹ã‚‰å§‹ã¾ã‚‹ã‚‚ã®ã¯çµ¶å¯¾ãƒ‘ã‚¹ã¨ã¿ãªã™
 	if (!MyIsBackSlashA(*lpszDirectory) &&
 		(_ismbblead(*lpszDirectory) || lpszDirectory[1] != ':'))
 		return MyCopyStringLenA(lpszBuffer, lpszRelativePathName, nMaxLen);
 
-	// lpszRelativePathName ‚ªâ‘ÎƒpƒX‚È‚ç‚»‚Ì‚Ü‚ÜƒRƒs[
-	// ¦ "\" ‚©‚çn‚Ü‚é‚à‚Ì‚Íâ‘ÎƒpƒX‚Æ‚İ‚È‚·
+	// lpszRelativePathName ãŒçµ¶å¯¾ãƒ‘ã‚¹ãªã‚‰ãã®ã¾ã¾ã‚³ãƒ”ãƒ¼
+	// â€» "\" ã‹ã‚‰å§‹ã¾ã‚‹ã‚‚ã®ã¯çµ¶å¯¾ãƒ‘ã‚¹ã¨ã¿ãªã™
 	if (MyIsBackSlashA(*lpszRelativePathName) ||
 		(!_ismbblead(*lpszRelativePathName) && lpszRelativePathName[1] == ':'))
 		return MyCopyStringLenA(lpszBuffer, lpszRelativePathName, nMaxLen);
@@ -672,14 +672,14 @@ extern "C" int __stdcall MyGetAbsolutePathW(LPCWSTR lpszRelativePathName, LPCWST
 {
 	LPWSTR lp;
 	int n;
-	// lpszDirectory ‚ª‘Š‘ÎƒpƒX‚È‚ç‚»‚Ì‚Ü‚ÜƒRƒs[
-	// ¦ "\" ‚©‚çn‚Ü‚é‚à‚Ì‚Íâ‘ÎƒpƒX‚Æ‚İ‚È‚·
+	// lpszDirectory ãŒç›¸å¯¾ãƒ‘ã‚¹ãªã‚‰ãã®ã¾ã¾ã‚³ãƒ”ãƒ¼
+	// â€» "\" ã‹ã‚‰å§‹ã¾ã‚‹ã‚‚ã®ã¯çµ¶å¯¾ãƒ‘ã‚¹ã¨ã¿ãªã™
 	if (!MyIsBackSlashW(*lpszDirectory) &&
 		lpszDirectory[1] != L':')
 		return MyCopyStringLenW(lpszBuffer, lpszRelativePathName, nMaxLen);
 
-	// lpszRelativePathName ‚ªâ‘ÎƒpƒX‚È‚ç‚»‚Ì‚Ü‚ÜƒRƒs[
-	// ¦ "\" ‚©‚çn‚Ü‚é‚à‚Ì‚Íâ‘ÎƒpƒX‚Æ‚İ‚È‚·
+	// lpszRelativePathName ãŒçµ¶å¯¾ãƒ‘ã‚¹ãªã‚‰ãã®ã¾ã¾ã‚³ãƒ”ãƒ¼
+	// â€» "\" ã‹ã‚‰å§‹ã¾ã‚‹ã‚‚ã®ã¯çµ¶å¯¾ãƒ‘ã‚¹ã¨ã¿ãªã™
 	if (MyIsBackSlashW(*lpszRelativePathName) ||
 		lpszRelativePathName[1] == L':')
 		return MyCopyStringLenW(lpszBuffer, lpszRelativePathName, nMaxLen);
@@ -717,8 +717,8 @@ extern "C" LPWSTR __stdcall MyGetAbsolutePath2W(LPCWSTR lpszRelativePathName, LP
 void __stdcall MyGetAbsolutePathString(LPCTSTR lpszRelativePathName, LPCTSTR lpszDirectory, CCCLString& rstrBuffer)
 {
 	LPTSTR lp;
-	// lpszDirectory ‚ª‘Š‘ÎƒpƒX‚È‚ç‚»‚Ì‚Ü‚ÜƒRƒs[
-	// ¦ "\" ‚©‚çn‚Ü‚é‚à‚Ì‚Íâ‘ÎƒpƒX‚Æ‚İ‚È‚·
+	// lpszDirectory ãŒç›¸å¯¾ãƒ‘ã‚¹ãªã‚‰ãã®ã¾ã¾ã‚³ãƒ”ãƒ¼
+	// â€» "\" ã‹ã‚‰å§‹ã¾ã‚‹ã‚‚ã®ã¯çµ¶å¯¾ãƒ‘ã‚¹ã¨ã¿ãªã™
 	if (!MyIsBackSlash(*lpszDirectory) &&
 		lpszDirectory[1] != _T(':'))
 	{
@@ -726,8 +726,8 @@ void __stdcall MyGetAbsolutePathString(LPCTSTR lpszRelativePathName, LPCTSTR lps
 		return;
 	}
 
-	// lpszRelativePathName ‚ªâ‘ÎƒpƒX‚È‚ç‚»‚Ì‚Ü‚ÜƒRƒs[
-	// ¦ "\" ‚©‚çn‚Ü‚é‚à‚Ì‚Íâ‘ÎƒpƒX‚Æ‚İ‚È‚·
+	// lpszRelativePathName ãŒçµ¶å¯¾ãƒ‘ã‚¹ãªã‚‰ãã®ã¾ã¾ã‚³ãƒ”ãƒ¼
+	// â€» "\" ã‹ã‚‰å§‹ã¾ã‚‹ã‚‚ã®ã¯çµ¶å¯¾ãƒ‘ã‚¹ã¨ã¿ãªã™
 	if (MyIsBackSlash(*lpszRelativePathName) ||
 		(!_istlead(*lpszRelativePathName) && lpszRelativePathName[1] == _T(':')))
 	{
@@ -756,7 +756,7 @@ extern "C" int __stdcall MyGetRelativePathA(LPCSTR lpszFullPathName, LPCSTR lpsz
 	bool bNoDrive;
 	int nToParentCount, /*nLen, */n, nNowPos;
 
-	// lpszFullPathName ‚Ìn‚ß‚Í "x:\" ‚Ü‚½‚Í "\\" ‚Ü‚½‚Í "\" (ƒhƒ‰ƒCƒuw’è‚È‚µ)
+	// lpszFullPathName ã®å§‹ã‚ã¯ "x:\" ã¾ãŸã¯ "\\" ã¾ãŸã¯ "\" (ãƒ‰ãƒ©ã‚¤ãƒ–æŒ‡å®šãªã—)
 	if (!_ismbblead(*lpszFullPathName) && lpszFullPathName[1] != ':' && !MyIsBackSlashA(lpszFullPathName[2]))
 	{
 		if (!MyIsBackSlashA(*lpszFullPathName))
@@ -765,8 +765,8 @@ extern "C" int __stdcall MyGetRelativePathA(LPCSTR lpszFullPathName, LPCSTR lpsz
 	}
 	else
 		bNoDrive = false;
-	// ‚Q•¶š‚ß‚Ü‚Å(bNoDrive == true ‚Ìê‡‚Í1•¶š–Ú‚ª)‡‚í‚È‚¢
-	// ¨ –³ŠÖŒW‚ÈƒpƒX‚©‘Š‘ÎƒpƒX‚©‚Ì‚Ç‚¿‚ç‚©
+	// ï¼’æ–‡å­—ã‚ã¾ã§(bNoDrive == true ã®å ´åˆã¯1æ–‡å­—ç›®ãŒ)åˆã‚ãªã„
+	// â†’ ç„¡é–¢ä¿‚ãªãƒ‘ã‚¹ã‹ç›¸å¯¾ãƒ‘ã‚¹ã‹ã®ã©ã¡ã‚‰ã‹
 	if (*lpszFullPathName != *lpszDirectory || (!bNoDrive && lpszFullPathName[1] != lpszDirectory[1]) ||
 		(lpszFullPathName[1] == ':' && lpszFullPathName[2] != lpszDirectory[2]))
 		return MyCopyStringLenA(lpszBuffer, lpszFullPathName, nMaxLen);
@@ -795,10 +795,10 @@ extern "C" int __stdcall MyGetRelativePathA(LPCSTR lpszFullPathName, LPCSTR lpsz
 	}
 	while (lp1 && lp2)
 	{
-		// ’·‚³‚ªˆá‚¤ ¨ ˆá‚¤ƒpƒX
+		// é•·ã•ãŒé•ã† â†’ é•ã†ãƒ‘ã‚¹
 		if ((lp1 - lpszFullPathName) != (lp2 - lpszDirectory))
 			break;
-		// “¯‚¶ƒpƒX‚Å‚È‚©‚Á‚½‚ç’†’f
+		// åŒã˜ãƒ‘ã‚¹ã§ãªã‹ã£ãŸã‚‰ä¸­æ–­
 		if (_strnicmp(lpszFullPathName, lpszDirectory, (size_t)(lp1 - lpszFullPathName)) != 0)
 			break;
 		lpszFullPathName = lp1 + 1;
@@ -815,11 +815,11 @@ extern "C" int __stdcall MyGetRelativePathA(LPCSTR lpszFullPathName, LPCSTR lpsz
 				lp2++;
 		}
 	}
-	// ‚Æ‚à‚É NULL ¨ “¯‚¶ƒpƒX
+	// ã¨ã‚‚ã« NULL â†’ åŒã˜ãƒ‘ã‚¹
 	if (!lp1 && !lp2)
 		return MyCopyStringLenA(lpszBuffer, lpszFullPathName, nMaxLen);
 
-	// "..\" ‚ğ‚Â‚¯‚é”‚ğ”‚¦‚é
+	// "..\" ã‚’ã¤ã‘ã‚‹æ•°ã‚’æ•°ãˆã‚‹
 	nToParentCount = 0;
 	lp2 = MyFindBackSlashA(lpszDirectory);
 	if (!lp2 && *lpszDirectory)
@@ -844,8 +844,8 @@ extern "C" int __stdcall MyGetRelativePathA(LPCSTR lpszFullPathName, LPCSTR lpsz
 		}
 	}
 
-	// •¶š—ñ‚Ì’·‚³ = (strlen("..\") * nToParentCount) + strlen(lpszFullPathName)
-	// ¦ lpszFullPathName ‚ÍŠù‚É“K“–‚ÈˆÊ’u‚Éƒ|ƒCƒ“ƒ^‚ği‚ß‚Ä‚ ‚é
+	// æ–‡å­—åˆ—ã®é•·ã• = (strlen("..\") * nToParentCount) + strlen(lpszFullPathName)
+	// â€» lpszFullPathName ã¯æ—¢ã«é©å½“ãªä½ç½®ã«ãƒã‚¤ãƒ³ã‚¿ã‚’é€²ã‚ã¦ã‚ã‚‹
 	//nLen = 3 * nToParentCount + strlen(lpszFullPathName);
 	if (!lpszBuffer || !nMaxLen)
 		return 3 * nToParentCount + (int) strlen(lpszFullPathName);
@@ -870,7 +870,7 @@ extern "C" int __stdcall MyGetRelativePathW(LPCWSTR lpszFullPathName, LPCWSTR lp
 	bool bNoDrive;
 	int nToParentCount, /*nLen, */n, nNowPos;
 
-	// lpszFullPathName ‚Ìn‚ß‚Í "x:\" ‚Ü‚½‚Í "\\" ‚Ü‚½‚Í "\" (ƒhƒ‰ƒCƒuw’è‚È‚µ)
+	// lpszFullPathName ã®å§‹ã‚ã¯ "x:\" ã¾ãŸã¯ "\\" ã¾ãŸã¯ "\" (ãƒ‰ãƒ©ã‚¤ãƒ–æŒ‡å®šãªã—)
 	if (lpszFullPathName[1] != L':' && !MyIsBackSlashW(lpszFullPathName[2]))
 	{
 		if (!MyIsBackSlashW(*lpszFullPathName))
@@ -879,8 +879,8 @@ extern "C" int __stdcall MyGetRelativePathW(LPCWSTR lpszFullPathName, LPCWSTR lp
 	}
 	else
 		bNoDrive = false;
-	// ‚Q•¶š‚ß‚Ü‚Å(bNoDrive == true ‚Ìê‡‚Í1•¶š–Ú‚ª)‡‚í‚È‚¢
-	// ¨ –³ŠÖŒW‚ÈƒpƒX‚©‘Š‘ÎƒpƒX‚©‚Ì‚Ç‚¿‚ç‚©
+	// ï¼’æ–‡å­—ã‚ã¾ã§(bNoDrive == true ã®å ´åˆã¯1æ–‡å­—ç›®ãŒ)åˆã‚ãªã„
+	// â†’ ç„¡é–¢ä¿‚ãªãƒ‘ã‚¹ã‹ç›¸å¯¾ãƒ‘ã‚¹ã‹ã®ã©ã¡ã‚‰ã‹
 	if (*lpszFullPathName != *lpszDirectory || (!bNoDrive && lpszFullPathName[1] != lpszDirectory[1]) ||
 		(lpszFullPathName[1] == L':' && lpszFullPathName[2] != lpszDirectory[2]))
 		return MyCopyStringLenW(lpszBuffer, lpszFullPathName, nMaxLen);
@@ -909,10 +909,10 @@ extern "C" int __stdcall MyGetRelativePathW(LPCWSTR lpszFullPathName, LPCWSTR lp
 	}
 	while (lp1 && lp2)
 	{
-		// ’·‚³‚ªˆá‚¤ ¨ ˆá‚¤ƒpƒX
+		// é•·ã•ãŒé•ã† â†’ é•ã†ãƒ‘ã‚¹
 		if ((lp1 - lpszFullPathName) != (lp2 - lpszDirectory))
 			break;
-		// “¯‚¶ƒpƒX‚Å‚È‚©‚Á‚½‚ç’†’f
+		// åŒã˜ãƒ‘ã‚¹ã§ãªã‹ã£ãŸã‚‰ä¸­æ–­
 		if (_wcsnicmp(lpszFullPathName, lpszDirectory, (size_t)(lp1 - lpszFullPathName)) != 0)
 			break;
 		lpszFullPathName = lp1 + 1;
@@ -929,11 +929,11 @@ extern "C" int __stdcall MyGetRelativePathW(LPCWSTR lpszFullPathName, LPCWSTR lp
 				lp2++;
 		}
 	}
-	// ‚Æ‚à‚É NULL ¨ “¯‚¶ƒpƒX
+	// ã¨ã‚‚ã« NULL â†’ åŒã˜ãƒ‘ã‚¹
 	if (!lp1 && !lp2)
 		return MyCopyStringLenW(lpszBuffer, lpszFullPathName, nMaxLen);
 
-	// L"..\" ‚ğ‚Â‚¯‚é”‚ğ”‚¦‚é
+	// L"..\" ã‚’ã¤ã‘ã‚‹æ•°ã‚’æ•°ãˆã‚‹
 	nToParentCount = 0;
 	lp2 = MyFindBackSlashW(lpszDirectory);
 	if (!lp2 && *lpszDirectory)
@@ -958,8 +958,8 @@ extern "C" int __stdcall MyGetRelativePathW(LPCWSTR lpszFullPathName, LPCWSTR lp
 		}
 	}
 
-	// •¶š—ñ‚Ì’·‚³ = (wcslen(L"..\") * nToParentCount) + wcslen(lpszFullPathName)
-	// ¦ lpszFullPathName ‚ÍŠù‚É“K“–‚ÈˆÊ’u‚Éƒ|ƒCƒ“ƒ^‚ği‚ß‚Ä‚ ‚é
+	// æ–‡å­—åˆ—ã®é•·ã• = (wcslen(L"..\") * nToParentCount) + wcslen(lpszFullPathName)
+	// â€» lpszFullPathName ã¯æ—¢ã«é©å½“ãªä½ç½®ã«ãƒã‚¤ãƒ³ã‚¿ã‚’é€²ã‚ã¦ã‚ã‚‹
 	//nLen = 3 * nToParentCount + wcslen(lpszFullPathName);
 	if (!lpszBuffer || !nMaxLen)
 		return 3 * nToParentCount + (int) wcslen(lpszFullPathName);
@@ -1024,7 +1024,7 @@ extern "C" int __stdcall MyMakeFullPathFromCurDirA(LPCSTR lpszPathName, LPSTR lp
 {
 	int n;
 	LPSTR lp;
-	// "\<path-name>" ‚ÌŒ`®‚Ìê‡
+	// "\<path-name>" ã®å½¢å¼ã®å ´åˆ
 #ifdef _WINDOWS_
 	if (MyIsBackSlashA(lpszPathName[0]) && (!MyIsWinBackSlashA(lpszPathName[0]) || !MyIsWinBackSlashA(lpszPathName[1])))
 	{
@@ -1040,7 +1040,7 @@ extern "C" int __stdcall MyMakeFullPathFromCurDirA(LPCSTR lpszPathName, LPSTR lp
 		{
 			lpszBuffer[nMaxLen - 1] = 0;
 			lp = MyFindBackSlashA(lpszBuffer + 2);
-			// ‘Š‘ÎƒpƒX‚ğ‚Â‚È‚°‚é•”•ª‚Ü‚Å“Í‚¢‚Ä‚¢‚È‚¢
+			// ç›¸å¯¾ãƒ‘ã‚¹ã‚’ã¤ãªã’ã‚‹éƒ¨åˆ†ã¾ã§å±Šã„ã¦ã„ãªã„
 			if (!lp)
 				return nMaxLen;
 			n = (int) (lp - lpszBuffer);
@@ -1054,7 +1054,7 @@ extern "C" int __stdcall MyMakeFullPathFromCurDirA(LPCSTR lpszPathName, LPSTR lp
 		return MyCopyStringLenA(lpszBuffer + n, lpszPathName, nMaxLen);
 	}
 #endif
-	// â‘ÎƒpƒX‚È‚ç‚»‚Ì‚Ü‚Ü
+	// çµ¶å¯¾ãƒ‘ã‚¹ãªã‚‰ãã®ã¾ã¾
 	if (lpszPathName[1] == ':' || MyIsBackSlashA(lpszPathName[0]))
 	{
 		if (!lpszBuffer || !nMaxLen)
@@ -1062,7 +1062,7 @@ extern "C" int __stdcall MyMakeFullPathFromCurDirA(LPCSTR lpszPathName, LPSTR lp
 		return MyCopyStringLenA(lpszBuffer, lpszPathName, nMaxLen);
 	}
 
-	// MyGetAbsolutePathA ‚ğg‚Á‚Äì¬
+	// MyGetAbsolutePathA ã‚’ä½¿ã£ã¦ä½œæˆ
 	n = ::GetCurrentDirectoryA(0, lpszBuffer);
 	if (!n)
 		return 0;
@@ -1077,7 +1077,7 @@ extern "C" int __stdcall MyMakeFullPathFromCurDirW(LPCWSTR lpszPathName, LPWSTR 
 {
 	int n;
 	LPWSTR lp;
-	// "\<path-name>" ‚ÌŒ`®‚Ìê‡
+	// "\<path-name>" ã®å½¢å¼ã®å ´åˆ
 #ifdef _WINDOWS_
 	if (MyIsBackSlashW(lpszPathName[0]) && (!MyIsWinBackSlashW(lpszPathName[0]) || !MyIsWinBackSlashW(lpszPathName[1])))
 	{
@@ -1088,7 +1088,7 @@ extern "C" int __stdcall MyMakeFullPathFromCurDirW(LPCWSTR lpszPathName, LPWSTR 
 			if (::GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
 				return 0;
 			n = (int) ::GetCurrentDirectoryA(0, (LPSTR) lpszBuffer) + 1;
-			// lp ‚ğ LPSTR ‚Æ‚µ‚Ä—˜—p
+			// lp ã‚’ LPSTR ã¨ã—ã¦åˆ©ç”¨
 			lp = (LPWSTR) malloc(sizeof(CHAR) * n);
 			::GetCurrentDirectoryA(n, (LPSTR) lp);
 			::MultiByteToWideChar(CP_ACP, 0, (LPCSTR) lp, -1, lpszBuffer, nMaxLen);
@@ -1102,7 +1102,7 @@ extern "C" int __stdcall MyMakeFullPathFromCurDirW(LPCWSTR lpszPathName, LPWSTR 
 		{
 			lpszBuffer[nMaxLen - 1] = 0;
 			lp = MyFindBackSlashW(lpszBuffer + 2);
-			// ‘Š‘ÎƒpƒX‚ğ‚Â‚È‚°‚é•”•ª‚Ü‚Å“Í‚¢‚Ä‚¢‚È‚¢
+			// ç›¸å¯¾ãƒ‘ã‚¹ã‚’ã¤ãªã’ã‚‹éƒ¨åˆ†ã¾ã§å±Šã„ã¦ã„ãªã„
 			if (!lp)
 				return nMaxLen;
 			n = (int) (lp - lpszBuffer);
@@ -1116,7 +1116,7 @@ extern "C" int __stdcall MyMakeFullPathFromCurDirW(LPCWSTR lpszPathName, LPWSTR 
 		return MyCopyStringLenW(lpszBuffer + n, lpszPathName, nMaxLen);
 	}
 #endif
-	// â‘ÎƒpƒX‚È‚ç‚»‚Ì‚Ü‚Ü
+	// çµ¶å¯¾ãƒ‘ã‚¹ãªã‚‰ãã®ã¾ã¾
 	if (lpszPathName[1] == ':' || MyIsBackSlashW(lpszPathName[0]))
 	{
 		if (!lpszBuffer || !nMaxLen)
@@ -1124,7 +1124,7 @@ extern "C" int __stdcall MyMakeFullPathFromCurDirW(LPCWSTR lpszPathName, LPWSTR 
 		return MyCopyStringLenW(lpszBuffer, lpszPathName, nMaxLen);
 	}
 
-	// MyGetAbsolutePathW ‚ğg‚Á‚Äì¬
+	// MyGetAbsolutePathW ã‚’ä½¿ã£ã¦ä½œæˆ
 	n = ::GetCurrentDirectoryW(0, lpszBuffer);
 	if (!n)
 	{
@@ -1217,7 +1217,7 @@ void __stdcall MySearchPathString(LPCTSTR lpszPathName, CCCLString& rstrBuffer)
 }
 #endif
 
-// MyIsBackSlashA ‚È‚Ç‚Íg‚í‚È‚¢
+// MyIsBackSlashA ãªã©ã¯ä½¿ã‚ãªã„
 extern "C" DWORD __stdcall MyGetLongPathNameA(LPCSTR lpszPath, LPSTR lpszBuffer, DWORD dwMaxLen)
 {
 	LPSTR lpPath = _strdup(lpszPath);
@@ -1368,7 +1368,7 @@ OnClean:
 	return dwLen;
 }
 
-// MyIsBackSlashW ‚È‚Ç‚Íg‚í‚È‚¢
+// MyIsBackSlashW ãªã©ã¯ä½¿ã‚ãªã„
 extern "C" DWORD __stdcall MyGetLongPathNameW(LPCWSTR lpszPath, LPWSTR lpszBuffer, DWORD dwMaxLen)
 {
 	LPWSTR lpPath = _wcsdup(lpszPath);

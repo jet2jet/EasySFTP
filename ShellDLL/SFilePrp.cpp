@@ -197,7 +197,7 @@ bool CServerFilePropertyDialog::OnInitDialog(HWND hWndFocus)
 			register UINT nFMode = (UINT) pFirst->nUnixMode & 0777;
 			if (nMode != (UINT) -1)
 			{
-				// ‘Šˆá‚Ì‚ ‚é•”•ª‚Ìƒtƒ‰ƒO‚ð‰Á‚¦‚é
+				// ç›¸é•ã®ã‚ã‚‹éƒ¨åˆ†ã®ãƒ•ãƒ©ã‚°ã‚’åŠ ãˆã‚‹
 				if (nMode != nFMode)
 					nComplexMode |= nMode ^ nFMode;
 			}

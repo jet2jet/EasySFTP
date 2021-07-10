@@ -26,7 +26,7 @@ struct CINIFileData
 struct CSectionData
 {
 	CINIFileData* pINIFile;
-	// ƒZƒNƒVƒ‡ƒ“‚Ìƒf[ƒ^(ƒZƒNƒVƒ‡ƒ“–¼‚ÌŒã‚ë)‚ÌŠJŽnˆÊ’u
+	// ã‚»ã‚¯ã‚·ãƒ§ãƒ³ã®ãƒ‡ãƒ¼ã‚¿(ã‚»ã‚¯ã‚·ãƒ§ãƒ³åã®å¾Œã‚)ã®é–‹å§‹ä½ç½®
 	LPCBYTE lpSectionPos;
 };
 
@@ -188,7 +188,7 @@ static bool __stdcall IsEqualStringNoCaseWithCharW(LPCBYTE lpUTF8, LPCWSTR lpsz2
 		nUnicodeLen++;
 	while (nUnicodeLen--)
 	{
-		// ‚±‚±‚©‚ç UCS-4
+		// ã“ã“ã‹ã‚‰ UCS-4
 		if ((*lpUTF8 & 0xFC) == 0xFC)
 		{
 			// 1111110u 10vvvvvv 10wwwwww 10xxxxxx 10yyyyyy 10zzzzzz: 0uvvvvvv.wwwwwwxx.xxxxyyyy.yyzzzzzz
@@ -216,7 +216,7 @@ static bool __stdcall IsEqualStringNoCaseWithCharW(LPCBYTE lpUTF8, LPCWSTR lpsz2
 			dw2 |= (DWORD)(*lpUTF8++ & 0x3F) << 6;
 			dw2 |= (DWORD)(*lpUTF8++ & 0x3F);
 		}
-		// ‚±‚±‚Ü‚Å UCS-4
+		// ã“ã“ã¾ã§ UCS-4
 		else if ((*lpUTF8 & 0xE0) == 0xE0)
 		{
 			// 1110xxxx 10yyyyyy 10zzzzzz: xxxxyyyy.yyzzzzzz
@@ -232,7 +232,7 @@ static bool __stdcall IsEqualStringNoCaseWithCharW(LPCBYTE lpUTF8, LPCWSTR lpsz2
 		}
 		else if ((*lpUTF8 & 0x80) == 0x80)
 		{
-			// •s³‚Èƒf[ƒ^: ƒpƒX
+			// ä¸æ­£ãªãƒ‡ãƒ¼ã‚¿: ãƒ‘ã‚¹
 			dw2 = 0xFFFFFFFF;
 		}
 		else
@@ -307,7 +307,7 @@ static DWORD __stdcall _MyCalcUTF8Length(LPCWSTR lpszString)
 				dwCalcLength += 3 + 3;
 			else
 			{
-				// ‚±‚±‚©‚ç UCS-4
+				// ã“ã“ã‹ã‚‰ UCS-4
 				wSurrogate -= 0xD800ul;
 				dw = (dw - 0xDC00) | ((DWORD) wSurrogate << 10);
 				if (dw < 0x00200000ul)
@@ -447,7 +447,7 @@ LPWSTR __stdcall MyGetProfileStringW(PVOID lpSectionBuffer, LPCWSTR lpszKey, LPC
 
 			while (lp < lpNext)
 			{
-				// ‚±‚±‚©‚ç UCS-4
+				// ã“ã“ã‹ã‚‰ UCS-4
 				if ((*lp & 0xFC) == 0xFC)
 				{
 					// 1111110u 10vvvvvv 10wwwwww 10xxxxxx 10yyyyyy 10zzzzzz: 0uvvvvvv.wwwwwwxx.xxxxyyyy.yyzzzzzz
@@ -475,7 +475,7 @@ LPWSTR __stdcall MyGetProfileStringW(PVOID lpSectionBuffer, LPCWSTR lpszKey, LPC
 					dw2 |= (DWORD)(*lp++ & 0x3F) << 6;
 					dw2 |= (DWORD)(*lp++ & 0x3F);
 				}
-				// ‚±‚±‚Ü‚Å UCS-4
+				// ã“ã“ã¾ã§ UCS-4
 				else if ((*lp & 0xE0) == 0xE0)
 				{
 					// 1110xxxx 10yyyyyy 10zzzzzz: xxxxyyyy.yyzzzzzz
@@ -491,7 +491,7 @@ LPWSTR __stdcall MyGetProfileStringW(PVOID lpSectionBuffer, LPCWSTR lpszKey, LPC
 				}
 				else if ((*lp & 0x80) == 0x80)
 				{
-					// •s³‚Èƒf[ƒ^: ƒpƒX
+					// ä¸æ­£ãªãƒ‡ãƒ¼ã‚¿: ãƒ‘ã‚¹
 					dw2 = 0xFFFFFFFF;
 					lp++;
 				}
@@ -526,7 +526,7 @@ LPWSTR __stdcall MyGetProfileStringW(PVOID lpSectionBuffer, LPCWSTR lpszKey, LPC
 					}
 					lpEqual = _wcsdup(lpEqual);
 					free(lpBuffer);
-					// dwSectionPos ‚Í‚»‚Ì‚Ü‚Ü
+					// dwSectionPos ã¯ãã®ã¾ã¾
 					return lpEqual;
 				}
 			}
@@ -658,7 +658,7 @@ LPWSTR __stdcall MyGetNextProfileStringW(PVOID lpSectionBuffer, int nIndex, LPWS
 
 			while (lp < lpNext)
 			{
-				// ‚±‚±‚©‚ç UCS-4
+				// ã“ã“ã‹ã‚‰ UCS-4
 				if ((*lp & 0xFC) == 0xFC)
 				{
 					// 1111110u 10vvvvvv 10wwwwww 10xxxxxx 10yyyyyy 10zzzzzz: 0uvvvvvv.wwwwwwxx.xxxxyyyy.yyzzzzzz
@@ -686,7 +686,7 @@ LPWSTR __stdcall MyGetNextProfileStringW(PVOID lpSectionBuffer, int nIndex, LPWS
 					dw2 |= (DWORD)(*lp++ & 0x3F) << 6;
 					dw2 |= (DWORD)(*lp++ & 0x3F);
 				}
-				// ‚±‚±‚Ü‚Å UCS-4
+				// ã“ã“ã¾ã§ UCS-4
 				else if ((*lp & 0xE0) == 0xE0)
 				{
 					// 1110xxxx 10yyyyyy 10zzzzzz: xxxxyyyy.yyzzzzzz
@@ -702,7 +702,7 @@ LPWSTR __stdcall MyGetNextProfileStringW(PVOID lpSectionBuffer, int nIndex, LPWS
 				}
 				else if ((*lp & 0x80) == 0x80)
 				{
-					// •s³‚Èƒf[ƒ^: ƒpƒX
+					// ä¸æ­£ãªãƒ‡ãƒ¼ã‚¿: ãƒ‘ã‚¹
 					dw2 = 0xFFFFFFFF;
 				}
 				else

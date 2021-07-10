@@ -47,7 +47,7 @@
 
 DECLARE_INTERFACE_IID_(IEasySFTPListener, IUnknown, "AD29C042-B9E3-463a-9DF6-D7DA5B8D0199")
 {
-    // *** IUnknown methods ***
+	// *** IUnknown methods ***
 	STDMETHOD(QueryInterface)(THIS_ REFIID riid, void FAR* FAR* ppv) PURE;
 	STDMETHOD_(ULONG, AddRef)(THIS) PURE;
 	STDMETHOD_(ULONG, Release)(THIS) PURE;
@@ -63,7 +63,7 @@ EXTERN_C const IID IID_IEasySFTPListener;
 
 DECLARE_INTERFACE_IID_(IEasySFTPDirectory, IUnknown, "AD29C042-B9E3-463e-9DF6-D7DA5B8D0199")
 {
-    // *** IUnknown methods ***
+	// *** IUnknown methods ***
 	STDMETHOD(QueryInterface)(THIS_ REFIID riid, void FAR* FAR* ppv) PURE;
 	STDMETHOD_(ULONG, AddRef)(THIS) PURE;
 	STDMETHOD_(ULONG, Release)(THIS) PURE;
@@ -89,7 +89,7 @@ EXTERN_C const IID IID_IEasySFTPDirectory;
 
 DECLARE_INTERFACE_IID_(IEasySFTPRoot, IUnknown, "AD29C042-B9E3-463c-9DF6-D7DA5B8D0199")
 {
-    // *** IUnknown methods ***
+	// *** IUnknown methods ***
 	STDMETHOD(QueryInterface)(THIS_ REFIID riid, void FAR* FAR* ppv) PURE;
 	STDMETHOD_(ULONG, AddRef)(THIS) PURE;
 	STDMETHOD_(ULONG, Release)(THIS) PURE;

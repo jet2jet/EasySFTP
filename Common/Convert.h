@@ -35,11 +35,11 @@ extern "C" bool __stdcall IsUTF8File(HANDLE hFile);
 #endif
 extern "C" size_t __stdcall UTF8ToUnicode(LPCBYTE lpszUTF8, size_t dwByteLength, LPWSTR lpBuffer, size_t dwBufferLength);
 // bEndian: 0x00: Big, 0x01: Little(8bit*2*2), 0x02: Little(16bit*2), 0x03: Little(8bit*4)
-//   0x11223344 ‚É‚Â‚¢‚Ä
-//     bEndian == 0x00: 11 22 33 44 (0x11 22 33 44 ‚ğ‚»‚Ì‚Ü‚Ü) © ˆê”Ê“I‚È Big-endian
-//             == 0x01: 22 11 44 33 ((0x11 22)(33 44) ‚Ì ( ) “à‚ğƒŠƒo[ƒX)
-//             == 0x02: 33 44 11 22 (0x1122 3344 ‚ğƒŠƒo[ƒX)
-//             == 0x03: 44 33 22 11 (0x11 22 33 44 ‚ğƒŠƒo[ƒX) © ˆê”Ê“I‚È Little-endian
+//   0x11223344 ã«ã¤ã„ã¦
+//     bEndian == 0x00: 11 22 33 44 (0x11 22 33 44 ã‚’ãã®ã¾ã¾) â† ä¸€èˆ¬çš„ãª Big-endian
+//             == 0x01: 22 11 44 33 ((0x11 22)(33 44) ã® ( ) å†…ã‚’ãƒªãƒãƒ¼ã‚¹)
+//             == 0x02: 33 44 11 22 (0x1122 3344 ã‚’ãƒªãƒãƒ¼ã‚¹)
+//             == 0x03: 44 33 22 11 (0x11 22 33 44 ã‚’ãƒªãƒãƒ¼ã‚¹) â† ä¸€èˆ¬çš„ãª Little-endian
 enum EndianConstants
 {
 	endBigEndian = 0,

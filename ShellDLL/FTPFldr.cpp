@@ -1660,7 +1660,7 @@ void CSFTPFolderFTP::_OnFTPSocketReceiveThreadUnsafe()
 							//		CFTPFileItem* pItem = m_wndListViewServer.EndCreateLabelEdit(&pDir->strRemoteDirectory);
 							//		if (pItem)
 							//		{
-							//			// 改めてサーバーから属性情報を得る
+							//			// 謾ｹ繧√※繧ｵ繝ｼ繝舌�ｼ縺九ｉ螻樊ｧ諠�蝣ｱ繧貞ｾ励ｋ
 							//			CFTPWaitAttrData* pAttr = new CFTPWaitAttrData();
 							//			pAttr->bIsDir = (pItem->type == fitypeDir);
 							//			pAttr->strFileName = pDir->strRemoteDirectory;

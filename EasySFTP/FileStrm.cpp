@@ -159,37 +159,37 @@ STDMETHODIMP CFileStream::Write(const void* pv, ULONG cb, ULONG* pcbWritten)
 
 STDMETHODIMP CFileStream::SetSize(ULARGE_INTEGER)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CFileStream::CopyTo(IStream *, ULARGE_INTEGER, ULARGE_INTEGER *, ULARGE_INTEGER *)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CFileStream::Commit(DWORD)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CFileStream::Revert()
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CFileStream::LockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CFileStream::UnlockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CFileStream::Clone(IStream**)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CFileStream::Seek(LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, ULARGE_INTEGER *lpNewFilePointer)

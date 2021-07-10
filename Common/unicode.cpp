@@ -420,8 +420,8 @@ void __stdcall MyGetFullPathStringW(LPCWSTR lpszPath, LPCWSTR lpszFile, CMyStrin
 void __stdcall MyGetAbsolutePathStringW(LPCWSTR lpszRelativePathName, LPCWSTR lpszDirectory, CMyStringW& rstrBuffer)
 {
 	LPWSTR lp;
-	// lpszDirectory �����΃p�X�Ȃ炻�̂܂܃R�s�[
-	// �� "\" ����n�܂���̂͐�΃p�X�Ƃ݂Ȃ�
+	// lpszDirectory が相対パスならそのままコピー
+	// ※ "\" から始まるものは絶対パスとみなす
 	if (!MyIsBackSlashW(*lpszDirectory) &&
 		lpszDirectory[1] != L':')
 	{
@@ -429,8 +429,8 @@ void __stdcall MyGetAbsolutePathStringW(LPCWSTR lpszRelativePathName, LPCWSTR lp
 		return;
 	}
 
-	// lpszRelativePathName ����΃p�X�Ȃ炻�̂܂܃R�s�[
-	// �� "\" ����n�܂���̂͐�΃p�X�Ƃ݂Ȃ�
+	// lpszRelativePathName が絶対パスならそのままコピー
+	// ※ "\" から始まるものは絶対パスとみなす
 	if (MyIsBackSlashW(*lpszRelativePathName) ||
 		(lpszRelativePathName[1] == L':'))
 	{

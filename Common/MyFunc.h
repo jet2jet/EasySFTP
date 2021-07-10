@@ -35,8 +35,8 @@ void __stdcall SyncDialogData(HWND hWnd, int nID, DWORD& dw, DWORD dwBit, bool b
 void __stdcall SyncDialogData(HWND hWnd, int nID, BYTE& by, BYTE byBit, bool bGet);
 void __stdcall SyncDialogData(HWND hWnd, int nID, bool& b, bool bGet);
 
-// ˆÈ‰º‚Ì•¶š—ñŠÖ”‚Ì–ß‚è’l‚Í‚·‚×‚Ä NULL •¶š‚ğŠÜ‚Ü‚È‚¢‚ªA
-// •K—v‚Èƒoƒbƒtƒ@‚ÌƒTƒCƒY‚Í NULL •¶š‚ğŠÜ‚Ş
+// ä»¥ä¸‹ã®æ–‡å­—åˆ—é–¢æ•°ã®æˆ»ã‚Šå€¤ã¯ã™ã¹ã¦ NULL æ–‡å­—ã‚’å«ã¾ãªã„ãŒã€
+// å¿…è¦ãªãƒãƒƒãƒ•ã‚¡ã®ã‚µã‚¤ã‚ºã¯ NULL æ–‡å­—ã‚’å«ã‚€
 
 HANDLE __stdcall MyCreateFile(LPCTSTR lpszFileName, DWORD dwDesiredAccess, DWORD dwShareMode = 0,
 	DWORD dwCreationDisposition = CREATE_ALWAYS, DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL);
@@ -65,37 +65,37 @@ extern "C" LPSTR __stdcall MyFindBackSlashReverseA(LPCSTR lpszString);
 extern "C" LPWSTR __stdcall MyFindBackSlashReverseW(LPCWSTR lpszString);
 extern "C" LPSTR __stdcall MyFindReturnA(LPCSTR lpszString);
 extern "C" LPWSTR __stdcall MyFindReturnW(LPCWSTR lpszString);
-// pszPath ‚©‚ç "..\" ‚Ì‚æ‚¤‚È•”•ª‚ğæ‚èœ‚¢‚Ä³‚µ‚¢ƒpƒX‚É•ÏŠ·
-// ((void*) pszPath == (void*) pszOutput ‚Å‚à³í‚É“®ì)
+// pszPath ã‹ã‚‰ "..\" ã®ã‚ˆã†ãªéƒ¨åˆ†ã‚’å–ã‚Šé™¤ã„ã¦æ­£ã—ã„ãƒ‘ã‚¹ã«å¤‰æ›
+// ((void*) pszPath == (void*) pszOutput ã§ã‚‚æ­£å¸¸ã«å‹•ä½œ)
 extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput);
 extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutput);
-// lpszRelativePathName ‚Æ lpszDirectory (ƒfƒBƒŒƒNƒgƒŠƒpƒX‚Å‚ ‚èƒtƒ@ƒCƒ‹–¼‚Å‚Í‚È‚¢)
-// ‚ğ”äŠr‚µ‚ÄAâ‘ÎƒpƒX‚ğì¬ (ÀÛ‚Í MyGetFullPath + MyRemoveDotsFromPath)
+// lpszRelativePathName ã¨ lpszDirectory (ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªãƒ‘ã‚¹ã§ã‚ã‚Šãƒ•ã‚¡ã‚¤ãƒ«åã§ã¯ãªã„)
+// ã‚’æ¯”è¼ƒã—ã¦ã€çµ¶å¯¾ãƒ‘ã‚¹ã‚’ä½œæˆ (å®Ÿéš›ã¯ MyGetFullPath + MyRemoveDotsFromPath)
 extern "C" int __stdcall MyGetAbsolutePathA(LPCSTR lpszRelativePathName, LPCSTR lpszDirectory, LPSTR lpszBuffer, int nMaxLen);
 extern "C" int __stdcall MyGetAbsolutePathW(LPCWSTR lpszRelativePathName, LPCWSTR lpszDirectory, LPWSTR lpszBuffer, int nMaxLen);
 extern "C" LPSTR __stdcall MyGetAbsolutePath2A(LPCSTR lpszRelativePathName, LPCSTR lpszDirectory);
 extern "C" LPWSTR __stdcall MyGetAbsolutePath2W(LPCWSTR lpszRelativePathName, LPCWSTR lpszDirectory);
-// lpszFullPathName ‚Æ lpszDirectory (ƒfƒBƒŒƒNƒgƒŠƒpƒX‚Å‚ ‚èƒtƒ@ƒCƒ‹–¼‚Å‚Í‚È‚¢)
-// ‚ğ”äŠr‚µ‚ÄA‘Š‘ÎƒpƒX‚ğì¬
+// lpszFullPathName ã¨ lpszDirectory (ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªãƒ‘ã‚¹ã§ã‚ã‚Šãƒ•ã‚¡ã‚¤ãƒ«åã§ã¯ãªã„)
+// ã‚’æ¯”è¼ƒã—ã¦ã€ç›¸å¯¾ãƒ‘ã‚¹ã‚’ä½œæˆ
 extern "C" int __stdcall MyGetRelativePathA(LPCSTR lpszFullPathName, LPCSTR lpszDirectory, LPSTR lpszBuffer, int nMaxLen);
 extern "C" int __stdcall MyGetRelativePathW(LPCWSTR lpszFullPathName, LPCWSTR lpszDirectory, LPWSTR lpszBuffer, int nMaxLen);
 extern "C" LPSTR __stdcall MyGetRelativePath2A(LPCSTR lpszFullPathName, LPCSTR lpszDirectory);
 extern "C" LPWSTR __stdcall MyGetRelativePath2W(LPCWSTR lpszFullPathName, LPCWSTR lpszDirectory);
-// Œ»İ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ğg‚Á‚Äâ‘ÎƒpƒX‚ğì¬
+// ç¾åœ¨ã®ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã‚’ä½¿ã£ã¦çµ¶å¯¾ãƒ‘ã‚¹ã‚’ä½œæˆ
 extern "C" int __stdcall MyMakeFullPathFromCurDirA(LPCSTR lpszPathName, LPSTR lpszBuffer, int nMaxLen);
 extern "C" int __stdcall MyMakeFullPathFromCurDirW(LPCWSTR lpszPathName, LPWSTR lpszBuffer, int nMaxLen);
 extern "C" LPSTR __stdcall MyMakeFullPathFromCurDir2A(LPCSTR lpszPathName);
 extern "C" LPWSTR __stdcall MyMakeFullPathFromCurDir2W(LPCWSTR lpszPathName);
-// ’T‚¹‚éêŠ‚©‚çƒtƒ@ƒCƒ‹‚ğŒ©‚Â‚¯‚Äâ‘ÎƒpƒX‚ğì¬
+// æ¢ã›ã‚‹å ´æ‰€ã‹ã‚‰ãƒ•ã‚¡ã‚¤ãƒ«ã‚’è¦‹ã¤ã‘ã¦çµ¶å¯¾ãƒ‘ã‚¹ã‚’ä½œæˆ
 extern "C" int __stdcall MySearchPath(LPCTSTR lpszPathName, LPTSTR lpszBuffer, int nMaxLen);
 extern "C" DWORD __stdcall MyGetLongPathNameA(LPCSTR lpszPath, LPSTR lpszBuffer, DWORD dwMaxLen);
-// ¦ Windows NT Œn‚Ì‚İ
+// â€» Windows NT ç³»ã®ã¿
 extern "C" DWORD __stdcall MyGetLongPathNameW(LPCWSTR lpszPath, LPWSTR lpszBuffer, DWORD dwMaxLen);
 extern "C" bool __stdcall CompareFilePathA(LPCSTR lpszPath1, LPCSTR lpszPath2);
 extern "C" bool __stdcall CompareFilePathLenA(LPCSTR lpszPath1, LPCSTR lpszPath2, int nLen);
-// ¦ Windows NT Œn‚Ì‚İ
+// â€» Windows NT ç³»ã®ã¿
 extern "C" bool __stdcall CompareFilePathW(LPCWSTR lpszPath1, LPCWSTR lpszPath2);
-// ¦ Windows NT Œn‚Ì‚İ
+// â€» Windows NT ç³»ã®ã¿
 extern "C" bool __stdcall CompareFilePathLenW(LPCWSTR lpszPath1, LPCWSTR lpszPath2, int nLen);
 LPSTR __stdcall MyFindStringNoCaseA(LPSTR lpszTarget, LPSTR lpszFind);
 LPCSTR __stdcall MyFindStringNoCaseA(LPCSTR lpszTarget, LPCSTR lpszFind);

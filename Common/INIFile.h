@@ -9,7 +9,7 @@
 
 DECLARE_HANDLE(HINIFILE);
 
-// INI ƒtƒ@ƒCƒ‹‚ðƒtƒ@ƒCƒ‹ƒnƒ“ƒhƒ‹‚©‚ç“Ç‚Ýž‚Þ (‚·‚×‚Ä UTF-8 ‚Å)
+// INI ãƒ•ã‚¡ã‚¤ãƒ«ã‚’ãƒ•ã‚¡ã‚¤ãƒ«ãƒãƒ³ãƒ‰ãƒ«ã‹ã‚‰èª­ã¿è¾¼ã‚€ (ã™ã¹ã¦ UTF-8 ã§)
 
 HINIFILE __stdcall MyLoadINIFileA(LPCSTR lpszFileName, bool bUseComment);
 HINIFILE __stdcall MyLoadINIFileW(LPCWSTR lpszFileName, bool bUseComment);
@@ -35,7 +35,7 @@ void __stdcall MyEndReadProfileSectionW(PVOID lpSectionBuffer);
 // if hINIFile is NULL, then this function does nothing
 void __stdcall MyCloseINIFile(HINIFILE hINIFile);
 
-// INI ƒtƒ@ƒCƒ‹‚É‚È‚é‚æ‚¤‚È‘‚«ž‚Ý‚ðs‚¤
+// INI ãƒ•ã‚¡ã‚¤ãƒ«ã«ãªã‚‹ã‚ˆã†ãªæ›¸ãè¾¼ã¿ã‚’è¡Œã†
 // MyWriteINISectionW -> MyWriteINIValueW -> MyWriteINIValueW -> ... (-> MyWriteCRLFW -> MyWriteINISectionW -> ...)
 void __stdcall MyWriteStringW(HANDLE hFile, LPCWSTR lpszString);
 void __stdcall MyWriteCRLFW(HANDLE hFile);

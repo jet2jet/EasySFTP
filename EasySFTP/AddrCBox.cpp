@@ -63,8 +63,8 @@ HWND CAddressComboBox::Create(int x, int y, int cx, int cy, HWND hWndParent, UIN
 		x, y, cx, cy, hWndParent, (HMENU) UIntToPtr(uID));
 }
 
-// Šù‚Éq‚ª1‚Â‚ ‚éê‡Ad•¡’Ç‰Á‚Í‚µ‚È‚¢ (2‚ÂˆÈã‚Ìê‡‚Íl—¶‚µ‚Ä‚¢‚È‚¢)
-// –ß‚è’l: MyComputer‚ª‚ ‚ê‚Î‚»‚Ìƒf[ƒ^‚ğ•Ô‚·
+// æ—¢ã«å­ãŒ1ã¤ã‚ã‚‹å ´åˆã€é‡è¤‡è¿½åŠ ã¯ã—ãªã„ (2ã¤ä»¥ä¸Šã®å ´åˆã¯è€ƒæ…®ã—ã¦ã„ãªã„)
+// æˆ»ã‚Šå€¤: MyComputerãŒã‚ã‚Œã°ãã®ãƒ‡ãƒ¼ã‚¿ã‚’è¿”ã™
 static CAddressComboBoxItemData* __stdcall AddChildren(HWND hWnd,
 	CAddressComboBoxItemData* pParent, IShellFolder* pFolder)
 {

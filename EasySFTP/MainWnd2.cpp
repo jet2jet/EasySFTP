@@ -686,7 +686,7 @@ static HRESULT __stdcall GetSelectedIDList(IShellView* ppshv, int nIndex, int* p
 			pDesktopFolder->Release();
 			if (FAILED(hr))
 				return hr;
-			// デスクトップのRelative == Absolute
+			// 繝�繧ｹ繧ｯ繝医ャ繝励�ｮRelative == Absolute
 			pidl2 = (PIDLIST_ABSOLUTE) pidl;
 		}
 	}

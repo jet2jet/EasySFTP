@@ -211,7 +211,7 @@ int CMyWinThread::ExitInstance()
 
 int CMyWinThread::Run()
 {
-	// ƒƒCƒ“ ƒƒbƒZ[ƒW ƒ‹[ƒv:
+	// ãƒ¡ã‚¤ãƒ³ ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ ãƒ«ãƒ¼ãƒ—:
 	long c;
 	bool bExit = false;
 	while (!bExit)
@@ -220,14 +220,14 @@ int CMyWinThread::Run()
 			return ExitInstance();
 
 		c = 0;
-		// ƒLƒ…[‚ÉƒƒbƒZ[ƒW‚ª–³‚¢ŠÔ OnIdle ‚ğŒÄ‚Ñ‘±‚¯‚é
+		// ã‚­ãƒ¥ãƒ¼ã«ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ãŒç„¡ã„é–“ OnIdle ã‚’å‘¼ã³ç¶šã‘ã‚‹
 		while (!::PeekMessage(&m_msg, NULL, 0, 0, PM_NOREMOVE))
 		{
 			if (!OnIdle(c++))
 				break;
 		}
-		// ƒLƒ…[‚ÉƒƒbƒZ[ƒW‚ª‚ ‚éŒÀ‚èA‚»‚ê‚ç‚ğˆ—‚·‚é
-		// (OnIdle ‚ª false ‚ğ•Ô‚µ‚Ä–ß‚Á‚½ê‡AGetMessage ‚Å‘Ò‹@‚·‚é)
+		// ã‚­ãƒ¥ãƒ¼ã«ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ãŒã‚ã‚‹é™ã‚Šã€ãã‚Œã‚‰ã‚’å‡¦ç†ã™ã‚‹
+		// (OnIdle ãŒ false ã‚’è¿”ã—ã¦æˆ»ã£ãŸå ´åˆã€GetMessage ã§å¾…æ©Ÿã™ã‚‹)
 		while (true)
 		{
 			if (!PumpMessage())

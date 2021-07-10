@@ -36,7 +36,7 @@ inline void __stdcall CallConstructor(T* ptr)
 
 DECLARE_INTERFACE_IID_(IEasySFTPInternal, IUnknown, "AD29C042-B9E3-4638-9DF6-D7DA5B8D0199")
 {
-    // *** IUnknown methods ***
+	// *** IUnknown methods ***
 	STDMETHOD(QueryInterface)(THIS_ REFIID riid, void FAR* FAR* ppv) PURE;
 	STDMETHOD_(ULONG, AddRef)(THIS) PURE;
 	STDMETHOD_(ULONG, Release)(THIS) PURE;
@@ -70,9 +70,9 @@ EXTERN_C const GUID FAR SID_SInPlaceBrowser;
 
 struct CSFTPRootItem
 {
-    WORD cbSize;
-    WORD wOuter;
-    WORD cbInner;
+	WORD cbSize;
+	WORD wOuter;
+	WORD cbInner;
 	USHORT uSignature;
 };
 
@@ -95,9 +95,9 @@ struct CSFTPHostItem : public CSFTPRootItem
 
 struct CSFTPFileItem
 {
-    WORD cbSize;
-    WORD wOuter;
-    WORD cbInner;
+	WORD cbSize;
+	WORD wOuter;
+	WORD cbInner;
 	USHORT uSignature;
 	union
 	{

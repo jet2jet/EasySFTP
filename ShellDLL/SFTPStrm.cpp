@@ -330,7 +330,7 @@ STDMETHODIMP CSFTPStream::Write(const void* pv, ULONG cb, ULONG* pcbWritten)
 
 STDMETHODIMP CSFTPStream::SetSize(ULARGE_INTEGER)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CSFTPStream::CopyTo(IStream* pstm, ULARGE_INTEGER cb, ULARGE_INTEGER* pcbRead, ULARGE_INTEGER* pcbWritten)
@@ -366,27 +366,27 @@ STDMETHODIMP CSFTPStream::CopyTo(IStream* pstm, ULARGE_INTEGER cb, ULARGE_INTEGE
 
 STDMETHODIMP CSFTPStream::Commit(DWORD)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CSFTPStream::Revert()
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CSFTPStream::LockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CSFTPStream::UnlockRegion(ULARGE_INTEGER, ULARGE_INTEGER, DWORD)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CSFTPStream::Clone(IStream**)
 {
-    return E_NOTIMPL;
+	return E_NOTIMPL;
 }
 
 STDMETHODIMP CSFTPStream::Seek(LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, ULARGE_INTEGER* lpNewFilePointer)
@@ -429,7 +429,7 @@ STDMETHODIMP CSFTPStream::Seek(LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, U
 	m_bufferCache.Empty();
 	if (lpNewFilePointer)
 		lpNewFilePointer->QuadPart = m_uliOffset.QuadPart;
-    return S_OK;
+	return S_OK;
 }
 
 STDMETHODIMP CSFTPStream::Stat(STATSTG* pStatstg, DWORD grfStatFlag)

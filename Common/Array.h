@@ -1,89 +1,89 @@
 // Array.h v2.16 (2011/12/11) Copyright (C) 2011 Kuri-Applcations
 //  v2.16
 //    ---CMySimpleArrayT---
-//     �C��
-//      (�����ȃC���f�b�N�X�ɂ�����Break���߂�ǉ�)
-//     �ǉ�
+//     修正
+//      (無効なインデックスにおけるBreak命令を追加)
+//     追加
 //      GrowCount, RemoveAllCompletely
 //  v2.15
 //    ---CMySimpleArrayT---
-//     �C��
+//     修正
 //      _QuickSortInner
 //    ---Global---
-//     �ǉ�
+//     追加
 //      DoQuickSortArray, DoQuickSortArrayEx
 //  v2.14
 //    ---CMySimpleArrayT---
-//     �C��
+//     修正
 //      CompareItem
 //
-//     �ǉ�
+//     追加
 //      Sort
 //  v2.13
 //    ---CMySimpleArrayT---
-//     �C��
+//     修正
 //      CopyArray, MoveArray, SetArray (for memory leak problem)
 //
-//     �ǉ�
+//     追加
 //      CMyPtrArray, CMyPtrArrayT<T>, CMyPtrArrayPtrT<PTR_T> (for reducing code size for templates)
 //  v2.12
 //    ---CMySimpleArrayT---
-//     �C��
+//     修正
 //      AddArray
 //    ---CMyStringArrayA/W---
-//     �ǉ�
+//     追加
 //      CMyStringArrayA/W(const CMyStringArrayA/W&), CMyStringArrayA/W(ptr, count)
 //  v2.11
 //    ---CMySimpleArrayT---
-//     �ǉ�
+//     追加
 //      CMySimpleArrayT(const CMySimpleArrayT<T, ARG_T>&), Enqueue, Dequeue,
 //        GetFirstStackPosition, GetNextStackPosition,
 //        GetFirstQueuePosition, GetNextQueuePosition
-//     �C��
+//     修正
 //      Add, InsertItem
 //    ---CMyStringArray---
-//     �C��
+//     修正
 //      CMyStringArray -> CMyStringArrayA, CMyStringArrayW
 //  v2.10
 //    ---CMySimpleArrayT---
-//     �ǉ�
+//     追加
 //      CMySimpleArrayT(ptr, count)
 //      Push, Pop
 //  v2.09.2
-//     �C��
+//     修正
 //      operator delete (void*, void*)
 //    ---CMySimpleArrayT---
-//     �C��
+//     修正
 //      InsertItem, InsertArray
 //  v2.09
 //    ---CMySimpleArrayT---
-//     �ǉ�
+//     追加
 //      SortItems
 //  v2.08
 //    ---CMySimpleArrayT---
-//     �C��
+//     修正
 //      CopyArray, AddArray
 //  v2.07
 //    ---CMySimpleArrayT---
-//     �ǉ�
+//     追加
 //      InsertArray GetIndexFromPtr
 //      m_dwParam
 //    ---CMyStringArray---
-//     �ǉ�
+//     追加
 //      SetCaseSensitive
 //  v2.06
 //    ---CMySimpleArrayT---
-//     �C��
+//     修正
 //      SetItem
 //  v2.05
 //    ---CMySimpleArrayT---
-//     �C��
+//     修正
 //      Add(item), NewItem, DeleteItem
 //  v2.04
 //    ---CMySimpleArrayT---
-//     �ǉ�
+//     追加
 //      Add(void), AddArray, GetItemPtr, InsertItem(int), (protected) NewItem
-//     �C��
+//     修正
 //      SetCount
 
 #ifndef __ARRAY_H__
@@ -180,8 +180,8 @@ protected:
 
 	static void __stdcall MoveItem(T* p1, const T* p2, DWORD dwParam, int nCount = 1, bool bNewItem = false);
 	static int __stdcall CompareItem(const T* p1, const T* p2, DWORD dwParam);
-	// Add(void), InsertItem(int), SetCount ���g���Ƃ��ɂ̂ݎg�p
-	// (�K�v�ɉ����� operator new (size_t, void*) ���Ăяo���C���v�������g��)
+	// Add(void), InsertItem(int), SetCount を使うときにのみ使用
+	// (必要に応じて operator new (size_t, void*) を呼び出すインプリメントを)
 	static void __stdcall NewItem(T* p, DWORD dwParam, int nCount = 1);
 	static void __stdcall DeleteItem(T* p, DWORD dwParam, int nCount = 1);
 	static void __stdcall CloneToItem(T* pDest, const T* pSrc, DWORD dwParam);
@@ -335,7 +335,7 @@ template <class T, class ARG_T> int CMySimpleArrayT<T, ARG_T>::Add()
 		m_pArray = AllocMemory(sizeof(T) * (m_nMemCount = (m_nCount + 1)), m_dwParam);
 	else if (m_nCount >= m_nMemCount)
 		m_pArray = ReAllocMemory(m_pArray, (m_nMemCount = (m_nCount + 1)) * sizeof(T), m_dwParam);
-	// �w��f�[�^�������ꍇ�͏������̂�
+	// 指定データが無い場合は初期化のみ
 	NewItem(&m_pArray[m_nCount++], m_dwParam, 1);
 	return m_nCount - 1;
 }
@@ -415,7 +415,7 @@ template <class T, class ARG_T> void CMySimpleArrayT<T, ARG_T>::SetCount(int nCo
 			RemoveAll();
 		else
 		{
-			// �]�v�ȍ��ڂ̓f�[�^�̂ݍ폜
+			// 余計な項目はデータのみ削除
 			DeleteItem(&m_pArray[nCount], m_dwParam, m_nCount - nCount);
 		}
 	}
@@ -426,7 +426,7 @@ template <class T, class ARG_T> void CMySimpleArrayT<T, ARG_T>::SetCount(int nCo
 			m_pArray = ReAllocMemory(m_pArray, nCount * sizeof(T), m_dwParam);
 			m_nMemCount = nCount;
 		}
-		// ���ł��g����悤�ɏ��������Ă���
+		// いつでも使えるように初期化しておく
 		NewItem(&m_pArray[m_nCount], m_dwParam, nCount - m_nCount);
 	}
 	m_nCount = nCount;

@@ -432,7 +432,7 @@ LRESULT CTransferDialog::OnDrawItem(WPARAM wParam, LPARAM lParam)
 							uli.QuadPart = pItem->uliCurrent / (dwPassTime / 1000);
 						FileSizeToString(uli, strSizeRate);
 
-						// �c�莞�Ԃ��v�Z
+						// 残り時間を計算
 						if (!uli.QuadPart)
 							uli.QuadPart = 1024;
 						uli.QuadPart = ((pItem->uliMax - pItem->uliCurrent) * 1000 / uli.QuadPart);
@@ -509,8 +509,8 @@ LRESULT CTransferDialog::OnContextMenu(WPARAM wParam, LPARAM lParam)
 			}
 			else
 			{
-				// �{�� pt �̓X�N���[�����W�̂͂������A�Ȃ����N���C�A���g���W�������Ă���̂�
-				// �݊����̂��߂ɂ��ʒu���擾������
+				// 本来 pt はスクリーン座標のはずだが、なぜかクライアント座標が入っているので
+				// 互換性のためにも位置を取得し直す
 				::GetCursorPos(&pt);
 			}
 			m_pvCurItem = p;

@@ -196,7 +196,7 @@ void __stdcall EnterTrack(CSplitterData* pData)
 	sptn.hdr.code = SPN_TRACKING;
 	sptn.nPos = _PointToPos(pData->bHorz, hWndP, pt);
 	if (::SendMessage(hWndP, WM_NOTIFY, (WPARAM) (sptn.hdr.idFrom), (LPARAM) &sptn))
-        _PointFromPos(pData->bHorz, hWndP, pt, sptn.nPos);
+		_PointFromPos(pData->bHorz, hWndP, pt, sptn.nPos);
 	ptBefore.x = pt.x;
 	ptBefore.y = pt.y;
 	::DrawTrackRect(pData->bHorz, hDC, &rcWindow, pt, ptBefore, hbr);

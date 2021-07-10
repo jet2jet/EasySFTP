@@ -72,9 +72,9 @@ public:
 protected:
 	BYTE m_fTextMode;
 	CExBuffer m_buffer;
-	// �ϊ��ł��Ȃ������f�[�^
-	// [Read] ���ɐ��f�[�^���擾����ۂɐ擪�Ɍ��������
-	// [Write] ���� Write �Ăяo�����ɐ擪�ɒǉ������
+	// 変換できなかったデータ
+	// [Read] 次に生データを取得する際に先頭に結合される
+	// [Write] 次の Write 呼び出し時に先頭に追加される
 	CExBuffer m_bufferChopped;
 	bool m_bBeforeWrite;
 	IStream* m_pStream;
@@ -376,7 +376,7 @@ STDMETHODIMP CTextStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 	nLen = (ULONG) m_buffer.GetLength();
 	while (true)
 	{
-		// nLen �ɂ̓o�b�t�@����Ă���f�[�^�T�C�Y�������Ă���
+		// nLen にはバッファされているデータサイズが入っている
 		if (nLen > 0)
 		{
 			if (cb <= nLen)
@@ -391,12 +391,12 @@ STDMETHODIMP CTextStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 			pv = ((BYTE*) pv) + nLen2;
 			cb -= nLen2;
 		}
-		// pvb: ���s�R�[�h�ϊ���̃f�[�^������ʒu
+		// pvb: 改行コード変換後のデータを入れる位置
 		pvb = m_buffer.AppendToBuffer(NULL, TFS_BUFFER_SIZE * 2);
 		if (!pvb)
 			return E_OUTOFMEMORY;
 
-		// pvb2: ���s�R�[�h�ϊ��O�̃f�[�^������ʒu
+		// pvb2: 改行コード変換前のデータを入れる位置
 		if (!m_bufferChopped.IsEmpty())
 		{
 			pvb2 = m_buffer.AppendToBuffer(NULL, TFS_BUFFER_SIZE + m_bufferChopped.GetLength());
@@ -441,7 +441,7 @@ STDMETHODIMP CTextStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 		//if (nLen != TFS_BUFFER_SIZE)
 		//	m_buffer.DeleteLastData((size_t) (TFS_BUFFER_SIZE - nLen));
 
-		// �o�b�t�@�Ċ��蓖�Ăɂ��ʒu�ύX�𒲐�
+		// バッファ再割り当てによる位置変更を調整
 		pvb = m_buffer;
 
 		if ((nLen2 = (ULONG) m_bufferChopped.GetLength()) != 0)
@@ -452,7 +452,7 @@ STDMETHODIMP CTextStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 		}
 		ULONG nLenOld = nLen;
 		nLen = ConvertReturnMode(true, m_fTextMode, pvb, pvb2, nLen, &nLen2);
-		// ���g�p�̃f�[�^(�ϊ��s�\�������f�[�^)������΃L�[�v���Ă���
+		// 未使用のデータ(変換不可能だったデータ)があればキープしておく
 		if (nLen2)
 		{
 			if (!m_bufferChopped.AppendToBuffer(((const BYTE*) pvb2) + nLenOld - nLen2, (size_t) nLen2))
@@ -491,7 +491,7 @@ STDMETHODIMP CTextStream::Write(const void* pv, ULONG cb, ULONG* pcbWritten)
 	while (true)
 	{
 		m_buffer.Empty();
-		// pvb: ���ۂɏ������ރf�[�^
+		// pvb: 実際に書き込むデータ
 		pvb = m_buffer.AppendToBuffer(NULL, TFS_BUFFER_SIZE * 2);
 		if (!pvb)
 			return E_OUTOFMEMORY;
@@ -507,12 +507,12 @@ STDMETHODIMP CTextStream::Write(const void* pv, ULONG cb, ULONG* pcbWritten)
 		}
 		else
 			pvbPos = NULL;
-		// pvb2: ���̃f�[�^
+		// pvb2: 元のデータ
 		pvb2 = m_buffer.AppendToBuffer(NULL, (size_t) nLen);
 		if (!pvb2)
 			return E_OUTOFMEMORY;
 
-		// �o�b�t�@�Ċ��蓖�Ăɂ��ʒu�ύX�𒲐�
+		// バッファ再割り当てによる位置変更を調整
 		pvb = m_buffer;
 		if (pvbPos)
 			pvbPos = ((BYTE*) pvb) + TFS_BUFFER_SIZE * 2;
@@ -546,24 +546,24 @@ STDMETHODIMP CTextStream::Write(const void* pv, ULONG cb, ULONG* pcbWritten)
 		}
 		if (nLen2 != nLen)
 		{
-			// �T�C�Y�v�Z�̂��߉��s�R�[�h���t�ϊ�����
+			// サイズ計算のため改行コードを逆変換する
 			if (!m_buffer.Collapse((size_t) nLen2))
 			{
 				m_buffer.Empty();
 				return E_FAIL;
 			}
-			// pvb �ɂ͕ϊ���̃f�[�^�������Ă���
+			// pvb には変換後のデータが入っている
 			pvb = m_buffer;
 			pvb2 = m_buffer.AppendToBuffer(NULL, nLen2 * 2);
 			nUsedLen = ConvertReturnMode(true, m_fTextMode, pvb2, pvb, nLen2, &nLen);
 			nUsedLen -= nOldChoppedLen;
 			//nUsedLen += nLen;
-			// nLen: 1 �Ȃ瑱�s�A0 �Ȃ烋�[�v�I�� (�����ł̓��[�v���I��点��)
+			// nLen: 1 なら続行、0 ならループ終了 (ここではループを終わらせる)
 			nLen = 0;
 		}
 		else
 		{
-			// nLen: 1 �Ȃ瑱�s�A0 �Ȃ烋�[�v�I��
+			// nLen: 1 なら続行、0 ならループ終了
 			if (cb > TFS_BUFFER_SIZE)
 				nLen = 1;
 			else
@@ -579,12 +579,12 @@ STDMETHODIMP CTextStream::Write(const void* pv, ULONG cb, ULONG* pcbWritten)
 	if (pcbWritten)
 		*pcbWritten = nWritten;
 
-	// Read ���Ă΂�Ă����Ȃ��悤�Ƀo�b�t�@����ɂ���
+	// Read が呼ばれても問題ないようにバッファを空にする
 	m_buffer.Empty();
 	return S_OK;
 }
 
-// �I���W�i���� CopyTo �ł͂Ȃ��A���s�R�[�h��ϊ��ł���悤�� Read/Write ���g��
+// オリジナルの CopyTo ではなく、改行コードを変換できるように Read/Write を使う
 STDMETHODIMP CTextStream::CopyTo(IStream* pstm, ULARGE_INTEGER cb, ULARGE_INTEGER* pcbRead, ULARGE_INTEGER* pcbWritten)
 {
 	if (!pstm)
@@ -618,8 +618,8 @@ STDMETHODIMP CTextStream::CopyTo(IStream* pstm, ULARGE_INTEGER cb, ULARGE_INTEGE
 
 STDMETHODIMP CTextStream::Seek(LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, ULARGE_INTEGER* lpNewFilePointer)
 {
-	// �|�C���^�ړ�����������ꍇ�̓o�b�t�@����ɂ���
-	// (�擪�E���[����̈ړ��͏�Ɉړ�������̂ƌ��Ȃ�)
+	// ポインタ移動が発生する場合はバッファを空にする
+	// (先頭・末端からの移動は常に移動するものと見なす)
 	if (dwOrigin != STREAM_SEEK_CUR || liDistanceToMove.QuadPart != 0)
 	{
 		m_bufferChopped.Empty();

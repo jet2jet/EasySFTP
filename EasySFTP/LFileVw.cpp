@@ -554,7 +554,7 @@ PIDLIST_ABSOLUTE CShellFolderFileView::GetSelectedItem(int iIndex)
 			pDesktopFolder->Release();
 			if (FAILED(hr))
 				return NULL;
-			// ƒfƒXƒNƒgƒbƒv‚ÌRelative == Absolute
+			// ãƒ‡ã‚¹ã‚¯ãƒˆãƒƒãƒ—ã®Relative == Absolute
 			pidl2 = (PIDLIST_ABSOLUTE) pidl;
 		}
 	}
@@ -650,7 +650,7 @@ PIDLIST_ABSOLUTE* CShellFolderFileView::GetAllSelection(int* pnCount)
 						(LPWSTR)(LPCWSTR) str, NULL, &pidl, NULL);
 					if (SUCCEEDED(hr))
 					{
-						// ƒfƒXƒNƒgƒbƒv‚ÌRelative == Absolute
+						// ãƒ‡ã‚¹ã‚¯ãƒˆãƒƒãƒ—ã®Relative == Absolute
 						ppRet[i] = (PIDLIST_ABSOLUTE) pidl;
 					}
 					else
