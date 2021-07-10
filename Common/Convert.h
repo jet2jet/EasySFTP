@@ -35,11 +35,11 @@ extern "C" bool __stdcall IsUTF8File(HANDLE hFile);
 #endif
 extern "C" size_t __stdcall UTF8ToUnicode(LPCBYTE lpszUTF8, size_t dwByteLength, LPWSTR lpBuffer, size_t dwBufferLength);
 // bEndian: 0x00: Big, 0x01: Little(8bit*2*2), 0x02: Little(16bit*2), 0x03: Little(8bit*4)
-//   0x11223344 について
-//     bEndian == 0x00: 11 22 33 44 (0x11 22 33 44 をそのまま) ← 一般的な Big-endian
-//             == 0x01: 22 11 44 33 ((0x11 22)(33 44) の ( ) 内をリバース)
-//             == 0x02: 33 44 11 22 (0x1122 3344 をリバース)
-//             == 0x03: 44 33 22 11 (0x11 22 33 44 をリバース) ← 一般的な Little-endian
+//   for 0x11223344:
+//     bEndian == 0x00: 11 22 33 44 : usual Big-endian
+//             == 0x01: 22 11 44 33 (reverse inside parentheses: (0x11 22)(33 44))
+//             == 0x02: 33 44 11 22 (reverse 0x1122 and 0x3344)
+//             == 0x03: 44 33 22 11 : usual Little-endian
 enum EndianConstants
 {
 	endBigEndian = 0,

@@ -109,7 +109,6 @@
     <None Include="toolbar.bmp">
       <Filter>リソース ファイル</Filter>
     </None>
-    <None Include="ToDo.txt" />
     <None Include="..\README.md" />
   </ItemGroup>
   <ItemGroup>

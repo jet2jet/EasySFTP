@@ -1,16 +1,12 @@
-// stdafx.h : 標準のシステム インクルード ファイルのインクルード ファイル、または
-// 参照回数が多く、かつあまり変更されない、プロジェクト専用のインクルード ファイル
-// を記述します。
-//
 
 #pragma once
 
 #include "targetver.h"
 
-#define WIN32_LEAN_AND_MEAN             // Windows ヘッダーから使用されていない部分を除外します。
+#define WIN32_LEAN_AND_MEAN
 #define STRICT_TYPED_ITEMIDS
 
-// Windows ヘッダー ファイル:
+// Windows header files:
 #include <windows.h>
 #include <tlhelp32.h>
 #include <psapi.h>
@@ -27,7 +23,7 @@
 //#include <ws2tcpip.h>
 //#include <wspiapi.h>
 
-// C ランタイム ヘッダー ファイル
+// C runtime header files
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -94,7 +90,6 @@ template <class T> inline T __stdcall ROUNDUP(T val, T align)
 #define NONCLIENTMETRICS_SIZE_V1   sizeof(NONCLIENTMETRICS)
 #endif
 
-// TODO: プログラムに必要な追加ヘッダーをここで参照してください。
 #include "MyFunc.h"
 
 #ifndef __PLACEMENT_NEW_INLINE

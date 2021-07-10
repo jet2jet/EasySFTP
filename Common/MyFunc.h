@@ -35,9 +35,6 @@ void __stdcall SyncDialogData(HWND hWnd, int nID, DWORD& dw, DWORD dwBit, bool b
 void __stdcall SyncDialogData(HWND hWnd, int nID, BYTE& by, BYTE byBit, bool bGet);
 void __stdcall SyncDialogData(HWND hWnd, int nID, bool& b, bool bGet);
 
-// 以下の文字列関数の戻り値はすべて NULL 文字を含まないが、
-// 必要なバッファのサイズは NULL 文字を含む
-
 HANDLE __stdcall MyCreateFile(LPCTSTR lpszFileName, DWORD dwDesiredAccess, DWORD dwShareMode = 0,
 	DWORD dwCreationDisposition = CREATE_ALWAYS, DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL);
 HANDLE __stdcall MyOpenFile(LPCTSTR lpszFileName, DWORD dwDesiredAccess, DWORD dwShareMode = 0,
@@ -65,37 +62,33 @@ extern "C" LPSTR __stdcall MyFindBackSlashReverseA(LPCSTR lpszString);
 extern "C" LPWSTR __stdcall MyFindBackSlashReverseW(LPCWSTR lpszString);
 extern "C" LPSTR __stdcall MyFindReturnA(LPCSTR lpszString);
 extern "C" LPWSTR __stdcall MyFindReturnW(LPCWSTR lpszString);
-// pszPath から "..\" のような部分を取り除いて正しいパスに変換
-// ((void*) pszPath == (void*) pszOutput でも正常に動作)
+// Remove "..\" from pszPath
+// (it accepts that (void*) pszPath == (void*) pszOutput)
 extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput);
 extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutput);
-// lpszRelativePathName と lpszDirectory (ディレクトリパスでありファイル名ではない)
-// を比較して、絶対パスを作成 (実際は MyGetFullPath + MyRemoveDotsFromPath)
+// Make an absolute path from lpszRelativePathName and lpszDirectory (a directory path)
+// (this is almost same as a combination of MyGetFullPath and MyRemoveDotsFromPath)
 extern "C" int __stdcall MyGetAbsolutePathA(LPCSTR lpszRelativePathName, LPCSTR lpszDirectory, LPSTR lpszBuffer, int nMaxLen);
 extern "C" int __stdcall MyGetAbsolutePathW(LPCWSTR lpszRelativePathName, LPCWSTR lpszDirectory, LPWSTR lpszBuffer, int nMaxLen);
 extern "C" LPSTR __stdcall MyGetAbsolutePath2A(LPCSTR lpszRelativePathName, LPCSTR lpszDirectory);
 extern "C" LPWSTR __stdcall MyGetAbsolutePath2W(LPCWSTR lpszRelativePathName, LPCWSTR lpszDirectory);
-// lpszFullPathName と lpszDirectory (ディレクトリパスでありファイル名ではない)
-// を比較して、相対パスを作成
+// Make a relative path from lpszFullPathName and lpszDirectory (a directory path)
 extern "C" int __stdcall MyGetRelativePathA(LPCSTR lpszFullPathName, LPCSTR lpszDirectory, LPSTR lpszBuffer, int nMaxLen);
 extern "C" int __stdcall MyGetRelativePathW(LPCWSTR lpszFullPathName, LPCWSTR lpszDirectory, LPWSTR lpszBuffer, int nMaxLen);
 extern "C" LPSTR __stdcall MyGetRelativePath2A(LPCSTR lpszFullPathName, LPCSTR lpszDirectory);
 extern "C" LPWSTR __stdcall MyGetRelativePath2W(LPCWSTR lpszFullPathName, LPCWSTR lpszDirectory);
-// 現在のディレクトリを使って絶対パスを作成
+// Make an absolute path by using current working directory
 extern "C" int __stdcall MyMakeFullPathFromCurDirA(LPCSTR lpszPathName, LPSTR lpszBuffer, int nMaxLen);
 extern "C" int __stdcall MyMakeFullPathFromCurDirW(LPCWSTR lpszPathName, LPWSTR lpszBuffer, int nMaxLen);
 extern "C" LPSTR __stdcall MyMakeFullPathFromCurDir2A(LPCSTR lpszPathName);
 extern "C" LPWSTR __stdcall MyMakeFullPathFromCurDir2W(LPCWSTR lpszPathName);
-// 探せる場所からファイルを見つけて絶対パスを作成
+// Search file and return an absolute path
 extern "C" int __stdcall MySearchPath(LPCTSTR lpszPathName, LPTSTR lpszBuffer, int nMaxLen);
 extern "C" DWORD __stdcall MyGetLongPathNameA(LPCSTR lpszPath, LPSTR lpszBuffer, DWORD dwMaxLen);
-// ※ Windows NT 系のみ
 extern "C" DWORD __stdcall MyGetLongPathNameW(LPCWSTR lpszPath, LPWSTR lpszBuffer, DWORD dwMaxLen);
 extern "C" bool __stdcall CompareFilePathA(LPCSTR lpszPath1, LPCSTR lpszPath2);
 extern "C" bool __stdcall CompareFilePathLenA(LPCSTR lpszPath1, LPCSTR lpszPath2, int nLen);
-// ※ Windows NT 系のみ
 extern "C" bool __stdcall CompareFilePathW(LPCWSTR lpszPath1, LPCWSTR lpszPath2);
-// ※ Windows NT 系のみ
 extern "C" bool __stdcall CompareFilePathLenW(LPCWSTR lpszPath1, LPCWSTR lpszPath2, int nLen);
 LPSTR __stdcall MyFindStringNoCaseA(LPSTR lpszTarget, LPSTR lpszFind);
 LPCSTR __stdcall MyFindStringNoCaseA(LPCSTR lpszTarget, LPCSTR lpszFind);

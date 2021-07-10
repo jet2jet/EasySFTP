@@ -96,7 +96,7 @@ typedef __nullterminated CONST WCHAR *LPCUWSTR, *PCUWSTR;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
-// CMyStringW - 文字列クラス (Unicode)
+// CMyStringW - a string class (Unicode)
 
 class CMyStringW
 {
@@ -198,11 +198,11 @@ public:
 #endif
 	size_t AppendString(const CMyStringW& strInsert);
 	size_t InsertChar(char ch, size_t uPos);
-	size_t InsertChar(wchar_t wch, size_t uPos);				// uPos は Unicode 文字列での位置
+	size_t InsertChar(wchar_t wch, size_t uPos);  // uPos is a position of Unicode string (not a byte offset)
 	size_t InsertString(LPCSTR lpszString, size_t uPos, size_t uLength = (size_t) -1);
-	size_t InsertString(LPCWSTR lpszString, size_t uPos, size_t uLength = (size_t) -1);	// uPos は Unicode 文字列での位置
+	size_t InsertString(LPCWSTR lpszString, size_t uPos, size_t uLength = (size_t) -1); // uPos is a position of Unicode string (not a byte offset)
 #ifdef ALIGNMENT_MACHINE
-	size_t InsertString(LPCUWSTR lpszString, size_t uPos, size_t uLength = (size_t) -1);	// uPos は Unicode 文字列での位置
+	size_t InsertString(LPCUWSTR lpszString, size_t uPos, size_t uLength = (size_t) -1); // uPos is a position of Unicode string (not a byte offset)
 #endif
 	size_t InsertString(const CMyStringW& strInsert, size_t uPos);
 	wchar_t DeleteChar(size_t uPos);

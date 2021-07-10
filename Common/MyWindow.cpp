@@ -122,7 +122,6 @@ EXTERN_C void WINAPI _CenterWindow(HWND hWnd, HWND hWndBase, LPRECT lpRect)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// ウィンドウ管理用関数・メソッド
 
 static CMyWindowData* s_pWndData = NULL;
 static DWORD s_dwTLSMessageData = 0;
