@@ -74,16 +74,18 @@ void* CSSHAgent::SignSSH2Key(LPCBYTE pszPubKey, LPCBYTE pszData, size_t nDataLen
 	size_t nReqLen;
 
 	nPubKeyLen = ConvertEndian(*reinterpret_cast<const DWORD*>(pszPubKey));
-	nReqLen = 4 + 1 + (4 + nPubKeyLen) + (4 + nDataLen);
+	nReqLen = 4 + 1 + (4 + nPubKeyLen) + (4 + nDataLen) + 4;
 
 	// request length
-	request.AppendToBufferCE(static_cast<DWORD>(nReqLen));
+	request.AppendToBufferCE(static_cast<DWORD>(nReqLen - 4));
 	// request type
 	request.AppendToBuffer(static_cast<BYTE>(SSH2_AGENTC_SIGN_REQUEST));
 	// public key (length + data)
 	request.AppendToBuffer(pszPubKey, 4 + nPubKeyLen);
 	// sign data (length + data)
 	request.AppendToBufferWithLenCE(pszData, nDataLen);
+	// flags
+	request.AppendToBufferCE(static_cast<DWORD>(0));
 
 	retval = Query(request, nReqLen, (void**)&pResponse, &nResponseLen);
 	if (!retval)

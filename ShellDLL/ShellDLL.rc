@@ -14,13 +14,11 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// 日本語 resources
+// 日本語 (日本) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_JPN)
-#ifdef _WIN32
 LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
 #pragma code_page(932)
-#endif //_WIN32
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -54,7 +52,7 @@ END
 // Dialog
 //
 
-IDD_PASSWORD DIALOGEX 0, 0, 146, 148
+IDD_PASSWORD DIALOGEX 0, 0, 146, 161
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "パスワードの入力"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
@@ -64,17 +62,18 @@ BEGIN
     EDITTEXT        IDC_USER_NAME,7,38,64,12,ES_AUTOHSCROLL
     LTEXT           "パスワード(&P):",IDC_STATIC,75,28,64,8
     EDITTEXT        IDC_PASSWORD,75,38,64,12,ES_PASSWORD | ES_AUTOHSCROLL
-    GROUPBOX        "SFTP認証方式",IDC_STATIC,7,54,132,66,WS_GROUP
+    GROUPBOX        "SFTP認証方式",IDC_STATIC,7,54,132,78,WS_GROUP
     CONTROL         "プレーンパスワード(&L)",IDC_AUTH_PASSWORD,"Button",BS_AUTORADIOBUTTON,15,66,116,10
     CONTROL         "秘密鍵認証(&K):",IDC_AUTH_PKEY,"Button",BS_AUTORADIOBUTTON,15,78,116,10
     EDITTEXT        IDC_PKEY_FILE,15,89,99,12,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_PKEY_SEARCH,119,89,15,12
     CONTROL         "Pageantを使用する(&A)",IDC_AUTH_PAGEANT,"Button",BS_AUTORADIOBUTTON,15,104,116,10
-    DEFPUSHBUTTON   "OK",IDOK,20,127,50,14
-    PUSHBUTTON      "キャンセル",IDCANCEL,75,127,50,14
+    CONTROL         "Windowsのssh-agentを使用(&G)",IDC_AUTH_WIN_SSHAGENT,"Button",BS_AUTORADIOBUTTON,15,116,116,10
+    DEFPUSHBUTTON   "OK",IDOK,20,140,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,75,140,50,14
 END
 
-IDD_QUICK_CONNECT DIALOGEX 0, 0, 146, 152
+IDD_QUICK_CONNECT DIALOGEX 0, 0, 146, 167
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "クイック接続"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
@@ -87,15 +86,16 @@ BEGIN
     EDITTEXT        IDC_USER_NAME,7,44,64,12,ES_AUTOHSCROLL
     LTEXT           "パスワード(&P):",IDC_STATIC,75,34,64,8
     EDITTEXT        IDC_PASSWORD,75,44,64,12,ES_PASSWORD | ES_AUTOHSCROLL
-    GROUPBOX        "   ",IDC_STATIC,7,59,132,65
+    GROUPBOX        "   ",IDC_STATIC,7,59,132,79
     CONTROL         "SFTP接続を使う(&S)",IDC_USE_SFTP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,59,95,10
     CONTROL         "プレーンパスワード(&L)",IDC_AUTH_PASSWORD,"Button",BS_AUTORADIOBUTTON,15,72,116,10
     CONTROL         "秘密鍵認証(&K):",IDC_AUTH_PKEY,"Button",BS_AUTORADIOBUTTON,15,83,116,10
     EDITTEXT        IDC_PKEY_FILE,15,95,99,12,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_PKEY_SEARCH,119,95,15,12
     CONTROL         "Pageantを使用する(&A)",IDC_AUTH_PAGEANT,"Button",BS_AUTORADIOBUTTON,15,110,116,10
-    DEFPUSHBUTTON   "接続(&C)",IDOK,20,131,50,14
-    PUSHBUTTON      "キャンセル",IDCANCEL,75,131,50,14
+    CONTROL         "Windowsのssh-agentを使用(&G)",IDC_AUTH_WIN_SSHAGENT,"Button",BS_AUTORADIOBUTTON,15,122,116,10
+    DEFPUSHBUTTON   "接続(&C)",IDOK,20,146,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,75,146,50,14
 END
 
 IDD_PROP_TRANSFER DIALOGEX 0, 0, 210, 154
@@ -261,14 +261,14 @@ END
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO 
+GUIDELINES DESIGNINFO
 BEGIN
     IDD_PASSWORD, DIALOG
     BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 139
         TOPMARGIN, 7
-        BOTTOMMARGIN, 141
+        BOTTOMMARGIN, 154
     END
 
     IDD_QUICK_CONNECT, DIALOG
@@ -276,7 +276,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 139
         TOPMARGIN, 7
-        BOTTOMMARGIN, 145
+        BOTTOMMARGIN, 160
     END
 
     IDD_PROP_TRANSFER, DIALOG
@@ -362,15 +362,18 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDI_EASYFTP             ICON                    "EasySFTP_2.ico"
+
 IDI_NETDRIVE            ICON                    "netdrive.ico"
+
 IDI_NEWHOST             ICON                    "newhost.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // Menu
 //
 
-IDR_SHELLMENU MENU 
+IDR_SHELLMENU MENU
 BEGIN
     POPUP "HostItemMenu "
     BEGIN
@@ -411,7 +414,7 @@ BEGIN
     END
 END
 
-IDR_POPUP MENU 
+IDR_POPUP MENU
 BEGIN
     POPUP "Transfer"
     BEGIN
@@ -471,10 +474,26 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_PASSWORD AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_QUICK_CONNECT AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // String Table
 //
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_NO_PKEY_FILE_NAME   "秘密鍵のファイル名を指定してください。"
     IDS_PKEY_FILE_NOT_FOUND "秘密鍵のファイルが見つかりません。"
@@ -492,7 +511,7 @@ BEGIN
     IDS_NO_FILE_NAME        "ファイル名を入力してください。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_APP_TITLE           "EasySFTP"
     IDS_BYTE                "バイト"
@@ -504,7 +523,7 @@ BEGIN
     IDS_FOLDER_DIALOG       "フォルダを選択してください。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_FINISHED            "完了しました。(%s)"
     IDS_CANCELED            "取り消されました。"
@@ -522,19 +541,19 @@ BEGIN
     IDS_FTP_WELCOME         "FTPウェルカムメッセージ"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_NO_HOST_NAME        "ホスト名を入力してください。"
     IDS_INVALID_PORT        "ポート番号を1～65535の間で入力してください。"
     IDS_NO_USER_NAME        "ユーザー名を入力してください。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_RCOMMAND_ADD_HOST    "新しいホスト"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_HEAD_NAME           "名前"
     IDS_HEAD_FILE_NAME      "ファイル名"
@@ -545,7 +564,7 @@ BEGIN
     IDS_HEAD_CREATE_TIME    "作成日時"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_HEAD_MODIFY_TIME    "更新日時"
     IDS_HEAD_TRANSFER_TYPE  "転送モード"
@@ -553,7 +572,7 @@ BEGIN
     IDS_HEAD_GID            "グループ"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_INVALID_FILE_NAME_CHAR "ファイル名に不正な文字が使用されています。"
     IDS_DELETE_HOST         "ホスト設定 '%s' を削除しますか？"
@@ -561,9 +580,11 @@ BEGIN
     IDS_DELETE_DIRECTORY    "ディレクトリ '%s' 削除しますか？"
     IDS_DELETE_MULTIPLE     "%d個の項目を削除しますか？"
     IDS_PAGEANT_NOT_AVAILABLE "Pageantが利用できません。Pageantが実行されているか確認してください。"
+    IDS_WINSSHAGENT_NOT_AVAILABLE 
+                            "Windowsのssh-agentが見つかりません。OpenSSH ssh-agentサービスが有効になっているか確認してください。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_RHEAD_NAME          "名前"
     IDS_RHEAD_MODE          "種別"
@@ -572,7 +593,7 @@ BEGIN
     IDS_RHEAD_STATUS        "状態"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_COMMAND_OK          "コマンドは成功しました。"
     IDS_COMMAND_FAILED      "サーバーはエラーコードを返しました: %d"
@@ -580,7 +601,7 @@ BEGIN
     IDS_COMMAND_OUTOFMEMORY "メモリが不足しています。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_SFTP_UNKNOWN        "不明なエラーです。"
     IDS_SFTP_EOF            "ファイルの終端に達しました。"
@@ -592,7 +613,7 @@ BEGIN
     IDS_SFTP_CONNECTION_LOST "接続が切断されました。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_SFTP_OP_UNSUPPORTED "この操作はサポートされていません。"
     IDS_SFTP_INVALID_HANDLE "不正なハンドルです。"
@@ -612,7 +633,7 @@ BEGIN
     IDS_SFTP_INVALID_PARAMETER "不正な引数が渡されました。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_SFTP_FILE_IS_A_DIRECTORY "指定したファイルはディレクトリです。"
     IDS_SFTP_BYTE_RANGE_LOCK_CONFLICT "範囲指定されたロックが競合しています。"
@@ -624,13 +645,13 @@ BEGIN
     IDS_SFTP_NO_MATCHING_BYTE_RANGE_LOCK "ロックの範囲が一致しません。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_NOT_CONNECTED       "未接続"
     IDS_CONNECTED           "接続中"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_TYPE_NONE           "なし"
     IDS_TYPE_TEXT           "テキスト"
@@ -638,7 +659,7 @@ BEGIN
     IDS_TYPE_DIRECTORY      "ディレクトリ"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_UNKNOWN_HOST        "ホスト (%s) が見つかりません。"
     IDS_FAILED_TO_CONNECT   "接続に失敗しました。"
@@ -646,12 +667,12 @@ BEGIN
     IDS_FAILED_TO_CONNECT_MSG "接続に失敗しました。\n\nサーバーからのメッセージ: %s"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_COMMAND_CONNECTION_ERROR "サーバーとの通信中にエラーが発生しました。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     IDS_SSH_VERSION         "SSHバージョン"
     IDS_SFTP_VERSION        "SFTPバージョン"
@@ -660,7 +681,7 @@ BEGIN
     IDS_SSH_KEX             "SSH鍵認証方式"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_ITEM_OPEN            "ファイルを一時ディレクトリにダウンロードして開きます。"
     ID_ITEM_EXPLORE         "エクスプローラーでこのディレクトリを開きます。"
@@ -670,20 +691,20 @@ BEGIN
     ID_ITEM_DELETE          "ファイルを削除します。(ごみ箱には移動されません。)"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_ITEM_RENAME          "ファイルの名前を変更します。"
     ID_ITEM_PROPERTY        "ファイルのプロパティーを表示します。"
 END
 
-STRINGTABLE 
+STRINGTABLE
 BEGIN
     ID_PARENT_NEW_FOLDER    "新しいディレクトリを作成します。"
     ID_PARENT_NEW_SHORTCUT  "新しいショートカット(シンボリックリンク)を作成します。"
     ID_PARENT_PROPERTY      "ディレクトリのプロパティーを表示します。"
 END
 
-#endif    // 日本語 resources
+#endif    // 日本語 (日本) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

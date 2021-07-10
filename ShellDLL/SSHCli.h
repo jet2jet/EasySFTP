@@ -16,6 +16,7 @@
 #define AUTHTYPE_PASSWORD     1
 #define AUTHTYPE_PUBLICKEY    2
 #define AUTHTYPE_PAGEANT      3
+#define AUTHTYPE_WINSSHAGENT  4
 
 class __declspec(novtable) CSSH2FingerPrintHandler
 {

@@ -1677,7 +1677,7 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, CUserInfo* pUser,
 			{
 				pUser->strPKeyFileName = m_dlgConnect.m_strPKeyFileName;
 			}
-			else if (m_dlgConnect.m_nAuthType == AUTHTYPE_PAGEANT)
+			else if (m_dlgConnect.m_nAuthType == AUTHTYPE_PAGEANT || m_dlgConnect.m_nAuthType == AUTHTYPE_WINSSHAGENT)
 			{
 				// do nothing
 			}

@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ generated include file.
-// Used by ShellDLL.rc
+// Microsoft Visual C++ で生成されたインクルード ファイル。
+// ShellDLL.rc で使用
 //
 #define IDI_EASYFTP                     101
 #define IDI_NETDRIVE                    102
@@ -86,6 +86,7 @@
 #define IDS_DELETE_DIRECTORY            324
 #define IDS_DELETE_MULTIPLE             325
 #define IDS_PAGEANT_NOT_AVAILABLE       326
+#define IDS_WINSSHAGENT_NOT_AVAILABLE   327
 #define IDS_TYPE_NONE                   401
 #define IDS_TYPE_TEXT                   402
 #define IDS_TYPE_BINARY                 403
@@ -135,6 +136,7 @@
 #define IDC_AUTH_PKEY                   1035
 #define IDC_AUTH_PAGEANT                1036
 #define IDC_USER_READ                   1037
+#define IDC_AUTH_WIN_SSHAGENT           1037
 #define IDC_USER_WRITE                  1038
 #define IDC_USER_EXECUTE                1039
 #define IDC_GROUP_READ                  1040
@@ -239,7 +241,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        105
+#define _APS_NEXT_RESOURCE_VALUE        107
 #define _APS_NEXT_COMMAND_VALUE         41018
 #define _APS_NEXT_CONTROL_VALUE         1006
 #define _APS_NEXT_SYMED_VALUE           102

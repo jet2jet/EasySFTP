@@ -99,11 +99,11 @@ private:
 
 class CSSHAgent;
 
-class CPageantAuthentication : public CAuthentication
+class CSSHAgentAuthentication : public CAuthentication
 {
 public:
-	CPageantAuthentication();
-	~CPageantAuthentication();
+	CSSHAgentAuthentication(CSSHAgent* pAgent);
+	~CSSHAgentAuthentication();
 	virtual const char* GetAuthenticationType()
 		{ return "publickey"; }
 	virtual AuthReturnType Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService);
@@ -118,6 +118,18 @@ private:
 	LPBYTE m_lpCurrentKey;
 	DWORD m_dwKeyCount;
 	DWORD m_dwKeyIndex;
+};
+
+class CPageantAuthentication : public CSSHAgentAuthentication
+{
+public:
+	CPageantAuthentication();
+};
+
+class CWinOpenSSHAgentAuthentication : public CSSHAgentAuthentication
+{
+public:
+	CWinOpenSSHAgentAuthentication();
 };
 
 class CNoneAuthentication : public CAuthentication

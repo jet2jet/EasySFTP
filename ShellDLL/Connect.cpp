@@ -10,6 +10,7 @@
 
 #include "SSHCli.h"
 #include "Pageant.h"
+#include "WinOpSSH.h"
 
 extern EVP_PKEY* __stdcall GetPrivateKey(FILE* pFileKey, const _SecureStringW& strPassword)
 {
@@ -68,6 +69,8 @@ bool CConnectDialog::OnInitDialog(HWND hWndFocus)
 				;
 			else if (m_bDisableAuthPublicKey && m_nAuthType == AUTHTYPE_PAGEANT)
 				;
+			else if (m_bDisableAuthPublicKey && m_nAuthType == AUTHTYPE_WINSSHAGENT)
+				;
 			else
 				break;
 			m_nAuthType++;
@@ -81,6 +84,7 @@ bool CConnectDialog::OnInitDialog(HWND hWndFocus)
 	::EnableDlgItem(m_hWnd, IDC_AUTH_PASSWORD, m_bSFTPMode && !m_bDisableAuthPassword);
 	::EnableDlgItem(m_hWnd, IDC_AUTH_PKEY, m_bSFTPMode && !m_bDisableAuthPublicKey);
 	::EnableDlgItem(m_hWnd, IDC_AUTH_PAGEANT, m_bSFTPMode && !m_bDisableAuthPublicKey);
+	::EnableDlgItem(m_hWnd, IDC_AUTH_WIN_SSHAGENT, m_bSFTPMode && !m_bDisableAuthPublicKey);
 	::EnableDlgItem(m_hWnd, IDC_PKEY_FILE, m_bSFTPMode && !m_bDisableAuthPublicKey && (m_nAuthType == AUTHTYPE_PUBLICKEY));
 	::EnableDlgItem(m_hWnd, IDC_PKEY_SEARCH, m_bSFTPMode && !m_bDisableAuthPublicKey && (m_nAuthType == AUTHTYPE_PUBLICKEY));
 
@@ -100,6 +104,7 @@ LRESULT CConnectDialog::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	HANDLE_COMMAND(IDC_AUTH_PASSWORD, OnAuthTypeChecked);
 	HANDLE_COMMAND(IDC_AUTH_PKEY, OnAuthTypeChecked);
 	HANDLE_COMMAND(IDC_AUTH_PAGEANT, OnAuthTypeChecked);
+	HANDLE_COMMAND(IDC_AUTH_WIN_SSHAGENT, OnAuthTypeChecked);
 	HANDLE_COMMAND(IDC_PKEY_SEARCH, OnSearchPKeyFile);
 	HANDLE_COMMAND(IDOK, OnOK);
 	return CMyDialog::WindowProc(message, wParam, lParam);
@@ -141,9 +146,11 @@ LRESULT CConnectDialog::OnAuthTypeChecked(WPARAM wParam, LPARAM lParam)
 		nAuthType = AUTHTYPE_PUBLICKEY;
 	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PAGEANT) == BST_CHECKED)
 		nAuthType = AUTHTYPE_PAGEANT;
+	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_WIN_SSHAGENT) == BST_CHECKED)
+		nAuthType = AUTHTYPE_WINSSHAGENT;
 	::EnableDlgItem(m_hWnd, IDC_PKEY_FILE, bSFTPMode && (nAuthType == AUTHTYPE_PUBLICKEY));
 	::EnableDlgItem(m_hWnd, IDC_PKEY_SEARCH, bSFTPMode && (nAuthType == AUTHTYPE_PUBLICKEY));
-	::EnableDlgItem(m_hWnd, IDC_PASSWORD, !bSFTPMode || (nAuthType != AUTHTYPE_PAGEANT));
+	::EnableDlgItem(m_hWnd, IDC_PASSWORD, !bSFTPMode || (nAuthType != AUTHTYPE_PAGEANT && nAuthType != AUTHTYPE_WINSSHAGENT));
 	return 0;
 }
 
@@ -203,6 +210,8 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 			nAuthType = AUTHTYPE_PUBLICKEY;
 		else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PAGEANT) == BST_CHECKED)
 			nAuthType = AUTHTYPE_PAGEANT;
+		else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_WIN_SSHAGENT) == BST_CHECKED)
+			nAuthType = AUTHTYPE_WINSSHAGENT;
 		else
 			nAuthType = AUTHTYPE_PASSWORD;
 		if (nAuthType == AUTHTYPE_PUBLICKEY)
@@ -240,6 +249,15 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 			if (!CPageantAgent::IsAvailable())
 			{
 				::MyMessageBoxW(m_hWnd, MAKEINTRESOURCEW(IDS_PAGEANT_NOT_AVAILABLE), NULL, MB_ICONEXCLAMATION);
+				return 0;
+			}
+			pPKey = NULL;
+		}
+		else if (nAuthType == AUTHTYPE_WINSSHAGENT)
+		{
+			if (!CWinOpenSSHAgent::IsAvailable())
+			{
+				::MyMessageBoxW(m_hWnd, MAKEINTRESOURCEW(IDS_WINSSHAGENT_NOT_AVAILABLE), NULL, MB_ICONEXCLAMATION);
 				return 0;
 			}
 			pPKey = NULL;

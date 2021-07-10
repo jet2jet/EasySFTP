@@ -241,6 +241,7 @@
     <ClCompile Include="TextStrm.cpp" />
     <ClCompile Include="TferPage.cpp" />
     <ClCompile Include="Transfer.cpp" />
+    <ClCompile Include="WinOpSSH.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Common.props" />
@@ -291,6 +292,7 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextStrm.h" />
     <ClInclude Include="Transfer.h" />
+    <ClInclude Include="WinOpSSH.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ShellDLL.rc" />

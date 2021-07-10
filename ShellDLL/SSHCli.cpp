@@ -86,6 +86,9 @@ AuthReturnType CSSH2Client::Authenticate(char nAuthType, CUserInfo* pUserInfo)
 			case AUTHTYPE_PAGEANT:
 				m_pAuth = new CPageantAuthentication();
 				break;
+			case AUTHTYPE_WINSSHAGENT:
+				m_pAuth = new CWinOpenSSHAgentAuthentication();
+				break;
 			default:
 			case AUTHTYPE_NONE:
 				m_pAuth = new CNoneAuthentication();

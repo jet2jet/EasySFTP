@@ -3,6 +3,7 @@
 class __declspec(novtable) CSSHAgent
 {
 public:
+	virtual ~CSSHAgent() {}
 	virtual bool Query(const void* dataSend, size_t dataSendSize, void** dataReceived, size_t* dataReceivedSize) = 0;
 
 public:

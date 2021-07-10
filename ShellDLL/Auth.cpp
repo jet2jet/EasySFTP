@@ -9,6 +9,7 @@
 
 #include "ExBuffer.h"
 #include "Pageant.h"
+#include "WinOpSSH.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -153,20 +154,24 @@ AuthReturnType CPublicKeyAuthentication::Authenticate(LIBSSH2_SESSION* pSession,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-CPageantAuthentication::CPageantAuthentication()
-	: m_lpszUser(NULL), m_lpPageantKeyList(NULL), m_lpCurrentKey(NULL), m_dwKeyCount(0), m_dwKeyIndex(0)
+CSSHAgentAuthentication::CSSHAgentAuthentication(CSSHAgent* pAgent)
+	: m_pAgent(pAgent)
+	, m_lpszUser(NULL)
+	, m_lpPageantKeyList(NULL)
+	, m_lpCurrentKey(NULL)
+	, m_dwKeyCount(0)
+	, m_dwKeyIndex(0)
 {
-	m_pAgent = new CPageantAgent();
 }
 
-CPageantAuthentication::~CPageantAuthentication()
+CSSHAgentAuthentication::~CSSHAgentAuthentication()
 {
 	if (m_lpPageantKeyList)
 		m_pAgent->FreeKeyList(m_lpPageantKeyList);
 	delete m_pAgent;
 }
 
-AuthReturnType CPageantAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
+AuthReturnType CSSHAgentAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
 {
 	if (!m_lpszUser)
 	{
@@ -203,7 +208,7 @@ AuthReturnType CPageantAuthentication::Authenticate(LIBSSH2_SESSION* pSession, C
 		{
 			*sig = NULL;
 			*sig_len = 0;
-			CPageantAuthentication* pThis = static_cast<CPageantAuthentication*>(*abstract);
+			CSSHAgentAuthentication* pThis = static_cast<CSSHAgentAuthentication*>(*abstract);
 			LPBYTE lpCurrentKey = pThis->m_lpCurrentKey;
 			size_t nSignedLen;
 			auto buff = pThis->m_pAgent->SignSSH2Key(lpCurrentKey, data, data_len, &nSignedLen);
@@ -274,7 +279,7 @@ AuthReturnType CPageantAuthentication::Authenticate(LIBSSH2_SESSION* pSession, C
 	return AuthReturnType::Success;
 }
 
-bool CPageantAuthentication::CanRetry()
+bool CSSHAgentAuthentication::CanRetry()
 {
 	if (!m_lpPageantKeyList)
 		return false;
@@ -292,6 +297,20 @@ bool CPageantAuthentication::CanRetry()
 	dw = ConvertEndian(*((DWORD*) m_lpCurrentKey));
 	m_lpCurrentKey += dw + 4;
 	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+CPageantAuthentication::CPageantAuthentication()
+	: CSSHAgentAuthentication(new CPageantAgent())
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+CWinOpenSSHAgentAuthentication::CWinOpenSSHAgentAuthentication()
+	: CSSHAgentAuthentication(new CWinOpenSSHAgent())
+{
 }
 
 ////////////////////////////////////////////////////////////////////////////////
