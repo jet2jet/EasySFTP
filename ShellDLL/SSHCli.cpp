@@ -62,8 +62,8 @@ int CSSH2Client::OnHandshake(CSSH2FingerPrintHandler* pHandler)
 	{
 		return -1;
 	}
-	auto fingerprint = libssh2_hostkey_hash(m_pSession, LIBSSH2_HOSTKEY_HASH_SHA1);
-	if (!pHandler->CheckFingerPrint(reinterpret_cast<const BYTE*>(fingerprint), 20))
+	auto fingerprint = libssh2_hostkey_hash(m_pSession, LIBSSH2_HOSTKEY_HASH_MD5);
+	if (!pHandler->CheckFingerPrint(reinterpret_cast<const BYTE*>(fingerprint), 16))
 		return -1;
 	return 1;
 }

@@ -1822,6 +1822,7 @@ static void __stdcall _MergeFingerPrint(const CMyStringW& strHostName, const BYT
 				if (!pb)
 					break;
 				pPrint->pFingerPrint = pb;
+				pPrint->nFingerPrintLen = nLen;
 			}
 			memcpy(pPrint->pFingerPrint, pFingerPrint, nLen);
 			break;
