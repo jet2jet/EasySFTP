@@ -28,6 +28,8 @@
 
 #include "ESFTPFld.h"
 
+EXTERN_C BOOL MyFileIconInit(BOOL fRestoreCache);
+
 DECLARE_INTERFACE_IID_(IEasySFTPInternal, IUnknown, "AD29C042-B9E3-4638-9DF6-D7DA5B8D0199")
 {
 	// *** IUnknown methods ***
@@ -206,8 +208,9 @@ public:
 public:
 	HIMAGELIST m_hImageListFileIcon;
 	HIMAGELIST m_hImageListToolBar;
+	HIMAGELIST m_hImageListToolBarL;
 	HIMAGELIST m_hImageListAddrButtons;
-	HFONT m_hFontWindow;
+	HIMAGELIST m_hImageListAddrButtonsL;
 	HMENU m_hMenuPopup;
 	//IStream* m_pStreamViewStateLocal;
 	//IStream* m_pStreamViewStateServer;

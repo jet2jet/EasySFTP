@@ -22,6 +22,10 @@ public:
 	void RestoreTextBox();
 	// return true if the parent window should operate some command
 	bool HandleEndEdit(int iWhy, bool bChanged, LPCWSTR lpszText, HWND hWndNextFocus);
+	void RefreshImageList()
+	{
+		SetImageList();
+	}
 
 public:
 	IShellFolder* m_pFolderRoot;
@@ -38,6 +42,8 @@ protected:
 	void DeleteData(void* pData) const;
 	void UpdateRealPath(LPCWSTR lpszRealPath);
 	void* GetItemData(int nIndex) const;
+
+	bool SetImageList();
 
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 	LRESULT OnCreate(WPARAM wParam, LPARAM lParam);

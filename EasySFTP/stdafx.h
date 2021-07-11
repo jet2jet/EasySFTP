@@ -19,10 +19,12 @@
 #include <dde.h>
 #include <commdlg.h>
 #include <commctrl.h>
+#include <commoncontrols.h>
 #include <prsht.h>
 #include <shellapi.h>
 #include <shlwapi.h>
 #include <shlobj.h>
+#include <ShellScalingApi.h>
 
 //#include <winsock2.h>
 //#include <ws2tcpip.h>

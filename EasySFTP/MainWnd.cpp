@@ -77,6 +77,77 @@ bool __stdcall IsWindowOrChildrenFocused(HWND hWnd, HWND hWndFocus)
 	return false;
 }
 
+typedef UINT(WINAPI* FnGetDpiForWindow)(HWND hWnd);
+typedef HRESULT(WINAPI* FnGetDpiForMonitor)(HMONITOR hMonitor, MONITOR_DPI_TYPE dpiType, UINT* dpiX, UINT* dpiY);
+static FnGetDpiForWindow s_pfnGetDpiForWindow = reinterpret_cast<FnGetDpiForWindow>(static_cast<INT_PTR>(-1));
+static FnGetDpiForMonitor s_pfnGetDpiForMonitor = reinterpret_cast<FnGetDpiForMonitor>(static_cast<INT_PTR>(-1));
+
+static UINT _MyGetDpiForWindowFromMonitor(HWND hWnd)
+{
+	if (s_pfnGetDpiForMonitor == reinterpret_cast<FnGetDpiForMonitor>(static_cast<INT_PTR>(-1)))
+	{
+		s_pfnGetDpiForMonitor = NULL;
+		auto hShCore = ::GetModuleHandle(_T("shcore.dll"));
+		if (!hShCore)
+		{
+			hShCore = ::LoadLibrary(_T("shcore.dll"));
+		}
+		if (hShCore)
+		{
+			s_pfnGetDpiForMonitor = reinterpret_cast<FnGetDpiForMonitor>(::GetProcAddress(hShCore, "GetDpiForMonitor"));
+		}
+	}
+	if (!s_pfnGetDpiForMonitor)
+		return 96;
+	auto hMonitor = ::MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+	if (!hMonitor)
+		return 96;
+	UINT x = 0, y = 0;
+	if (FAILED(s_pfnGetDpiForMonitor(hMonitor, MDT_DEFAULT, &x, &y)))
+	{
+		return 96;
+	}
+	return y;
+}
+
+static UINT _MyGetDpiForWindow(HWND hWnd)
+{
+	if (s_pfnGetDpiForWindow == reinterpret_cast<FnGetDpiForWindow>(static_cast<INT_PTR>(-1)))
+	{
+		s_pfnGetDpiForWindow = NULL;
+		auto hUser32 = ::GetModuleHandle(_T("user32.dll"));
+		if (hUser32)
+		{
+			s_pfnGetDpiForWindow = reinterpret_cast<FnGetDpiForWindow>(::GetProcAddress(hUser32, "GetDpiForWindow"));
+		}
+	}
+	if (!s_pfnGetDpiForWindow)
+	{
+		return _MyGetDpiForWindowFromMonitor(hWnd);
+	}
+	return s_pfnGetDpiForWindow(hWnd);
+}
+
+typedef BOOL(WINAPI* FnSystemParametersInfoForDpi)(UINT uiAction, UINT uiParam, PVOID pvParam, UINT fWinIni, UINT dpi);
+static FnSystemParametersInfoForDpi s_pfnSystemParametersInfoForDpi = reinterpret_cast<FnSystemParametersInfoForDpi>(static_cast<INT_PTR>(-1));
+
+static BOOL _MySystemParametersInfoForDpi(UINT uiAction, UINT uiParam, PVOID pvParam, UINT fWinIni, UINT dpi)
+{
+	if (s_pfnSystemParametersInfoForDpi == reinterpret_cast<FnSystemParametersInfoForDpi>(static_cast<INT_PTR>(-1)))
+	{
+		s_pfnSystemParametersInfoForDpi = NULL;
+		auto hUser32 = ::GetModuleHandle(_T("user32.dll"));
+		if (hUser32)
+		{
+			s_pfnSystemParametersInfoForDpi = reinterpret_cast<FnSystemParametersInfoForDpi>(::GetProcAddress(hUser32, "SystemParametersInfoForDpi"));
+		}
+	}
+	if (!s_pfnSystemParametersInfoForDpi)
+		return FALSE;
+	return s_pfnSystemParametersInfoForDpi(uiAction, uiParam, pvParam, fWinIni, dpi);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 //#pragma warning(disable:4355)
 CMainWindow::CMainWindow()
@@ -113,6 +184,8 @@ CMainWindow::CMainWindow()
 	//m_nTransferMode = TRANSFER_MODE_AUTO;
 	m_uLastStatusTextModeID = 0;
 	//::InitializeCriticalSection(&m_csListSendFile);
+	m_uDpi = 96;
+	m_hFontWindow = NULL;
 
 	//m_wndServerAddress.m_pFolderRoot->Release();
 	//theApp.m_pEasySFTPRoot->QueryInterface(IID_IShellFolder, (void**) &m_wndServerAddress.m_pFolderRoot);
@@ -127,6 +200,8 @@ CMainWindow::~CMainWindow()
 	//	m_pClient->Release();
 	//if (m_pConnection)
 	//	delete m_pConnection;
+	if (m_hFontWindow)
+		::DeleteObject(m_hFontWindow);
 	if (m_hIconSecure)
 		::DestroyIcon(m_hIconSecure);
 	//m_pEasySFTPRoot->Release();
@@ -731,7 +806,7 @@ void CMainWindow::SetStatusText(LPCWSTR lpszStatusText)
 		::SendMessage(m_wndStatusBar, SB_SETTEXTA, (WPARAM) (0 | 0), (LPARAM)(LPCSTR) m_strStatusText);
 }
 
-static int __stdcall CalcTextWidth(HWND hWndStatus, const CMyStringW& string)
+static int __stdcall CalcTextWidth(HWND hWndStatus, HFONT hFontWindow, const CMyStringW& string)
 {
 	HFONT hFont;
 	HDC hDC;
@@ -740,7 +815,7 @@ static int __stdcall CalcTextWidth(HWND hWndStatus, const CMyStringW& string)
 
 	hFont = (HFONT) ::SendMessage(hWndStatus, WM_GETFONT, 0, 0);
 	if (!hFont)
-		hFont = theApp.m_hFontWindow;
+		hFont = hFontWindow;
 	hDC = ::GetDC(hWndStatus);
 	hgdi = ::SelectObject(hDC, hFont);
 	::GetTextExtentPoint32W(hDC, string, (int) string.GetLength(), &sz);
@@ -760,7 +835,7 @@ void CMainWindow::SetStatusText(UINT uStatusID, LPCWSTR lpszStatusText)
 		{
 			int rgBorders[3];
 			::SendMessage(m_wndStatusBar, SB_GETBORDERS, 0, (LPARAM) rgBorders);
-			s_arrBarParts[i].nWidth = CalcTextWidth(m_wndStatusBar, str) + 6 + rgBorders[2];
+			s_arrBarParts[i].nWidth = CalcTextWidth(m_wndStatusBar, m_hFontWindow, str) + 6 + rgBorders[2];
 			if (uStatusID == ID_STATUS_HOST)
 				s_arrBarParts[i].nWidth += 20;
 			UpdateStatusParts();
@@ -995,6 +1070,8 @@ LRESULT CMainWindow::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	HANDLE_PROC_MESSAGE(WM_CONTEXTMENU, OnContextMenu);
 	//REFLECT_NOTIFY(101);
 	HANDLE_PROC_MESSAGE(WM_ACTIVATE, OnActivate);
+	HANDLE_PROC_MESSAGE(WM_SETTINGCHANGE, OnSettingChange);
+	HANDLE_PROC_MESSAGE(WM_DPICHANGED, OnDpiChanged);
 	HANDLE_NOTIFY_CODE(TTN_GETDISPINFOA, OnToolTipDispInfoA);
 	HANDLE_NOTIFY_CODE(TTN_GETDISPINFOW, OnToolTipDispInfoW);
 	HANDLE_NOTIFY_WND(m_wndToolBar, TBN_DROPDOWN, OnToolBarDropDown);
@@ -1133,6 +1210,8 @@ LRESULT CMainWindow::OnCreate(WPARAM wParam, LPARAM lParam)
 	if (Default(wParam, lParam) == 1)
 		return -1;
 
+	m_uDpi = _MyGetDpiForWindow(m_hWnd);
+
 	m_hMenu = ::LoadMenu(theApp.m_hInstance, MAKEINTRESOURCE(IDC_EASYFTP));
 	if (!m_hMenu)
 		return -1;
@@ -1262,8 +1341,7 @@ LRESULT CMainWindow::OnCreate(WPARAM wParam, LPARAM lParam)
 	::SendMessage(m_wndServerAddrButtons, CCM_SETUNICODEFORMAT, (WPARAM) TRUE, 0);
 	::SendMessage(m_wndStatusBar, CCM_SETUNICODEFORMAT, (WPARAM) TRUE, 0);
 
-	::SendMessage(m_wndAddress, WM_SETFONT, (WPARAM) theApp.m_hFontWindow, 0);
-	::SendMessage(m_wndServerAddress, WM_SETFONT, (WPARAM) theApp.m_hFontWindow, 0);
+	UpdateFonts();
 
 	m_wndAddress.ChangeCurrentFolder(m_wndListViewLocal.m_lpidlAbsoluteMe);
 	m_wndServerAddress.ChangeCurrentFolder(m_wndListViewServer.m_lpidlAbsoluteMe);
@@ -1278,12 +1356,9 @@ LRESULT CMainWindow::OnCreate(WPARAM wParam, LPARAM lParam)
 
 	{
 		::SendMessage(m_wndAddrButtons, TB_BUTTONSTRUCTSIZE, (WPARAM) sizeof(TBBUTTON), 0);
-		::SendMessage(m_wndAddrButtons, TB_SETIMAGELIST, 0, (LPARAM) theApp.m_hImageListAddrButtons);
 		::SendMessage(m_wndServerAddrButtons, TB_BUTTONSTRUCTSIZE, (WPARAM) sizeof(TBBUTTON), 0);
-		::SendMessage(m_wndServerAddrButtons, TB_SETIMAGELIST, 0, (LPARAM) theApp.m_hImageListAddrButtons);
-
 		::SendMessage(m_wndToolBar, TB_BUTTONSTRUCTSIZE, (WPARAM) sizeof(TBBUTTON), 0);
-		::SendMessage(m_wndToolBar, TB_SETIMAGELIST, 0, (LPARAM) theApp.m_hImageListToolBar);
+		UpdateToolBarIcons();
 
 		if (!DoAddButtons(m_wndAddrButtons, s_arrAddrButtons, sizeof(s_arrAddrButtons) / sizeof(s_arrAddrButtons[0])))
 			return -1;
@@ -1301,22 +1376,6 @@ LRESULT CMainWindow::OnCreate(WPARAM wParam, LPARAM lParam)
 		//	+ ::GetSystemMetrics(SM_CYBORDER) * 2;
 	}
 
-	{
-		TEXTMETRIC tm;
-		HDC hDC = ::GetDC(m_hWnd);
-		HGDIOBJ hgdiFont = ::SelectObject(hDC, theApp.m_hFontWindow);
-		::GetTextMetrics(hDC, &tm);
-		::SelectObject(hDC, hgdiFont);
-
-		int rgBorders[3];
-		::SendMessage(m_wndStatusBar, SB_GETBORDERS, 0, (LPARAM) &rgBorders);
-
-		register int cy = tm.tmHeight - tm.tmInternalLeading - 1;
-		if (cy < 16)
-			cy = 16;
-		m_nStatusHeight = cy +
-			rgBorders[1] * 2 + ::GetSystemMetrics(SM_CYBORDER) * 2 + 2;
-	}
 	UpdateStatusParts();
 	SetStatusText(NULL);
 
@@ -1382,67 +1441,9 @@ LRESULT CMainWindow::OnDestroy(WPARAM wParam, LPARAM lParam)
 
 LRESULT CMainWindow::OnSize(WPARAM wParam, LPARAM lParam)
 {
-	RECT rc, rc2;
-	int nHalf;
-
 	Default(wParam, lParam);
-	if (!m_hMenu)
-		return 0;
 
-	if (m_nToolBarHeight == -1)
-	{
-		::GetWindowRect(m_wndToolBar, &rc);
-		m_nToolBarHeight = rc.bottom - rc.top;
-	}
-	if (m_nAddrButtonsWidth == -1)
-	{
-		::SendMessage(m_wndAddrButtons, TB_GETITEMRECT,
-			(WPARAM) ((sizeof(s_arrAddrButtons) / sizeof(s_arrAddrButtons[0])) - 1), (LPARAM)(LPRECT) &rc);
-		m_nAddrButtonsWidth = rc.right;
-	}
-	::GetClientRect(m_hWnd, &rc);
-	::GetClientRect(m_wndAddress, &rc2);
-	if (theApp.m_nSplitterPos == -1)
-	{
-		if (m_nSplitterWidth == -1)
-			nHalf = rc.right / 2;
-		else
-			nHalf = theApp.m_nSplitterPos = rc.right / 2 - m_nSplitterWidth / 2;
-	}
-	else
-		nHalf = theApp.m_nSplitterPos;
-	rc.bottom -= m_nStatusHeight;
-
-	//HDWP hDWP = ::BeginDeferWindowPos(11);
-#define MY_RESIZE_WINDOW(hWnd, x, y, cx, cy) MoveWindow(hWnd, x, y, cx, cy, TRUE)
-	MY_RESIZE_WINDOW(m_wndToolBar, 0, 0, rc.right, m_nToolBarHeight);
-
-	MY_RESIZE_WINDOW(m_wndAddress, 0, m_nToolBarHeight, nHalf - m_nAddrButtonsWidth, rc2.bottom);
-	MY_RESIZE_WINDOW(m_wndAddrButtons, nHalf - m_nAddrButtonsWidth, m_nToolBarHeight,
-		m_nAddrButtonsWidth, rc2.bottom);
-	MY_RESIZE_WINDOW(m_xBrowserForLocal, 0, rc2.bottom + m_nToolBarHeight,
-		nHalf, rc.bottom - rc2.bottom - m_nToolBarHeight);
-	if (m_wndListViewLocal.m_hWnd)
-		MY_RESIZE_WINDOW(m_wndListViewLocal, 0, 0,
-			nHalf, rc.bottom - rc2.bottom - m_nToolBarHeight);
-
-	MY_RESIZE_WINDOW(m_wndSplitter, nHalf, m_nToolBarHeight,
-		m_nSplitterWidth, rc.bottom - m_nToolBarHeight);
-
-	nHalf += m_nSplitterWidth;
-	MY_RESIZE_WINDOW(m_wndServerAddress, nHalf, m_nToolBarHeight,
-		rc.right - nHalf - m_nAddrButtonsWidth, rc2.bottom);
-	MY_RESIZE_WINDOW(m_wndServerAddrButtons, rc.right - m_nAddrButtonsWidth, m_nToolBarHeight,
-		m_nAddrButtonsWidth, rc2.bottom);
-	MY_RESIZE_WINDOW(m_xBrowserForServer, nHalf, rc2.bottom + m_nToolBarHeight,
-		rc.right - nHalf, rc.bottom - rc2.bottom - m_nToolBarHeight);
-	if (m_wndListViewServer.m_hWnd)
-		MY_RESIZE_WINDOW(m_wndListViewServer, 0, 0,
-			rc.right - nHalf, rc.bottom - rc2.bottom - m_nToolBarHeight);
-
-	MY_RESIZE_WINDOW(m_wndStatusBar, 0, rc.bottom, rc.right, m_nStatusHeight);
-	//::EndDeferWindowPos(hDWP);
-	UpdateStatusParts();
+	OnResize();
 
 	return 0;
 }
@@ -1714,6 +1715,49 @@ LRESULT CMainWindow::OnInitMenuPopup(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+void CMainWindow::UpdateFonts()
+{
+	HFONT hFontOld = m_hFontWindow;
+
+	union
+	{
+		NONCLIENTMETRICSW ncmW;
+		NONCLIENTMETRICS ncm;
+	};
+	ncmW.cbSize = sizeof(NONCLIENTMETRICSW);
+	if (::_MySystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, sizeof(ncmW), &ncmW, 0, m_uDpi))
+		m_hFontWindow = ::CreateFontIndirectW(&ncmW.lfMessageFont);
+	else
+	{
+		ncm.cbSize = NONCLIENTMETRICS_SIZE_V1;
+		::SystemParametersInfo(SPI_GETNONCLIENTMETRICS, NONCLIENTMETRICS_SIZE_V1, &ncm, 0);
+		m_hFontWindow = ::CreateFontIndirect(&ncm.lfMessageFont);
+	}
+
+	::SendMessage(m_wndAddress, WM_SETFONT, (WPARAM) m_hFontWindow, 0);
+	::SendMessage(m_wndServerAddress, WM_SETFONT, (WPARAM) m_hFontWindow, 0);
+
+	{
+		TEXTMETRIC tm;
+		HDC hDC = ::GetDC(m_hWnd);
+		HGDIOBJ hgdiFont = ::SelectObject(hDC, m_hFontWindow);
+		::GetTextMetrics(hDC, &tm);
+		::SelectObject(hDC, hgdiFont);
+
+		int rgBorders[3];
+		::SendMessage(m_wndStatusBar, SB_GETBORDERS, 0, (LPARAM) &rgBorders);
+
+		register int cy = tm.tmHeight - tm.tmInternalLeading - 1;
+		if (cy < 16)
+			cy = 16;
+		m_nStatusHeight = cy +
+			rgBorders[1] * 2 + ::GetSystemMetrics(SM_CYBORDER) * 2 + 2;
+	}
+
+	if (hFontOld)
+		::DeleteObject(hFontOld);
+}
+
 void CMainWindow::UpdateToolBarEnable()
 {
 	CToolBarItem item(m_wndToolBar);
@@ -1743,6 +1787,22 @@ void CMainWindow::UpdateToolBarEnable()
 			item.m_uID = s_arrServerAddrButtons[i].uID;
 			UpdateUIItem(&item);
 		}
+	}
+}
+
+void CMainWindow::UpdateToolBarIcons()
+{
+	if (m_uDpi >= USER_DEFAULT_SCREEN_DPI * 2)
+	{
+		::SendMessage(m_wndAddrButtons, TB_SETIMAGELIST, 0, (LPARAM) theApp.m_hImageListAddrButtonsL);
+		::SendMessage(m_wndServerAddrButtons, TB_SETIMAGELIST, 0, (LPARAM) theApp.m_hImageListAddrButtonsL);
+		::SendMessage(m_wndToolBar, TB_SETIMAGELIST, 0, (LPARAM) theApp.m_hImageListToolBarL);
+	}
+	else
+	{
+		::SendMessage(m_wndAddrButtons, TB_SETIMAGELIST, 0, (LPARAM) theApp.m_hImageListAddrButtons);
+		::SendMessage(m_wndServerAddrButtons, TB_SETIMAGELIST, 0, (LPARAM) theApp.m_hImageListAddrButtons);
+		::SendMessage(m_wndToolBar, TB_SETIMAGELIST, 0, (LPARAM) theApp.m_hImageListToolBar);
 	}
 }
 
@@ -1783,6 +1843,70 @@ static INT_PTR CALLBACK _AboutDlgProc(HWND hDlg, UINT message, WPARAM wParam, LP
 void CMainWindow::ShowAboutDialog()
 {
 	ExDialogBoxParam(theApp.m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), m_hWnd, _AboutDlgProc, 0);
+}
+
+void CMainWindow::OnResize()
+{
+	RECT rc, rc2;
+	int nHalf;
+
+	if (!m_hMenu)
+		return;
+
+	if (m_nToolBarHeight == -1)
+	{
+		::GetWindowRect(m_wndToolBar, &rc);
+		m_nToolBarHeight = rc.bottom - rc.top;
+	}
+	if (m_nAddrButtonsWidth == -1)
+	{
+		::SendMessage(m_wndAddrButtons, TB_GETITEMRECT,
+			(WPARAM)((sizeof(s_arrAddrButtons) / sizeof(s_arrAddrButtons[0])) - 1), (LPARAM)(LPRECT)&rc);
+		m_nAddrButtonsWidth = rc.right;
+	}
+	::GetClientRect(m_hWnd, &rc);
+	::GetClientRect(m_wndAddress, &rc2);
+	if (theApp.m_nSplitterPos == -1)
+	{
+		if (m_nSplitterWidth == -1)
+			nHalf = rc.right / 2;
+		else
+			nHalf = theApp.m_nSplitterPos = rc.right / 2 - m_nSplitterWidth / 2;
+	}
+	else
+		nHalf = theApp.m_nSplitterPos;
+	rc.bottom -= m_nStatusHeight;
+
+	//HDWP hDWP = ::BeginDeferWindowPos(11);
+#define MY_RESIZE_WINDOW(hWnd, x, y, cx, cy) MoveWindow(hWnd, x, y, cx, cy, TRUE)
+	MY_RESIZE_WINDOW(m_wndToolBar, 0, 0, rc.right, m_nToolBarHeight);
+
+	MY_RESIZE_WINDOW(m_wndAddress, 0, m_nToolBarHeight, nHalf - m_nAddrButtonsWidth, rc2.bottom);
+	MY_RESIZE_WINDOW(m_wndAddrButtons, nHalf - m_nAddrButtonsWidth, m_nToolBarHeight,
+		m_nAddrButtonsWidth, rc2.bottom);
+	MY_RESIZE_WINDOW(m_xBrowserForLocal, 0, rc2.bottom + m_nToolBarHeight,
+		nHalf, rc.bottom - rc2.bottom - m_nToolBarHeight);
+	if (m_wndListViewLocal.m_hWnd)
+		MY_RESIZE_WINDOW(m_wndListViewLocal, 0, 0,
+			nHalf, rc.bottom - rc2.bottom - m_nToolBarHeight);
+
+	MY_RESIZE_WINDOW(m_wndSplitter, nHalf, m_nToolBarHeight,
+		m_nSplitterWidth, rc.bottom - m_nToolBarHeight);
+
+	nHalf += m_nSplitterWidth;
+	MY_RESIZE_WINDOW(m_wndServerAddress, nHalf, m_nToolBarHeight,
+		rc.right - nHalf - m_nAddrButtonsWidth, rc2.bottom);
+	MY_RESIZE_WINDOW(m_wndServerAddrButtons, rc.right - m_nAddrButtonsWidth, m_nToolBarHeight,
+		m_nAddrButtonsWidth, rc2.bottom);
+	MY_RESIZE_WINDOW(m_xBrowserForServer, nHalf, rc2.bottom + m_nToolBarHeight,
+		rc.right - nHalf, rc.bottom - rc2.bottom - m_nToolBarHeight);
+	if (m_wndListViewServer.m_hWnd)
+		MY_RESIZE_WINDOW(m_wndListViewServer, 0, 0,
+			rc.right - nHalf, rc.bottom - rc2.bottom - m_nToolBarHeight);
+
+	MY_RESIZE_WINDOW(m_wndStatusBar, 0, rc.bottom, rc.right, m_nStatusHeight);
+	//::EndDeferWindowPos(hDWP);
+	UpdateStatusParts();
 }
 
 void CMainWindow::UpdateUIItem(CCommandUIItem* pUIItem)
@@ -2068,6 +2192,39 @@ LRESULT CMainWindow::OnActivate(WPARAM wParam, LPARAM lParam)
 			m_wndListViewServer.m_pView->UIActivate(SVUIA_DEACTIVATE);
 		m_hWndFocusSaved = ::GetFocus();
 	}
+	return 0;
+}
+
+LRESULT CMainWindow::OnSettingChange(WPARAM wParam, LPARAM lParam)
+{
+	Default(wParam, lParam);
+
+	UpdateToolBarIcons();
+	m_wndAddress.RefreshImageList();
+	m_wndServerAddress.RefreshImageList();
+	OnResize();
+	return 0;
+}
+
+LRESULT CMainWindow::OnDpiChanged(WPARAM wParam, LPARAM lParam)
+{
+	Default(wParam, lParam);
+
+	MyFileIconInit(TRUE);
+
+	UINT newDpi = HIWORD(wParam);
+	theApp.m_nSplitterPos = ::MulDiv(theApp.m_nSplitterPos, static_cast<int>(newDpi), static_cast<int>(m_uDpi));
+	m_uDpi = newDpi;
+
+	LPRECT lprc = reinterpret_cast<LPRECT>(lParam);
+	UpdateToolBarIcons();
+	UpdateFonts();
+	UpdateStatusParts();
+	m_wndAddress.RefreshImageList();
+	m_wndServerAddress.RefreshImageList();
+	::SetWindowPos(m_hWnd, NULL, lprc->left, lprc->top, lprc->right - lprc->left, lprc->bottom - lprc->top,
+		SWP_NOZORDER);
+	//OnResize();
 	return 0;
 }
 

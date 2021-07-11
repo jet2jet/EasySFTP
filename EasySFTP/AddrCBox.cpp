@@ -711,6 +711,26 @@ void* CAddressComboBox::GetItemData(int nIndex) const
 	return pData;
 }
 
+bool CAddressComboBox::SetImageList()
+{
+	HRESULT hr;
+	PIDLIST_ABSOLUTE pidlDesktop;
+	SHFILEINFO sfi;
+
+	hr = ::SHGetSpecialFolderLocation(NULL, CSIDL_DESKTOP, &pidlDesktop);
+	if (FAILED(hr))
+		return false;
+	memset(&sfi, 0, sizeof(sfi));
+	m_himlSystemSmall = (HIMAGELIST) ::SHGetFileInfo((LPCTSTR)pidlDesktop, 0, &sfi, sizeof(sfi), SHGFI_SYSICONINDEX | SHGFI_SMALLICON);
+	::CoTaskMemFree(pidlDesktop);
+	if (!m_himlSystemSmall)
+		return false;
+
+	::SendMessage(m_hWnd, CBEM_SETIMAGELIST, 0, (LPARAM) m_himlSystemSmall);
+	//::SendMessage(m_hWnd, CB_SETEXTENDEDUI, (WPARAM) TRUE, 0);
+	return true;
+}
+
 void CAddressComboBox::UpdateRealPath(LPCWSTR lpszRealPath)
 {
 	//((CAddressComboBoxMain*) m_pWndComboBox)->m_wndEdit.SetWindowTextW(lpszRealPath);
@@ -805,21 +825,8 @@ LRESULT CAddressComboBox::OnCreate(WPARAM wParam, LPARAM lParam)
 	m_bUnicode =
 		(::SendMessage(m_hWnd, CBEM_GETUNICODEFORMAT, 0, 0) != 0);
 
-	PIDLIST_ABSOLUTE pidlDesktop;
-	SHFILEINFO sfi;
-	HRESULT hr;
-
-	hr = ::SHGetSpecialFolderLocation(NULL, CSIDL_DESKTOP, &pidlDesktop);
-	if (FAILED(hr))
+	if (!SetImageList())
 		return 1;
-	memset(&sfi, 0, sizeof(sfi));
-	m_himlSystemSmall = (HIMAGELIST) ::SHGetFileInfo((LPCTSTR) pidlDesktop, 0, &sfi, sizeof(sfi), SHGFI_SYSICONINDEX | SHGFI_SMALLICON);
-	::CoTaskMemFree(pidlDesktop);
-	if (!m_himlSystemSmall)
-		return 1;
-
-	::SendMessage(m_hWnd, CBEM_SETIMAGELIST, 0, (LPARAM) m_himlSystemSmall);
-	//::SendMessage(m_hWnd, CB_SETEXTENDEDUI, (WPARAM) TRUE, 0);
 
 	return 0;
 }

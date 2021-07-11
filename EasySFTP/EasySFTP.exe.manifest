@@ -19,6 +19,11 @@
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
 	<windowsSettings>
 	  <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
+	  <!-- disabled due to system imagelist handling -->
+	  <!--
+	  <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2, PerMonitor</dpiAwareness>
+	  -->
+	  <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">system</dpiAwareness>
 	</windowsSettings>
   </application>
 </assembly>

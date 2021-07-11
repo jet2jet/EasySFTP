@@ -119,4 +119,12 @@
   <ItemGroup>
     <Manifest Include="EasySFTP.exe.manifest" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="toolbar_l.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="AddrBtns_L.bmp">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

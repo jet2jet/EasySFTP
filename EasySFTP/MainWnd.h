@@ -169,7 +169,9 @@ public:
 	bool m_bUpdateSetMenu;
 	HMENU m_hMenuSet;
 	HWND m_hWndViewForMenu;
+	HFONT m_hFontWindow;
 	UINT m_uIDChangeNotify;
+	UINT m_uDpi;
 
 	CMyWindow m_wndAddrButtons;
 	CAddressComboBox m_wndAddress;
@@ -220,8 +222,11 @@ public:
 
 protected:
 	void ShowAboutDialog();
+	void OnResize();
 	void UpdateUIItem(CCommandUIItem* pUIItem);
+	void UpdateFonts();
 	void UpdateToolBarEnable();
+	void UpdateToolBarIcons();
 	void UpdateStatusParts();
 	void UpdateFileSelection();
 	void UpdateViewStatus(HWND hWndFocus);
@@ -245,6 +250,8 @@ protected:
 	LRESULT OnMenuSelect(WPARAM wParam, LPARAM lParam);
 	LRESULT OnContextMenu(WPARAM wParam, LPARAM lParam);
 	LRESULT OnActivate(WPARAM wParam, LPARAM lParam);
+	LRESULT OnSettingChange(WPARAM wParam, LPARAM lParam);
+	LRESULT OnDpiChanged(WPARAM wParam, LPARAM lParam);
 	LRESULT OnToolTipDispInfoA(WPARAM wParam, LPARAM lParam);
 	LRESULT OnToolTipDispInfoW(WPARAM wParam, LPARAM lParam);
 	LRESULT OnToolBarDropDown(WPARAM wParam, LPARAM lParam);

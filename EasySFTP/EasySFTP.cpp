@@ -86,6 +86,25 @@ static bool __stdcall GetModuleFileNameString(HINSTANCE hInstance, CMyStringW& s
 	return dw != 0;
 }
 
+typedef BOOL(WINAPI* FnFileIconInit)(BOOL fRestoreCache);
+static FnFileIconInit s_pfnFileIconInit = reinterpret_cast<FnFileIconInit>(static_cast<INT_PTR>(-1));
+
+EXTERN_C BOOL MyFileIconInit(BOOL fRestoreCache)
+{
+	if (s_pfnFileIconInit == reinterpret_cast<FnFileIconInit>(static_cast<INT_PTR>(-1)))
+	{
+		s_pfnFileIconInit = NULL;
+		auto hShell32 = ::GetModuleHandle(_T("shell32.dll"));
+		if (hShell32)
+		{
+			s_pfnFileIconInit = reinterpret_cast<FnFileIconInit>(::GetProcAddress(hShell32, MAKEINTRESOURCEA(660)));
+		}
+	}
+	if (!s_pfnFileIconInit)
+		return TRUE;
+	return s_pfnFileIconInit(fRestoreCache);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 class CEmptyStream : public CUnknownImplT<IStream>
@@ -157,7 +176,7 @@ CMainApplication::CMainApplication()
 {
 	m_hImageListFileIcon = NULL;
 	m_hImageListToolBar = NULL;
-	m_hFontWindow = NULL;
+	m_hImageListToolBarL = NULL;
 	m_bUseOFNUnicode = true;
 	memset(&m_ofnW, 0, sizeof(m_ofnW));
 	m_ofnW.lStructSize = OPENFILENAME_SIZE_VERSION_400W;
@@ -253,16 +272,18 @@ int CMainApplication::ExitInstance()
 		m_pEasySFTPRoot->Release();
 	if (m_pidlEasySFTP)
 		::CoTaskMemFree(m_pidlEasySFTP);
+	if (m_hImageListAddrButtonsL)
+		::ImageList_Destroy(m_hImageListAddrButtonsL);
 	if (m_hImageListAddrButtons)
 		::ImageList_Destroy(m_hImageListAddrButtons);
+	if (m_hImageListToolBarL)
+		::ImageList_Destroy(m_hImageListToolBarL);
 	if (m_hImageListToolBar)
 		::ImageList_Destroy(m_hImageListToolBar);
 	if (m_hImageListFileIcon)
 		::ImageList_Destroy(m_hImageListFileIcon);
 	if (m_hMenuPopup)
 		::DestroyMenu(m_hMenuPopup);
-	if (m_hFontWindow)
-		::DeleteObject(m_hFontWindow);
 	//if (m_pStreamViewStateLocal)
 	//	m_pStreamViewStateLocal->Release();
 	//if (m_pStreamViewStateServer)
@@ -682,6 +703,8 @@ bool CMainApplication::InitEasySFTP(bool* pbFailOnRegHook)
 
 bool CMainApplication::InitGraphics()
 {
+	MyFileIconInit(TRUE);
+
 	m_hImageListFileIcon = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListFileIcon)
 		return false;
@@ -694,17 +717,18 @@ bool CMainApplication::InitGraphics()
 	if (!m_hImageListToolBar)
 		return false;
 	::ImageList_Add(m_hImageListToolBar, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_TOOLBAR)), NULL);
+	m_hImageListToolBarL = ::ImageList_Create(32, 32, ILC_COLOR32 | ILC_MASK, 0, 0);
+	if (!m_hImageListToolBarL)
+		return false;
+	::ImageList_Add(m_hImageListToolBarL, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_TOOLBAR_L)), NULL);
 	m_hImageListAddrButtons = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListAddrButtons)
 		return false;
 	::ImageList_Add(m_hImageListAddrButtons, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_ADDRESS_BUTTONS)), NULL);
-
-	{
-		NONCLIENTMETRICS ncm;
-		ncm.cbSize = NONCLIENTMETRICS_SIZE_V1;
-		::SystemParametersInfo(SPI_GETNONCLIENTMETRICS, NONCLIENTMETRICS_SIZE_V1, &ncm, 0);
-		m_hFontWindow = ::CreateFontIndirect(&ncm.lfMessageFont);
-	}
+	m_hImageListAddrButtonsL = ::ImageList_Create(32, 32, ILC_COLOR32 | ILC_MASK, 0, 0);
+	if (!m_hImageListAddrButtonsL)
+		return false;
+	::ImageList_Add(m_hImageListAddrButtonsL, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_ADDRESS_BUTTONS_L)), NULL);
 
 	return true;
 }
