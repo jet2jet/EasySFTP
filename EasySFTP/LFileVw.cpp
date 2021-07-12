@@ -316,25 +316,76 @@ void CShellFolderFileView::DoCreateNewFolder(HWND hWndBrowser)
 {
 	IFolderView* pFView;
 	HRESULT hr;
-	int nCount;
+	int nCount = 0;
+	IEnumIDList* pIDList;
+	CMyPtrArrayPtrT<PITEMID_CHILD> items;
+	hr = m_pFolder->EnumObjects(hWndBrowser, SHCONTF_FOLDERS, &pIDList);
+	if (FAILED(hr))
+		return;
+	while (true)
+	{
+		ULONG c = 0;
+		PITEMID_CHILD pChild;
+		hr = pIDList->Next(1, &pChild, &c);
+		if (FAILED(hr) || hr == S_FALSE || !c)
+			break;
+		items.Add(pChild);
+	}
+	pIDList->Release();
 	hr = m_pView->QueryInterface(IID_IFolderView, (void**) &pFView);
 	if (SUCCEEDED(hr))
 	{
 		hr = pFView->ItemCount(SVGIO_ALLVIEW, &nCount);
 		for (int i = 0; i < nCount; i++)
 			hr = pFView->SelectItem(i, SVSI_DESELECT);
+		pFView->Release();
 	}
-	else
-		pFView = NULL;
 	if (SendCommandString(hWndBrowser, SVGIO_BACKGROUND, CMDSTR_NEWFOLDERW))
 	{
-		if (pFView)
+		// find new item
+		PITEMID_CHILD pNewItem = NULL;
+		hr = m_pFolder->EnumObjects(hWndBrowser, SHCONTF_FOLDERS, &pIDList);
+		if (SUCCEEDED(hr))
 		{
-			hr = pFView->ItemCount(SVGIO_ALLVIEW, &nCount);
-			hr = pFView->SelectItem(nCount - 1, SVSI_EDIT);
-			pFView->Release();
+			while (true)
+			{
+				ULONG c = 0;
+				hr = pIDList->Next(1, &pNewItem, &c);
+				if (FAILED(hr) || hr == S_FALSE || !c)
+					break;
+				bool found = false;
+				for (int i = 0; i < items.GetCount(); ++i)
+				{
+					auto pChild = items.GetItem(i);
+					hr = m_pFolder->CompareIDs(0, pNewItem, pChild);
+					if (SUCCEEDED(hr) && HRESULT_CODE(hr) == 0)
+					{
+						found = true;
+						break;
+					}
+				}
+				if (found)
+				{
+					::CoTaskMemFree(pNewItem);
+					pNewItem = NULL;
+				}
+				else
+				{
+					// not found in items, so it is a new one
+					break;
+				}
+			}
+			pIDList->Release();
+			if (pNewItem)
+			{
+				hr = m_pView->SelectItem(pNewItem,
+					SVSI_SELECT | SVSI_EDIT | SVSI_DESELECTOTHERS | SVSI_ENSUREVISIBLE | SVSI_FOCUSED);
+				::CoTaskMemFree(pNewItem);
+			}
 		}
 	}
+	for (int i = 0; i < items.GetCount(); ++i)
+		::CoTaskMemFree(items.GetItem(i));
 }
 
 void CShellFolderFileView::DoOpen(HWND hWndBrowser)
