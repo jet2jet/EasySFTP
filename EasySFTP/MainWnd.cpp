@@ -1969,6 +1969,11 @@ void CMainWindow::UpdateUIItem(CCommandUIItem* pUIItem)
 			pUIItem->Enable(IS_CONNECTED() && IsWindowOrChildrenFocused(m_wndListViewLocal, hWndFocus) &&
 				m_wndListViewLocal.GetSelectionCount() > 0);
 			break;
+		case ID_EDIT_DOWNLOAD_ALL:
+		case ID_EDIT_UPLOAD_ALL:
+			// not implemented yet
+			pUIItem->Enable(false);
+			break;
 		//case ID_EDIT_PASTE:
 		//	if (IsWindowOrChildrenFocused(m_wndListViewServer, hWndFocus))
 		//		//pUIItem->Enable(IS_CONNECTED() && CanPaste());
