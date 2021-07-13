@@ -1689,9 +1689,10 @@ void CSFTPFolderSFTP::OnSFTPSocketReceive(bool isSocketReceived)
 	::LeaveCriticalSection(&m_csReceive);
 	if (u)
 	{
+		auto hWndOwner = m_hWndOwner;
 		Disconnect();
 		if (u != (UINT) -1)
-			::MyMessageBoxW(m_hWndOwner, MAKEINTRESOURCEW(u), NULL, MB_ICONEXCLAMATION);
+			::MyMessageBoxW(hWndOwner, MAKEINTRESOURCEW(u), NULL, MB_ICONEXCLAMATION);
 	}
 }
 
