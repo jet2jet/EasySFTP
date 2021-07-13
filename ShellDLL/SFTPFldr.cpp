@@ -1680,8 +1680,6 @@ void CSFTPFolderSFTP::DoNextReadDirectory(CSFTPWaitDirectoryData* pData)
 		m_listWaitResponse.Add(pData, pData->uMsgID);
 }
 
-#define SSH_AUTH_SERVICE "ssh-userauth"
-
 void CSFTPFolderSFTP::OnSFTPSocketReceive(bool isSocketReceived)
 {
 	::EnterCriticalSection(&m_csReceive);
