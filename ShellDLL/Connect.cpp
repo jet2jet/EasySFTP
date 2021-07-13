@@ -40,6 +40,30 @@ CConnectDialog::~CConnectDialog(void)
 		EVP_PKEY_free(m_pPKey);
 }
 
+void CConnectDialog::UpdateSFTPMode(bool bSFTPMode)
+{
+	char nAuthType;
+	::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, true);
+	if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PASSWORD) == BST_CHECKED)
+		nAuthType = AUTHTYPE_PASSWORD;
+	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PKEY) == BST_CHECKED)
+		nAuthType = AUTHTYPE_PUBLICKEY;
+	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PAGEANT) == BST_CHECKED)
+		nAuthType = AUTHTYPE_PAGEANT;
+	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_WIN_SSHAGENT) == BST_CHECKED)
+		nAuthType = AUTHTYPE_WINSSHAGENT;
+	else
+		nAuthType = AUTHTYPE_PASSWORD;
+	::EnableDlgItem(m_hWnd, IDC_AUTH_PASSWORD, bSFTPMode && !m_bDisableAuthPassword);
+	::EnableDlgItem(m_hWnd, IDC_AUTH_PKEY, bSFTPMode && !m_bDisableAuthPublicKey);
+	::EnableDlgItem(m_hWnd, IDC_AUTH_PAGEANT, bSFTPMode && !m_bDisableAuthPublicKey);
+	::EnableDlgItem(m_hWnd, IDC_AUTH_WIN_SSHAGENT, bSFTPMode && !m_bDisableAuthPublicKey);
+	::EnableDlgItem(m_hWnd, IDC_PKEY_FILE, bSFTPMode && !m_bDisableAuthPublicKey && (nAuthType == AUTHTYPE_PUBLICKEY));
+	::EnableDlgItem(m_hWnd, IDC_PKEY_SEARCH, bSFTPMode && !m_bDisableAuthPublicKey && (nAuthType == AUTHTYPE_PUBLICKEY));
+	::SetDlgItemInt(m_hWnd, IDC_PORT, bSFTPMode ? 22 : 21, FALSE);
+	::EnableDlgItem(m_hWnd, IDC_PASSWORD, !bSFTPMode || (nAuthType != AUTHTYPE_PAGEANT && nAuthType != AUTHTYPE_WINSSHAGENT));
+}
+
 void CConnectDialog::SetDialogMode(bool bPasswordDialog)
 {
 	m_bPasswordDialog = bPasswordDialog;
@@ -48,18 +72,7 @@ void CConnectDialog::SetDialogMode(bool bPasswordDialog)
 
 bool CConnectDialog::OnInitDialog(HWND hWndFocus)
 {
-	if (!m_bPasswordDialog)
-	{
-		::SyncDialogData(m_hWnd, IDC_HOST_NAME, m_strHostName, false);
-		::SyncDialogData(m_hWnd, IDC_PORT, m_nPort, false);
-	}
-	else if (!m_strMessage.IsEmpty())
-		::SyncDialogData(m_hWnd, IDC_MESSAGE, m_strMessage, false);
-	::SyncDialogData(m_hWnd, IDC_USER_NAME, m_strUserName, false);
-	m_strPassword.SetStringToWindowText(::GetDlgItem(m_hWnd, IDC_PASSWORD));
-	if (!m_bPasswordDialog)
-		::SyncDialogData(m_hWnd, IDC_USE_SFTP, m_bSFTPMode, false);
-	else
+	if (m_bPasswordDialog)
 	{
 		while (true)
 		{
@@ -76,11 +89,25 @@ bool CConnectDialog::OnInitDialog(HWND hWndFocus)
 			m_nAuthType++;
 		}
 	}
-	::CheckRadioButton(m_hWnd, IDC_AUTH_PASSWORD, IDC_AUTH_PKEY, IDC_AUTH_PASSWORD + m_nAuthType - AUTHTYPE_PASSWORD);
-	::SyncDialogData(m_hWnd, IDC_PKEY_FILE, m_strPKeyFileName, false);
+	else //if (!m_bPasswordDialog)
+		m_bDisableAuthPassword = m_bDisableAuthPublicKey = false;
+
+	UpdateSFTPMode(m_bSFTPMode);
 
 	if (!m_bPasswordDialog)
-		m_bDisableAuthPassword = m_bDisableAuthPublicKey = false;
+	{
+		::SyncDialogData(m_hWnd, IDC_HOST_NAME, m_strHostName, false);
+		::SyncDialogData(m_hWnd, IDC_PORT, m_nPort, false);
+	}
+	else if (!m_strMessage.IsEmpty())
+		::SyncDialogData(m_hWnd, IDC_MESSAGE, m_strMessage, false);
+	::SyncDialogData(m_hWnd, IDC_USER_NAME, m_strUserName, false);
+	m_strPassword.SetStringToWindowText(::GetDlgItem(m_hWnd, IDC_PASSWORD));
+	if (!m_bPasswordDialog)
+		::SyncDialogData(m_hWnd, IDC_USE_SFTP, m_bSFTPMode, false);
+	::CheckRadioButton(m_hWnd, IDC_AUTH_PASSWORD, IDC_AUTH_WIN_SSHAGENT, IDC_AUTH_PASSWORD + m_nAuthType - AUTHTYPE_PASSWORD);
+	::SyncDialogData(m_hWnd, IDC_PKEY_FILE, m_strPKeyFileName, false);
+
 	::EnableDlgItem(m_hWnd, IDC_AUTH_PASSWORD, m_bSFTPMode && !m_bDisableAuthPassword);
 	::EnableDlgItem(m_hWnd, IDC_AUTH_PKEY, m_bSFTPMode && !m_bDisableAuthPublicKey);
 	::EnableDlgItem(m_hWnd, IDC_AUTH_PAGEANT, m_bSFTPMode && !m_bDisableAuthPublicKey);
@@ -113,22 +140,8 @@ LRESULT CConnectDialog::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 LRESULT CConnectDialog::OnSFTPModeChecked(WPARAM wParam, LPARAM lParam)
 {
 	bool bSFTPMode;
-	char nAuthType;
 	::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, true);
-	if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PASSWORD) == BST_CHECKED)
-		nAuthType = AUTHTYPE_PASSWORD;
-	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PKEY) == BST_CHECKED)
-		nAuthType = AUTHTYPE_PUBLICKEY;
-	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PAGEANT) == BST_CHECKED)
-		nAuthType = AUTHTYPE_PAGEANT;
-	else
-		nAuthType = AUTHTYPE_PASSWORD;
-	::EnableDlgItem(m_hWnd, IDC_AUTH_PASSWORD, bSFTPMode);
-	::EnableDlgItem(m_hWnd, IDC_AUTH_PKEY, bSFTPMode);
-	::EnableDlgItem(m_hWnd, IDC_PKEY_FILE, bSFTPMode && (nAuthType == AUTHTYPE_PUBLICKEY));
-	::EnableDlgItem(m_hWnd, IDC_PKEY_SEARCH, bSFTPMode && (nAuthType == AUTHTYPE_PUBLICKEY));
-	::SetDlgItemInt(m_hWnd, IDC_PORT, bSFTPMode ? 22 : 21, FALSE);
-	::EnableDlgItem(m_hWnd, IDC_PASSWORD, !bSFTPMode || (nAuthType != AUTHTYPE_PAGEANT));
+	UpdateSFTPMode(bSFTPMode);
 	return 0;
 }
 

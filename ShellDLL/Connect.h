@@ -33,6 +33,8 @@ public:
 protected:
 	bool m_bPasswordDialog;
 
+	void UpdateSFTPMode(bool bSFTPMode);
+
 	virtual bool OnInitDialog(HWND hWndFocus);
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 	LRESULT OnSFTPModeChecked(WPARAM wParam, LPARAM lParam);
