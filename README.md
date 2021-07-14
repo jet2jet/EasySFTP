@@ -2,9 +2,19 @@
 
 EasySFTPはFTPとSFTPに対応したファイル転送を行うWindows用クライアントアプリケーションです。
 
-現在は更新・メンテナンスを停止しています。
+## 使い方
 
-## ビルド方法
+(まだドキュメントを整理できていません。ご了承ください。)
+
+[EasySFTP.txt](./EasySFTP.txt) をご覧ください。
+
+## 未実装機能
+
+- ディレクトリ(フォルダー)のアップロード機能
+- 「すべてアップロード」「すべてダウンロード」の機能
+- etc.
+
+## ソースコードのビルド方法
 
 (Visual Studio 2019 における手順であり、他の環境では未確認です。)
 
@@ -19,7 +29,7 @@ EasySFTPはFTPとSFTPに対応したファイル転送を行うWindows用クラ�
 
 EasySFTP is a file transfer client application for Windows using FTP and SFTP.
 
-Currently no update and maintenance is planned for this application.
+Currently only Japanese language version is provided.
 
 ## Build
 

@@ -110,6 +110,7 @@
       <Filter>リソース ファイル</Filter>
     </None>
     <None Include="..\README.md" />
+    <None Include="..\CHANGELOG.md" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="EasySFTP.rc">

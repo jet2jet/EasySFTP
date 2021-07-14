@@ -1,140 +1,135 @@
 
---- EasySFTP Version 0.9.3.3 ---
+--- EasySFTP Version 0.10.0.1 ---
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-�T�v
+概要
 
-�@���̃A�v���P�[�V�����́A�t�@�C���T�[�o�[�ƃt�@�C���̑���M���s������
-�T�[�o�[��̃t�@�C�����̕ύX�E�폜�Ȃǂ��s���A�v���P�[�V�����ł��B
-FTP��SFTP�̃v���g�R���ɑΉ����Ă��܂��B
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-�t�@�C���̐���
-
-�� 32�r�b�g�ŁE64�r�b�g�łƂ��g�p����t�@�C�����͓���ł��B
-�@ 64�r�b�g�ł́ux64�v�f�B���N�g�����Ɋ܂܂�܂��B
-
-�EEasySFTP.exe
-�@�v���O�����̖{�̂ł��B
-�EEasySFTP.dll
-�@���ۂɃT�[�o�[�ƒʐM���s���Ȃǃ��C���̓������������DLL�ł��B
-�@�V�F���g�����������Ă���AWindows Explorer���痘�p����ۂ�
-�@����DLL�P�̂œ��삵�܂��B
-�ERegESFTP.exe
-�@EasySFTP.dll ���V�X�e��(���W�X�g��)�֓o�^����v���O�����ł��B
-�@�u/unregister�v�I�v�V������t����Ɠo�^���폜���邱�Ƃ��o���܂��B
-�@[Vista �ȍ~] �Ǘ��Ҍ����ł̂ݎ��s�\�ł��B
-�EEasySFTP.txt
-�@���̐����t�@�C���ł��B
-�EEasySFTP.ini (��x�N������Ǝ����쐬)
-�@�v���O�����̐ݒ�t�@�C���ł��BEasySFTP.exe�����p���܂��B
-�EHosts.ini (��x�N������Ǝ����쐬)
-�@�o�^�����z�X�g�����܂ސݒ�t�@�C���ł��BEasySFTP.dll�����p���܂��B
-�@(�p�X���[�h�͕ۑ����܂���B)
-�ELVStat.dat, SVStat.dat
-�@�v���O������̃��X�g�̏�Ԃ�ۑ�����f�[�^�t�@�C���ł��B
-�@EasySFTP.exe�����p���܂��B
+　このアプリケーションは、ファイルサーバーとファイルの送受信を行ったり
+サーバー上のファイル情報の変更・削除などを行うアプリケーションです。
+FTPとSFTPのプロトコルに対応しています。
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-���C�Z���X
+ファイルの説明
 
-���̃v���O�����͏C��BSD���C�Z���X�ɂĔz�z���Ă��܂��B
-���C�Z���X�̏ڍׂ� license.txt ���������������B
+※ 32ビット版・64ビット版とも使用するファイル名は同一です。
+　 64ビット版は「x64」ディレクトリ内に含まれます。
 
-�E���̃v���O������ OpenSSL 0.9.8l ���g�p���Ă��܂��B
-�E���̃v���O�����͈ꕔ�� OpenSSH 5.3p1 �̃R�[�h���g�p���Ă��܂��B
-�E���̃v���O������ Pageant �̋@�\�̈ꕔ�� PuTTY �̃R�[�h���g�p���Ă��܂��B
-
-���̃v���O�����̓I�[�v���\�[�X�v���W�F�N�g�ł��B
-http://sourceforge.jp/projects/easysftp/
-
-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-�C���X�g�[���E�A���C���X�g�[��
-
-�E���W�X�g����DLL��o�^���Ă��Ȃ���ԂŋN������ƁA�u���W�X�g��
-�@�G�~�����[�V�������[�h�v�ŋN�����܂��B���̏�ԂŎg�p����ꍇ��
-�@���ʂȃC���X�g�[����Ƃ͕s�v�ł��B
-�E���W�X�g����DLL��o�^����ꍇ�́A�ŏ��� RegESFTP.exe �����s���邩�A
-�@EasySFTP.exe ���N�������̂��u�c�[���v���u�ݒ�v���u�V�X�e���o�^�v
-�@���s���Ă��������B
-
-�E�A���C���X�g�[���[�͑��݂��܂���B���W�X�g����DLL��o�^���Ă���ꍇ��
-�@EasySFTP.exe ���N�����āu�c�[���v���u�ݒ�v���u�o�^�̍폜�v��
-�@�s���Ă��������B���̌�AWindows�̍ċN�����K�v�ȏꍇ������܂��B
-�EEasySFTP.exe ���g�̓��W�X�g���ւ̏������݂��s���܂���̂ŁA
-�@���ׂẴt�@�C�����蓮�ō폜���Ă��������B
+・EasySFTP.exe
+　プログラムの本体です。
+・EasySFTP.dll
+　実際にサーバーと通信を行うなどメインの動作を処理するDLLです。
+　シェル拡張も実装しており、Windows Explorerから利用する際は
+　このDLL単体で動作します。
+・RegESFTP.exe
+　EasySFTP.dll をシステム(レジストリ)へ登録するプログラムです。
+　「/unregister」オプションを付けると登録を削除することが出来ます。
+　[Vista 以降] 管理者権限でのみ実行可能です。
+・EasySFTP.txt
+　この説明ファイルです。
+・EasySFTP.ini (一度起動すると自動作成)
+　プログラムの設定ファイルです。EasySFTP.exeが利用します。
+・Hosts.ini (一度起動すると自動作成)
+　登録したホスト情報を含む設定ファイルです。EasySFTP.dllが利用します。
+　(パスワードは保存しません。)
+・LVStat.dat, SVStat.dat
+　プログラム上のリストの状態を保存するデータファイルです。
+　EasySFTP.exeが利用します。
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-�����
+ライセンス
 
-[32�r�b�g��]
-�EWindows 95 �ȍ~�œ��삵�܂��B
-�EInternet Explorer 5 �ȏオ�C���X�g�[������Ă���K�v������܂��B
-�@�EInternet Explorer 4 �ł̓���͖��m�F�ł��B(3 �ł͓����܂���)
-�EWindows 95/98/Me �ł̓��W�X�g���G�~�����[�V�������[�h�͓��삵�܂���B
-�@(RegESFTP.exe ���g���ēo�^���s���Ă��������B)
-�EWindows 95 + IE5.5 / Windows 7 (64�r�b�g) �œ���m�F���Ă��܂��B
+このプログラムは修正BSDライセンスにて配布しています。
+ライセンスの詳細は license.txt をご覧ください。
 
-[64�r�b�g��]
-�E�����炭 Windows XP (x64) �ȍ~�œ��삵�܂��B
-�EWindows 7 (64�r�b�g), Windows 8 [Windows Developer Preview] (64�r�b�g) ��
-�@����m�F���Ă��܂��B
+・このプログラムは OpenSSL 1.1.1k を使用しています。
+・このプログラムは libssh2 1.9.0 を使用しています。
+・このプログラムは Pageant の機能の一部に PuTTY のコードを使用しています。
+
+このプログラムはオープンソースプロジェクトです。
+https://github.com/jet2jet/EasySFTP
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+インストール・アンインストール
+
+・レジストリにDLLを登録していない状態で起動すると、「レジストリ
+　エミュレーションモード」で起動します。この状態で使用する場合は
+　特別なインストール作業は不要です。
+・レジストリにDLLを登録する場合は、最初に RegESFTP.exe を実行するか、
+　EasySFTP.exe を起動したのち「ツール」→「設定」より「システム登録」
+　を行ってください。
+
+・アンインストーラーは存在しません。レジストリにDLLを登録している場合は
+　EasySFTP.exe を起動して「ツール」→「設定」より「登録の削除」を
+　行ってください。その後、Windowsの再起動が必要な場合があります。
+・EasySFTP.exe 自身はレジストリへの書き込みを行いませんので、
+　すべてのファイルを手動で削除してください。
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+動作環境
+
+32ビット版/64ビット版ともにWindows 10で動作確認しています。
+それ以前のWindowsでの動作は確認していません。
 
 [FTP]
-�EFTP�ڑ��ł̓p�b�V�u���[�h���g�p���܂��BPORT/EPRT �R�}���h�͎g�p���܂���B
-�@�EEPSV �R�}���h���g�p���A�g�p�ł��Ȃ��ꍇ�� PASV �R�}���h���g���܂��B
-�E�ʐM�͏�Ƀo�C�i�����[�h�ōs���܂��B���s�R�[�h�̕ϊ���
-�@�Ǝ������̕ϊ����@���g�p���܂��B
+・FTP接続ではパッシブモードを使用します。PORT/EPRT コマンドは使用しません。
+　・EPSV コマンドを使用し、使用できない場合は PASV コマンドを使います。
+・通信は常にバイナリモードで行います。改行コードの変換は
+　独自実装の変換方法を使用します。
 
 [SFTP]
-�ESSH�T�[�o�[�̓o�[�W����2�̂ݑΉ����Ă��܂��B
-�ESFTP�̓o�[�W����6�܂őΉ����Ă��܂����A�����_�ł�3�̂ݓ���m�F���Ă��܂��B
-�E�閧���t�@�C���� OpenSSH �Ő������ꂽ�`���̃t�@�C�����g�p�ł��܂��B
-�EPageant �ɑΉ����Ă��܂��BPageant ���N������Ă���� Pageant ��
-�@�o�^����Ă���閧����(���������)�g�p���ă��O�C�������݂܂��B
-�ESFTP�̃t�@�C������M�̓o�C�i���`���ōs���܂��B(�V�����o�[�W������
-�@�e�L�X�g���[�h�͎g�p���܂���B)
+・SSHサーバーはバージョン2のみ対応しています。
+・SFTPはバージョン6まで対応していますが、現時点では3のみ動作確認しています。
+・秘密鍵ファイルは OpenSSH で生成された形式のファイルが使用できます。
+・Pageant に対応しています。Pageant が起動されていれば Pageant に
+　登録されている鍵を(総当たりで)使用してログインを試みます。
+・Windows 10に搭載されている OpenSSH の ssh-agent に対応しています。
+　ssh-agent が有効化されていれば、ssh-agent に登録されている鍵を
+　(総当たりで)使用してログインを試みます。
+・SFTPのファイル送受信はバイナリ形式で行います。(新しいバージョンの
+　テキストモードは使用しません。)
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-�g����
+使い方
 
-�@EasySFTP.exe ���N������ƃE�B���h�E�̍���ʂɃf�X�N�g�b�v�A
-�E��ʂɁu�z�X�g�̒ǉ��v���ڂ̂���t�H���_���\������܂��B
-�܂��u�z�X�g�̒ǉ��v���J���Đڑ��������z�X�g�̐ݒ���s���Ă��������B
-�z�X�g��o�^����ƁA�����t�H���_�ɓo�^�����z�X�g���\�������̂ŁA
-������J���Ɓu�p�X���[�h�̓��́v�_�C�A���O���\������܂��B
-�p�X���[�h�ƁA�K�v�ɉ����Ĕ閧���t�@�C�����w�肵�ă��O�C�����܂��B
+　EasySFTP.exe を起動するとウィンドウの左画面にデスクトップ、
+右画面に「ホストの追加」項目のあるフォルダが表示されます。
+まず「ホストの追加」を開いて接続したいホストの設定を行ってください。
+ホストを登録すると、同じフォルダに登録したホストが表示されるので、
+それを開くと「パスワードの入力」ダイアログが表示されます。
+パスワードと、必要に応じて秘密鍵ファイルを指定してログインします。
 
-�@�܂��A�z�X�g��o�^�����ɂ����ڑ����s�������ꍇ�́A
-�u�t�@�C���v���j���[�́u�N�C�b�N�ڑ��v��I�����A�z�X�g����p�X���[�h
-�Ȃǂ̏�����͂��Ă��������B
+　また、ホストを登録せずにすぐ接続を行いたい場合は、
+「ファイル」メニューの「クイック接続」を選択し、ホスト名やパスワード
+などの情報を入力してください。
 
-�@�t�@�C���𑗐M����ɂ́A���[�J�����̃t�@�C����I�����ăc�[���o�[
-�܂��̓��j���[�́u�A�b�v���[�h�v��I�����܂��B�t�@�C�����_�E�����[�h
-����ɂ͓��l�Ɂu�_�E�����[�h�v��I�����܂��B�Ȃ��A�h���b�O�A���h�h���b�v��
-�Ή����Ă��邽�߁A�C�ӂ̃t�@�C��(���z�t�@�C���܂�)���A�b�v���[�h������
-�C�ӂ̃t�H���_(���z�t�H���_�܂�)�Ƀ_�E�����[�h���邱�Ƃ��o���܂��B
+　ファイルを送信するには、ローカル側のファイルを選択してツールバー
+またはメニューの「アップロード」を選択します。ファイルをダウンロード
+するには同様に「ダウンロード」を選択します。なお、ドラッグアンドドロップに
+対応しているため、任意のファイル(仮想ファイル含む)をアップロードしたり
+任意のフォルダ(仮想フォルダ含む)にダウンロードすることが出来ます。
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-�X�V����
+更新履歴
+
+※ Version 0.10.0.0 以降の更新履歴は CHANGELOG.md (英語) をご覧ください。
 
 Version 0.9.3.3
-�E�e�L�X�g�`���̃t�@�C�����M���ɉ��s�R�[�h�̏������ꕔ��肭
-�@�o���Ă��Ȃ����������C�����܂����B
-�E�T�[�o�[�ɑ��݂���t�@�C���𑗐M����ƈꗗ�ɓ����t�@�C����
-�@2�\������Ă��܂������C�����܂����B
-�E�ꕔ�Ń������A�N�Z�X�ᔽ�ɂ��ُ�I������\�����������ӏ����C�����܂����B
-�EWindows 8�ł̃��W�X�g���G�~�����[�V�������[�h�ɑΉ����܂����B
+・テキスト形式のファイル送信時に改行コードの処理が一部上手く
+　出来ていなかった問題を修正しました。
+・サーバーに存在するファイルを送信すると一覧に同じファイルが
+　2つ表示されてしまう問題を修正しました。
+・一部でメモリアクセス違反により異常終了する可能性があった箇所を修正しました。
+・Windows 8でのレジストリエミュレーションモードに対応しました。
 
 Version 0.9.2.1
-�E�t�@�C���̑��M����肭�s���Ȃ����Ƃ���������C�����܂����B
-�E���W�X�g���G�~�����[�V�������[�h�Ńt�@�C����ǉ��E���O�̕ύX�E�폜��
-�@�s���Ă��\�������f����Ȃ��̂��C�����܂����B
-�E�t�@�C���\���Łu�O���[�v�ŕ\���v��Windows�W���̎����ɋ߂����܂����B
+・ファイルの送信が上手く行かないことがある問題を修正しました。
+・レジストリエミュレーションモードでファイルを追加・名前の変更・削除を
+　行っても表示が反映されないのを修正しました。
+・ファイル表示で「グループで表示」をWindows標準の実装に近くしました。
 
 Version 0.9.1.1
-�����o�[�W�����B
+初期バージョン。
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-�z�[���y�[�W: http://pf-j.sakura.ne.jp/
-���: �W�F�b�g
+ホームページ: http://pf-j.sakura.ne.jp/
+作者: ジェット
