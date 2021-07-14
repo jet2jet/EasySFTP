@@ -32,6 +32,7 @@ protected:
 	CFTPDirectoryBase* m_pDirectory;
 	HWND m_hWndOwner;
 	IDataObject* m_pObjectCur;
+	DWORD m_dwLastDragKeyState;
 
 	class CFTPDropHandlerOperation : public CTransferDialogListener,
 		public CTransferStatus

@@ -50,6 +50,29 @@ static HRESULT __stdcall SetPerformedDropEffect(IDataObject* pObject, DWORD dwEf
 	return hr;
 }
 
+static HRESULT __stdcall SetPasteSucceeded(IDataObject* pObject, DWORD dwEffect)
+{
+	FORMATETC fmt;
+	STGMEDIUM stg;
+	stg.hGlobal = ::GlobalAlloc(GMEM_MOVEABLE, sizeof(DWORD));
+	if (!stg.hGlobal)
+		return E_OUTOFMEMORY;
+
+	fmt.cfFormat = theApp.m_nCFPasteSucceeded;
+	fmt.dwAspect = DVASPECT_CONTENT;
+	fmt.lindex = -1;
+	fmt.ptd = NULL;
+	fmt.tymed = TYMED_HGLOBAL;
+	stg.tymed = TYMED_HGLOBAL;
+	stg.pUnkForRelease = NULL;
+	LPDWORD lpdw = (LPDWORD) ::GlobalLock(stg.hGlobal);
+	*lpdw = dwEffect;
+	::GlobalUnlock(stg.hGlobal);
+	HRESULT hr = pObject->SetData(&fmt, &stg, FALSE);
+	::GlobalFree(stg.hGlobal);
+	return hr;
+}
+
 static HRESULT __stdcall GetRelativeDataObject(IShellFolder* pFolder, HWND hWndOwner, PCUIDLIST_RELATIVE pidlRelative, IDataObject** ppObject)
 {
 	if (IsSingleIDList(pidlRelative))
@@ -73,6 +96,7 @@ CFTPDropHandler::CFTPDropHandler(CFTPDirectoryBase* pDirectory, HWND hWndOwner)
 	, m_pDirectory(pDirectory)
 	, m_hWndOwner(hWndOwner)
 	, m_pObjectCur(NULL)
+	, m_dwLastDragKeyState(0)
 {
 	pDirectory->AddRef();
 }
@@ -124,10 +148,12 @@ STDMETHODIMP CFTPDropHandler::DragEnter(IDataObject* pDataObj, DWORD grfKeyState
 		m_pObjectCur->Release();
 		m_pObjectCur = NULL;
 	}
+	m_dwLastDragKeyState = 0;
 	if (!pDataObj || !pdwEffect)
 		return E_POINTER;
 
 	m_pObjectCur = pDataObj;
+	m_dwLastDragKeyState = grfKeyState;
 	pDataObj->AddRef();
 
 	DWORD dwEA, dwEP;
@@ -150,6 +176,7 @@ STDMETHODIMP CFTPDropHandler::DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwE
 		return E_INVALIDARG;
 	if (!pdwEffect)
 		return E_POINTER;
+	m_dwLastDragKeyState = grfKeyState;
 
 	DWORD dwEA, dwEP;
 	dwEA = *pdwEffect;
@@ -181,6 +208,8 @@ STDMETHODIMP CFTPDropHandler::Drop(IDataObject* pDataObj, DWORD grfKeyState, POI
 	if (!pdwEffect || !pDataObj)
 		return E_POINTER;
 
+	auto lastKeyState = m_dwLastDragKeyState;
+	m_dwLastDragKeyState = 0;
 	if (m_pObjectCur)
 	{
 		m_pObjectCur->Release();
@@ -204,7 +233,7 @@ STDMETHODIMP CFTPDropHandler::Drop(IDataObject* pDataObj, DWORD grfKeyState, POI
 		return S_OK;
 	}
 
-	if (grfKeyState & MK_RBUTTON)
+	if (lastKeyState & MK_RBUTTON)
 	{
 		HMENU hMenu = ::GetSubMenu(theApp.m_hMenuPopup, POPUP_POS_DROP);
 		::EnableMenuItem(hMenu, ID_DROP_COPY, MF_BYCOMMAND | ((dwEA & DROPEFFECT_COPY) ? MF_ENABLED : MF_GRAYED));
@@ -791,13 +820,17 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::DoOperation()
 				LPCWSTR lpw = (LPCWSTR) ::GlobalLock(stg.hGlobal);
 				if (m_pDirectory->m_pRoot->m_strHostName.Compare(lpw, true) == 0)
 				{
+					// perform optimized move
 					while (*lpw++);
 					LPCWSTR lpszDir = lpw;
 					while (*lpw++);
 					bFTPData = true;
 					hr = m_pDirectory->m_pRoot->MoveFTPItems(m_hWndOwner, m_pDirectory, lpszDir, lpw);
 					if (SUCCEEDED(hr))
+					{
 						hr = SetPerformedDropEffect(pObject, DROPEFFECT_NONE);
+						hr = SetPasteSucceeded(pObject, DROPEFFECT_NONE);
+					}
 				}
 				::GlobalUnlock(stg.hGlobal);
 				::ReleaseStgMedium(&stg);
@@ -808,7 +841,10 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::DoOperation()
 	{
 		hr = RetrieveFileContents(pObject);
 		if (hr == S_OK)
+		{
 			hr = SetPerformedDropEffect(pObject, m_dwEffect);
+			hr = SetPasteSucceeded(pObject, m_dwEffect);
+		}
 		else if (hr == S_FALSE)
 		{
 			fmt.cfFormat = theApp.m_nCFShellIDList;
@@ -850,9 +886,13 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::DoOperation()
 									{
 										hr = RetrieveFileContents(pObj);
 										if (hr == S_OK)
+										{
 											hr = SetPerformedDropEffect(pObj, m_dwEffect);
+											hr = SetPasteSucceeded(pObj, m_dwEffect);
+										}
 										pObj->Release();
 										hr = SetPerformedDropEffect(pObject, m_dwEffect);
+										hr = SetPasteSucceeded(pObject, m_dwEffect);
 									}
 								}
 								pFolder->Release();
