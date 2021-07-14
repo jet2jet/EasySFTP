@@ -258,17 +258,22 @@ STDMETHODIMP CFTPDropHandler::Drop(IDataObject* pDataObj, DWORD grfKeyState, POI
 		}
 	}
 
-	CFTPDropHandlerOperation* pOperation = new CFTPDropHandlerOperation(m_pDirectory, m_hWndOwner, pDataObj);
+	return PerformDrop(pDataObj, dwEP, m_pDirectory, m_hWndOwner, pdwEffect);
+}
+
+HRESULT CFTPDropHandler::PerformDrop(IDataObject* pDataObj, DWORD dwEffect, CFTPDirectoryBase* pDirectory, HWND hWndOwner, DWORD* pdwEffect)
+{
+	CFTPDropHandlerOperation* pOperation = new CFTPDropHandlerOperation(pDirectory, hWndOwner, pDataObj);
 	if (!pOperation)
 		return E_OUTOFMEMORY;
 
-	pOperation->m_dwEffect = dwEP;
-	*pdwEffect = dwEP;
+	pOperation->m_dwEffect = dwEffect;
+	*pdwEffect = dwEffect;
 
-	if (dwEP != DROPEFFECT_NONE)
+	if (dwEffect != DROPEFFECT_NONE)
 	{
 		IAsyncOperation* pAsync = NULL;
-		if (SUCCEEDED(pDataObj->QueryInterface(IID_IAsyncOperation, (void**) &pAsync)))
+		if (SUCCEEDED(pDataObj->QueryInterface(IID_IAsyncOperation, (void**)&pAsync)))
 		{
 			BOOL b = FALSE;
 			if (FAILED(pAsync->SetAsyncMode(TRUE)) || FAILED(pAsync->GetAsyncMode(&b)) || !b)
@@ -281,7 +286,7 @@ STDMETHODIMP CFTPDropHandler::Drop(IDataObject* pDataObj, DWORD grfKeyState, POI
 		if (pAsync)
 		{
 			UINT u;
-			HANDLE h = (HANDLE) _beginthreadex(NULL, 0,
+			HANDLE h = (HANDLE)_beginthreadex(NULL, 0,
 				CFTPDropHandler::CFTPDropHandlerOperation::_ThreadProc,
 				pOperation, 0, &u);
 			if (!h || h == INVALID_HANDLE_VALUE)
@@ -304,6 +309,7 @@ STDMETHODIMP CFTPDropHandler::Drop(IDataObject* pDataObj, DWORD grfKeyState, POI
 		}
 		else
 		{
+			HRESULT hr = S_OK;
 			FORMATETC fmt;
 			fmt.cfFormat = CF_HDROP;
 			fmt.dwAspect = DVASPECT_CONTENT;
@@ -320,7 +326,7 @@ STDMETHODIMP CFTPDropHandler::Drop(IDataObject* pDataObj, DWORD grfKeyState, POI
 					*pdwEffect = DROPEFFECT_COPY;
 
 					UINT u;
-					HANDLE h = (HANDLE) _beginthreadex(NULL, 0,
+					HANDLE h = (HANDLE)_beginthreadex(NULL, 0,
 						CFTPDropHandler::CFTPDropHandlerOperation::_ThreadProc,
 						pOperation, 0, &u);
 					if (!h || h == INVALID_HANDLE_VALUE)

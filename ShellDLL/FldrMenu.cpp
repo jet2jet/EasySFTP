@@ -7,6 +7,8 @@
 #include "FNameDlg.h"
 #include "LinkDlg.h"
 
+#include "FoldDrop.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 
 CFTPFileItemMenu::CFTPFileItemMenu(CFTPDirectoryBase* pParent,
@@ -831,6 +833,8 @@ STDMETHODIMP CFTPFileDirectoryMenu::InvokeCommand(CMINVOKECOMMANDINFO* pici)
 				uID = ID_PARENT_NEW_SHORTCUT;
 			else if (_wcsicmp(piciex->lpVerbW, L"properties") == 0)
 				uID = ID_PARENT_PROPERTY;
+			else if (_wcsicmp(piciex->lpVerbW, L"paste") == 0)
+				uID = ID_PARENT_PASTE;
 			else
 				return E_INVALIDARG;
 		}
@@ -847,6 +851,8 @@ STDMETHODIMP CFTPFileDirectoryMenu::InvokeCommand(CMINVOKECOMMANDINFO* pici)
 				uID = ID_PARENT_NEW_SHORTCUT;
 			else if (_stricmp(piciex->lpVerb, "properties") == 0)
 				uID = ID_PARENT_PROPERTY;
+			else if (_stricmp(piciex->lpVerb, "paste") == 0)
+				uID = ID_PARENT_PASTE;
 			else
 				return E_INVALIDARG;
 		}
@@ -866,6 +872,9 @@ STDMETHODIMP CFTPFileDirectoryMenu::InvokeCommand(CMINVOKECOMMANDINFO* pici)
 				break;
 			case ID_PARENT_PROPERTY:
 				DoProperty(hWnd);
+				break;
+			case ID_PARENT_PASTE:
+				DoPaste(hWnd);
 				break;
 			default:
 				return E_INVALIDARG;
@@ -995,4 +1004,41 @@ void CFTPFileDirectoryMenu::DoProperty(HWND hWndOwner)
 		}
 		::CoTaskMemFree(pidlC);
 	}
+}
+
+void CFTPFileDirectoryMenu::DoPaste(HWND hWndOwner)
+{
+	IDataObject* pObject = NULL;
+	auto hr = ::OleGetClipboard(&pObject);
+	if (FAILED(hr) || pObject == NULL)
+	{
+		::MessageBeep(0);
+		return;
+	}
+
+	FORMATETC fmt;
+	STGMEDIUM stg;
+	fmt.dwAspect = DVASPECT_CONTENT;
+	fmt.lindex = -1;
+	fmt.ptd = NULL;
+	fmt.tymed = TYMED_HGLOBAL;
+	fmt.cfFormat = theApp.m_nCFPreferredDropEffect;
+	hr = pObject->QueryGetData(&fmt);
+	if (hr == S_OK)
+	{
+		hr = pObject->GetData(&fmt, &stg);
+		if (SUCCEEDED(hr))
+		{
+			auto pv = ::GlobalLock(stg.hGlobal);
+			if (pv)
+			{
+				DWORD dwEffect = *reinterpret_cast<DWORD*>(pv);
+				::GlobalUnlock(stg.hGlobal);
+				::ReleaseStgMedium(&stg);
+
+				hr = CFTPDropHandler::PerformDrop(pObject, dwEffect, m_pParent, hWndOwner, &dwEffect);
+			}
+		}
+	}
+	pObject->Release();
 }

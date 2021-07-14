@@ -26,6 +26,8 @@ public:
 	STDMETHOD(DragLeave)();
 	STDMETHOD(Drop)(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect);
 
+	static HRESULT PerformDrop(IDataObject* pDataObj, DWORD dwEffect, CFTPDirectoryBase* pDirectory, HWND hWndOwner, DWORD* pdwEffect);
+
 private:
 	ULONG m_uRef;
 protected:

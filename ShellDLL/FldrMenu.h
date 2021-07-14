@@ -102,6 +102,7 @@ protected:
 	void DoCreateFolder(HWND hWndOwner);
 	void DoCreateShortcut(HWND hWndOwner);
 	void DoProperty(HWND hWndOwner);
+	void DoPaste(HWND hWndOwner);
 
 protected:
 	ULONG m_uRef;
