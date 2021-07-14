@@ -111,6 +111,7 @@ public:
 	DWORD m_dwPasteSucceeded;
 	UINT m_nCFPerformed;
 	bool m_bIsClipboardData;
+	bool m_bDeleted;
 
 protected:
 	HRESULT GetFileDescriptorCountAndInitFileList(LPCWSTR lpszRelativeDir,

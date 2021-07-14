@@ -1694,6 +1694,9 @@ HRESULT CFTPDirectoryBase::CreateStream(CFTPFileItem* pItem, IStream** ppStream)
 
 void CFTPDirectoryBase::DeleteFTPItem(CFTPFileItem* pItem)
 {
+	CMyPtrArrayT<CFTPFileItem> aItems;
+	aItems.Add(pItem);
+	m_pRoot->DoDeleteFTPItems(m_hWndOwnerCache, this, aItems);
 	//PITEMID_CHILD pidl = ::CreateFileItem(m_pMallocData->pMalloc, pItem);
 	//if (!pidl)
 	//	return;

@@ -323,6 +323,7 @@ CFTPDataObject::CFTPDataObject(//IFTPDataObjectListener* pListener,
 	, m_dwPreferredDropEffect(DROPEFFECT_NONE)
 	, m_nCFPerformed(0)
 	, m_bIsClipboardData(false)
+	, m_bDeleted(false)
 	, m_bAsyncMode(false)
 	, m_bInOperation(false)
 	, m_bSFTPMode(true)
@@ -359,7 +360,7 @@ CFTPDataObject::~CFTPDataObject()
 	{
 		// CFSTR_PERFORMEDDROPEFFECT を呼び出すターゲットが -_MOVE を設定した場合は
 		// unoptimized move が行われているのでこちらで削除する
-		if (m_dwPerformedDropEffect == DROPEFFECT_MOVE)
+		if (m_dwPerformedDropEffect == DROPEFFECT_MOVE && !m_bDeleted)
 		{
 			for (int i = 0; i < m_aAllFileData.GetCount(); i++)
 			{
@@ -1105,6 +1106,7 @@ STDMETHODIMP CFTPDataObject::SetData(FORMATETC* pfmt, STGMEDIUM* pmdm, BOOL fRel
 							CFileData* pData = m_aAllFileData.GetItem(i);
 							pData->pDirectory->DeleteFTPItem(pData->pItem);
 						}
+						m_bDeleted = true;
 					}
 				}
 			}
@@ -1227,6 +1229,7 @@ STDMETHODIMP CFTPDataObject::EndOperation(HRESULT hResult, IBindCtx* pbcReserved
 						CFileData* pData = m_aAllFileData.GetItem(i);
 						pData->pDirectory->DeleteFTPItem(pData->pItem);
 					}
+					m_bDeleted = true;
 				}
 			}
 		}
