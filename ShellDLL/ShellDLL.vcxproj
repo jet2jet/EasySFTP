@@ -106,7 +106,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(TargetDir)Common.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.9</Version>
+      <Version>0.10</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
@@ -134,7 +134,7 @@
     <Link>
       <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>$(TargetDir)Common.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.9</Version>
+      <Version>0.10</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
@@ -159,7 +159,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(TargetDir)Common.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.9</Version>
+      <Version>0.10</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
@@ -190,7 +190,7 @@
     <Link>
       <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>$(TargetDir)Common.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.9</Version>
+      <Version>0.10</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
