@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v0.10.1.1
+
+- Fix for sending large data on SFTP
+
 ## v0.10.0.1
 
 - Replace SSH implementation with [libssh2](https://www.libssh2.org/) (drop SSH1 support)
