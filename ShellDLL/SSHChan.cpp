@@ -36,7 +36,7 @@ SSHChannelReturnType CSSHChannel::InitializeChannel(LIBSSH2_SESSION* pSession)
 		return SSHChannelReturnType::Error;
 	}
 
-	m_pendingRead.dwReadLen = 256;
+	m_pendingRead.dwReadLen = 8192;
 	m_pendingBuffer.ResetPosition();
 	m_pendingRead.pvBuffer = m_pendingBuffer.AppendToBuffer(NULL, static_cast<size_t>(m_pendingRead.dwReadLen));
 	if (!m_pendingRead.pvBuffer)
@@ -63,6 +63,7 @@ bool CSSHChannel::SendChannelData(const void* pvSendData, size_t nSendDataLen)
 {
 	m_pendingSendChannelData.pendingData.AppendToBuffer(pvSendData, nSendDataLen);
 	m_pendingSendChannelData.isPending = true;
+	CheckChannelWindow(static_cast<DWORD>(m_pendingSendChannelData.pendingData.GetLength()));
 	return true;
 }
 
@@ -143,12 +144,17 @@ bool CSSHChannel::ProcessSendChannelData()
 		m_pendingSendChannelData.sendData.GetLength());
 	if (r == LIBSSH2_ERROR_EAGAIN)
 		return true;
-	m_pendingSendChannelData.isSending = false;
-	if (r < 0)
+	if (r >= 0)
 	{
+		m_pendingSendChannelData.sendData.SkipPosition(static_cast<long>(r));
+		m_pendingSendChannelData.isSending = m_pendingSendChannelData.sendData.GetLength() > 0;
+	}
+	else
+	{
+		m_pendingSendChannelData.isSending = false;
 		m_pListener->ChannelError(this, r);
 	}
-	return false;
+	return m_pendingSendChannelData.isSending;
 }
 
 bool CSSHChannel::ProcessRead()
