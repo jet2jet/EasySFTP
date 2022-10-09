@@ -651,8 +651,8 @@ bool CMainDLL::InitInstance()
 		if (FAILED(hr))
 			return false;
 		memset(&sfi, 0, sizeof(sfi));
-		m_himlSysIconLarge = (HIMAGELIST) ::SHGetFileInfo((LPCTSTR) pidlDesktop, 0, &sfi, sizeof(sfi), SHGFI_SYSICONINDEX | SHGFI_LARGEICON);
-		m_himlSysIconSmall = (HIMAGELIST) ::SHGetFileInfo((LPCTSTR) pidlDesktop, 0, &sfi, sizeof(sfi), SHGFI_SYSICONINDEX | SHGFI_SMALLICON);
+		m_himlSysIconLarge = (HIMAGELIST) ::SHGetFileInfo((LPCTSTR) pidlDesktop, 0, &sfi, sizeof(sfi), SHGFI_SYSICONINDEX | SHGFI_LARGEICON | SHGFI_PIDL);
+		m_himlSysIconSmall = (HIMAGELIST) ::SHGetFileInfo((LPCTSTR) pidlDesktop, 0, &sfi, sizeof(sfi), SHGFI_SYSICONINDEX | SHGFI_SMALLICON | SHGFI_PIDL);
 		::CoTaskMemFree(pidlDesktop);
 		if (!m_himlSysIconLarge || !m_himlSysIconSmall)
 			return false;
