@@ -1141,7 +1141,7 @@ LSTATUS APIENTRY MyHookRegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOption
 	if (MyParseKeyData(hKey, lpSubKey, &hKeyRoot, strKey))
 	{
 		const CMyHookRegEntry* pEntry;
-		if (hKeyRoot == HKEY_LOCAL_MACHINE)
+		if (hKeyRoot == HKEY_LOCAL_MACHINE && !strKey.IsEmpty())
 		{
 			LPCWSTR lpw = _MatchKeyName(strKey, L"Software\\Classes");
 			if (lpw)
