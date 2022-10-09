@@ -372,7 +372,7 @@ bool CMainApplication::InitSystemLibraries()
 	{
 		INITCOMMONCONTROLSEX icex;
 		icex.dwSize = sizeof(icex);
-		icex.dwICC = ICC_LISTVIEW_CLASSES | ICC_BAR_CLASSES | ICC_USEREX_CLASSES;
+		icex.dwICC = ICC_LISTVIEW_CLASSES | ICC_BAR_CLASSES | ICC_USEREX_CLASSES | ICC_LINK_CLASS;
 		if (!::InitCommonControlsEx(&icex))
 			return false;
 	}

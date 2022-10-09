@@ -1836,6 +1836,15 @@ static INT_PTR CALLBACK _AboutDlgProc(HWND hDlg, UINT message, WPARAM wParam, LP
 				return (INT_PTR) TRUE;
 			}
 			break;
+		case WM_NOTIFY:
+		{
+			auto lpnmh = reinterpret_cast<LPNMHDR>(lParam);
+			if (lpnmh->code == NM_CLICK && lpnmh->idFrom == IDC_LINK_TO_REPOSITORY)
+			{
+				::ShellExecuteW(hDlg, L"open", reinterpret_cast<PNMLINK>(lpnmh)->item.szUrl, nullptr, nullptr, SW_SHOW);
+			}
+		}
+		break;
 	}
 	return (INT_PTR) FALSE;
 }
