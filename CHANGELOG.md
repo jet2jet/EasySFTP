@@ -1,5 +1,11 @@
 # ChangeLog
 
+## v0.10.2.1
+
+- Fix for empty string usage
+- Fix for specifying item-id-list
+- Add link to repository on about box
+
 ## v0.10.1.1
 
 - Fix for sending large data on SFTP
