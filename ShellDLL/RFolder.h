@@ -67,11 +67,6 @@ public:
 public:
 	STDMETHOD(GetParent)(IShellItem** ppsi);
 
-	// IParentAndItem (re-define)
-public:
-	STDMETHOD(SetParentAndItem)(PCIDLIST_ABSOLUTE pidlParent, IShellFolder* psf, PCUITEMID_CHILD pidlChild);
-	STDMETHOD(GetParentAndItem)(PIDLIST_ABSOLUTE* ppidlParent, IShellFolder** ppsf, PITEMID_CHILD* ppidlChild);
-
 	// IEasySFTPRoot
 public:
 	//STDMETHOD(SetListener)(IEasySFTPListener* pListener);
@@ -90,7 +85,6 @@ public:
 	// CFolderBase
 public:
 	STDMETHOD_(void, UpdateItem)(PCUITEMID_CHILD pidlOld, PCUITEMID_CHILD pidlNew, LONG lEvent);
-	STDMETHOD_(IShellFolder*, GetParentFolder)() { return m_pFolderParent; }
 
 public:
 	bool ConnectDialog(HWND hWndOwner, CUserInfo* pUser);
@@ -111,7 +105,6 @@ protected:
 
 	ULONG m_uRef;
 	//PIDLIST_ABSOLUTE m_pidlMe;
-	IShellFolder* m_pFolderParent;
 	CConnectDialog m_dlgConnect;
 
 public:

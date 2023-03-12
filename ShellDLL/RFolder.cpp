@@ -178,7 +178,6 @@ CEasySFTPFolderRoot::CEasySFTPFolderRoot()
 	m_uRef = 1;
 	//m_pListener = NULL;
 	m_pidlMe = NULL;
-	m_pFolderParent = NULL;
 	m_pItemParent = NULL;
 	theApp.AddReference(this);
 
@@ -190,8 +189,6 @@ CEasySFTPFolderRoot::CEasySFTPFolderRoot()
 
 CEasySFTPFolderRoot::~CEasySFTPFolderRoot()
 {
-	if (m_pFolderParent)
-		m_pFolderParent->Release();
 	//if (m_pListener)
 	//	m_pListener->Release();
 	//if (m_pidlMe)
@@ -1314,52 +1311,6 @@ STDMETHODIMP CEasySFTPFolderRoot::GetParent(IShellItem** ppsi)
 	if (!m_pItemParent)
 		return E_FAIL;
 	m_pItemParent->AddRef();
-	return S_OK;
-}
-
-STDMETHODIMP CEasySFTPFolderRoot::GetParentAndItem(PIDLIST_ABSOLUTE* ppidlParent, IShellFolder** ppsf, PITEMID_CHILD* ppidlChild)
-{
-	if (!ppidlParent && !ppsf && !ppidlChild)
-		return E_POINTER;
-	if (ppidlParent)
-		*ppidlParent = ::RemoveOneChild(m_pidlMe);
-	if (ppsf)
-	{
-		*ppsf = m_pFolderParent;
-		m_pFolderParent->AddRef();
-	}
-	if (ppidlChild)
-		*ppidlChild = ::GetChildItemIDList(m_pidlMe);
-	return S_OK;
-}
-
-STDMETHODIMP CEasySFTPFolderRoot::SetParentAndItem(PCIDLIST_ABSOLUTE pidlParent, IShellFolder* psf, PCUITEMID_CHILD pidlChild)
-{
-	if (!pidlParent || !psf || !pidlChild)
-		return E_INVALIDARG;
-
-	if (m_pFolderParent)
-		m_pFolderParent->Release();
-	if (m_pItemParent)
-	{
-		m_pItemParent->Release();
-		m_pItemParent = NULL;
-	}
-	if (m_pidlMe)
-		::CoTaskMemFree(m_pidlMe);
-	m_pFolderParent = psf;
-	psf->AddRef();
-	m_pidlMe = ::AppendItemIDList(pidlParent, pidlChild);
-
-	typedef HRESULT (STDAPICALLTYPE* T_SHCreateItemFromIDList)(__in PCIDLIST_ABSOLUTE pidl, __in REFIID riid, __deref_out void **ppv);
-	T_SHCreateItemFromIDList pfn = (T_SHCreateItemFromIDList) ::GetProcAddress(::GetModuleHandle(_T("shell32.dll")),
-		"SHCreateItemFromIDList");
-	if (pfn)
-	{
-		HRESULT hr = pfn(pidlParent, IID_IShellItem, (void**) &m_pItemParent);
-		if (FAILED(hr))
-			m_pItemParent = NULL;
-	}
 	return S_OK;
 }
 

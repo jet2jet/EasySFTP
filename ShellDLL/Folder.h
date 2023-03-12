@@ -107,7 +107,7 @@ protected:
 	STDMETHOD_(void, UpdateItem)(PCUITEMID_CHILD pidlOld, PCUITEMID_CHILD pidlNew, LONG lEvent)
 		{ }
 
-	STDMETHOD_(IShellFolder*, GetParentFolder)() { return NULL; }
+	STDMETHOD_(IShellFolder*, GetParentFolder)() { return m_pFolderParent; }
 
 public:
 	PIDLIST_ABSOLUTE m_pidlMe;
@@ -116,6 +116,7 @@ protected:
 	IUnknown* m_pUnkSite;
 	HWND m_hWndOwnerCache;
 	CMyPtrArrayPtrT<HWND> m_ahWndViews;
+	IShellFolder* m_pFolderParent;
 	IShellItem* m_pItemParent;
 
 	friend class CFolderShellItem;
