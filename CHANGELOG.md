@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v0.10.3.1
+
+- Fix for app crash on referencing child items on EasySFTP root
+
 ## v0.10.2.1
 
 - Fix for empty string usage
