@@ -584,6 +584,11 @@ STDMETHODIMP CEasySFTPFolderRoot::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE p
 		return E_POINTER;
 
 	int nColumn = (lParam & SHCIDS_COLUMNMASK);
+
+	if (nColumn < 0 || nColumn >= sizeof(s_uHeaderRootItemPIDs) / sizeof(s_uHeaderRootItemPIDs[0]))
+	{
+		return E_INVALIDARG;
+	}
 	WORD wID1, wID2;
 	CMyStringW str1, str2;
 
@@ -629,26 +634,53 @@ STDMETHODIMP CEasySFTPFolderRoot::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE p
 		CSFTPHostItem UNALIGNED* pItem1 = (CSFTPHostItem UNALIGNED*) pidl1;
 		CSFTPHostItem UNALIGNED* pItem2 = (CSFTPHostItem UNALIGNED*) pidl2;
 
-		int r1, r2, r3;
+		int r1, r2, r3, r4;
 		r1 = str1.Compare(str2);
 		if (pItem1->bSFTP)
 			r2 = pItem2->bSFTP ? 0 : -1;
 		else
 			r2 = pItem2->bSFTP ? 1 : 0;
 		r3 = pItem1->nPort - pItem2->nPort;
-		//if (nColumn == 0)
-		if (r1)
-			r = r1;
-		else if (r2)
-			r = r2;
-		else
+		r3 = r3 < 0 ? -1 : r3 > 0 ? 1 : 0;
 		{
-			if (r3 < 0)
-				r = -1;
-			else if (r3 > 0)
-				r = 1;
+			CHostFolderData* pHostData1 = theApp.FindHostFolderData(pItem1->bSFTP, pItem1->wchHostName, (int)pItem1->nPort);
+			CHostFolderData* pHostData2 = theApp.FindHostFolderData(pItem2->bSFTP, pItem2->wchHostName, (int)pItem2->nPort);
+			bool bConnected1 = (pHostData1 != NULL && pHostData1->pDirItem->pDirectory != NULL &&
+				((CFTPDirectoryRootBase*)pHostData1->pDirItem->pDirectory)->IsConnected() == S_OK);
+			bool bConnected2 = (pHostData2 != NULL && pHostData2->pDirItem->pDirectory != NULL &&
+				((CFTPDirectoryRootBase*)pHostData2->pDirItem->pDirectory)->IsConnected() == S_OK);
+			if (bConnected1)
+				r4 = bConnected2 ? 0 : -1;
 			else
-				r = 0;
+				r4 = bConnected2 ? 1 : 0;
+		}
+
+		r = 0;
+		switch (s_uHeaderRootItemPIDs[nColumn])
+		{
+			case PID_ROOTITEM_NAME:
+				r = r1;
+				break;
+			case PID_ROOTITEM_MODE:
+				r = r2;
+				break;
+			case PID_ROOTITEM_PORT:
+				r = r3;
+				break;
+			case PID_ROOTITEM_STATUS:
+				r = r4;
+				break;
+		}
+		if (r == 0)
+		{
+			if (r1)
+				r = r1;
+			else if (r2)
+				r = r2;
+			else if (r3)
+				r = r3;
+			else
+				r = r4;
 		}
 		if (r != 0)
 			return MAKE_HRESULT(0, 0, (unsigned short)(short) r);
@@ -1242,7 +1274,7 @@ STDMETHODIMP CEasySFTPFolderRoot::MapColumnToSCID(UINT iColumn, SHCOLUMNID* psci
 	if (!pscid)
 		return E_POINTER;
 	if (iColumn >= sizeof(s_uHeaderRootItemPIDs) / sizeof(s_uHeaderRootItemPIDs[0]))
-		return E_INVALIDARG;
+		return E_FAIL;
 	pscid->fmtid = GUID_RootItemColumn;
 	pscid->pid = s_uHeaderRootItemPIDs[iColumn];
 	return S_OK;
