@@ -139,7 +139,7 @@ DEFINE_PROPERTYKEY(PKEY_FTPItemUID, 0x36089763, 0xb05f, 0x4ed7, 0xb7, 0xcb, 0xd2
 DEFINE_PROPERTYKEY(PKEY_FTPItemGID, 0x36089763, 0xb05f, 0x4ed7, 0xb7, 0xcb, 0xd2, 0x59, 0x7b, 0x21, 0xad, 0xa7, 5);
 
 EXTERN_C const struct { UINT nID; const PROPERTYKEY& key; } s_columnIDMap[] = {
-	{ IDS_HEAD_NAME, PKEY_ItemName },
+	{ IDS_HEAD_NAME, PKEY_ItemNameDisplay },
 	{ IDS_HEAD_FILE_NAME, PKEY_FileName },
 	{ IDS_HEAD_FILE_EXT, PKEY_FileExtension },
 	{ IDS_HEAD_SIZE, PKEY_Size },
@@ -1521,7 +1521,7 @@ STDMETHODIMP CFTPDirectoryBase::MapColumnToSCID(UINT iColumn, SHCOLUMNID* pscid)
 	if (!pscid)
 		return E_POINTER;
 	if (iColumn >= sizeof(s_columnIDMap) / sizeof(s_columnIDMap[0]))
-		return E_INVALIDARG;
+		return E_FAIL;
 	*pscid = s_columnIDMap[iColumn].key;
 	return S_OK;
 }
