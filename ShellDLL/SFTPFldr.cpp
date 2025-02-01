@@ -308,77 +308,22 @@ STDMETHODIMP CSFTPFolderSFTP::DoDeleteFTPItems(HWND hWndOwner, CFTPDirectoryBase
 			strFile += L'/';
 		strFile += pItem->strFileName;
 
-		ULONG uMsgID = pItem->IsDirectory() ? m_pChannel->RemoveRemoteDirectory(strFile) : m_pChannel->Remove(strFile);
-		if (!uMsgID)
+		if (pItem->IsDirectory())
 		{
-			CMyStringW str, str2;
-			str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
-			str = strFile;
-			str += L": ";
-			str += str2;
-			astrMsgs.Add(str);
-			if (SUCCEEDED(hr))
-				hr = E_OUTOFMEMORY;
-		}
-		else
-		{
-			CSFTPWaitConfirm* pData = new CSFTPWaitConfirm();
-			if (!pData)
-				hr = E_OUTOFMEMORY;
-			else
+			auto hr2 = DoDeleteDirectoryRecursive(hWndOwner, astrMsgs, pItem->strFileName, pDirectory);
+			if (FAILED(hr2))
 			{
-				pData->uMsgID = uMsgID;
-				m_listWaitResponse.Add(pData, uMsgID);
-
-				while (pData->uMsgID)
+				if (SUCCEEDED(hr))
 				{
-					auto hr = PumpSocketAndMessage();
-					if (FAILED(hr))
-					{
-						delete pData;
-						//pDirectory->Release();
-						return hr;
-					}
-					if (hr == S_FALSE)
-					{
-						pData->nResult = SSH_FX_NO_CONNECTION;
-						break;
-					}
+					hr = hr2;
 				}
-
-				HRESULT hr2;
-				switch (pData->nResult)
-				{
-					case SSH_FX_OK:
-						hr2 = S_OK;
-						break;
-					//case SSH_FX_FILE_ALREADY_EXISTS:
-					//	hr = E_FAIL;
-					//	break;
-					case SSH_FX_PERMISSION_DENIED:
-						hr2 = E_ACCESSDENIED;
-						break;
-					default:
-						hr2 = E_FAIL;
-						break;
-				}
-				if (FAILED(hr2))
-				{
-					CMyStringW str, str2;
-					GetSFTPStatusMessage(pData->nResult, pData->strMessage, str2);
-					str = strFile;
-					str += L": ";
-					str += str2;
-					astrMsgs.Add(str);
-					if (SUCCEEDED(hr))
-						hr = hr2;
-				}
-				else
-				{
-					pDirectory->UpdateRemoveFile(pItem->strFileName, pItem->IsDirectory());
-				}
-				delete pData;
+				continue;
 			}
+		}
+		auto hr2 = DoDeleteFileOrDirectory(hWndOwner, astrMsgs, pItem->IsDirectory(), strFile, pDirectory);
+		if (SUCCEEDED(hr))
+		{
+			hr = hr2;
 		}
 	}
 	if (FAILED(hr))
@@ -1678,6 +1623,82 @@ void CSFTPFolderSFTP::DoNextReadDirectory(CSFTPWaitDirectoryData* pData)
 	}
 	else
 		m_listWaitResponse.Add(pData, pData->uMsgID);
+}
+
+HRESULT CSFTPFolderSFTP::DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW& astrMsgs, bool bIsDirectory, LPCWSTR lpszFile, CFTPDirectoryBase* pDirectory)
+{
+	HRESULT hr;
+	ULONG uMsgID = bIsDirectory ? m_pChannel->RemoveRemoteDirectory(lpszFile) : m_pChannel->Remove(lpszFile);
+	if (!uMsgID)
+	{
+		CMyStringW str, str2;
+		str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
+		str = lpszFile;
+		str += L": ";
+		str += str2;
+		astrMsgs.Add(str);
+		hr = E_OUTOFMEMORY;
+	}
+	else
+	{
+		CSFTPWaitConfirm* pData = new CSFTPWaitConfirm();
+		if (!pData)
+			hr = E_OUTOFMEMORY;
+		else
+		{
+			pData->uMsgID = uMsgID;
+			m_listWaitResponse.Add(pData, uMsgID);
+
+			while (pData->uMsgID)
+			{
+				auto hr = PumpSocketAndMessage();
+				if (FAILED(hr))
+				{
+					delete pData;
+					//pDirectory->Release();
+					return hr;
+				}
+				if (hr == S_FALSE)
+				{
+					pData->nResult = SSH_FX_NO_CONNECTION;
+					break;
+				}
+			}
+
+			switch (pData->nResult)
+			{
+			case SSH_FX_OK:
+				hr = S_OK;
+				break;
+				//case SSH_FX_FILE_ALREADY_EXISTS:
+				//	hr = E_FAIL;
+				//	break;
+			case SSH_FX_PERMISSION_DENIED:
+				hr = E_ACCESSDENIED;
+				break;
+			default:
+				hr = E_FAIL;
+				break;
+			}
+			if (FAILED(hr))
+			{
+				CMyStringW str, str2;
+				GetSFTPStatusMessage(pData->nResult, pData->strMessage, str2);
+				str = lpszFile;
+				str += L": ";
+				str += str2;
+				astrMsgs.Add(str);
+			}
+			else if (pDirectory != NULL)
+			{
+				auto pName = wcsrchr(lpszFile, L'/');
+				pName = pName != NULL ? pName + 1 : lpszFile;
+				pDirectory->UpdateRemoveFile(pName, bIsDirectory);
+			}
+			delete pData;
+		}
+	}
+	return hr;
 }
 
 void CSFTPFolderSFTP::OnSFTPSocketReceive(bool isSocketReceived)

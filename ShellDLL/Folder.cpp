@@ -2164,6 +2164,11 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 void CFTPDirectoryBase::UpdateNewFile(LPCWSTR lpszFileName, bool bDirectory)
 {
 	CFTPFileItem* p, * p2;
+	// ignore if the file is subitem
+	if (wcschr(lpszFileName, L'/'))
+	{
+		return;
+	}
 	p = m_pRoot->RetrieveFileItem(this, lpszFileName);
 	if (p)
 	{
@@ -2484,6 +2489,87 @@ void CFTPDirectoryRootBase::ShowServerInfoDialog(HWND hWndOwner)
 	CServerInfoDialog dlg;
 	PreShowServerInfoDialog(&dlg);
 	dlg.ModalDialogW(hWndOwner);
+}
+
+HRESULT CFTPDirectoryRootBase::DoDeleteDirectoryRecursive(HWND hWndOwner, CMyStringArrayW& astrMsgs, LPCWSTR lpszName, CFTPDirectoryBase* pDirectory)
+{
+	CFTPDirectoryBase* pDir;
+	auto hr = pDirectory->OpenNewDirectory(lpszName, &pDir);
+	if (FAILED(hr))
+	{
+		return hr;
+	}
+	IEnumIDList* pIDList;
+	hr = pDir->EnumObjects(hWndOwner, SHCONTF_FOLDERS | SHCONTF_NONFOLDERS | SHCONTF_INCLUDEHIDDEN | SHCONTF_FASTITEMS, &pIDList);
+	if (FAILED(hr))
+	{
+		pDir->Release();
+		return hr;
+	}
+	while (true)
+	{
+		PITEMID_CHILD id;
+		ULONG u = 0;
+		hr = pIDList->Next(1, &id, &u);
+		if (FAILED(hr))
+		{
+			break;
+		}
+		if (hr == S_FALSE || u == 0)
+		{
+			hr = S_OK;
+			break;
+		}
+		SFGAOF attr = SFGAO_FOLDER;
+		CMyStringW str;
+		hr = pDir->GetAttributesOf(1, &id, &attr);
+		if (SUCCEEDED(hr))
+		{
+			STRRET strret;
+			strret.uType = STRRET_WSTR;
+			hr = pDir->GetDisplayNameOf(id, SHGDN_FORPARSING | SHGDN_INFOLDER, &strret);
+			if (SUCCEEDED(hr))
+			{
+				switch (strret.uType)
+				{
+				case STRRET_WSTR:
+					str = strret.pOleStr;
+					::CoTaskMemFree(strret.pOleStr);
+					break;
+				case STRRET_CSTR:
+					str = strret.cStr;
+					break;
+				case STRRET_OFFSET:
+					str = (LPCSTR)(((LPCBYTE)id) + strret.uOffset);
+					break;
+				}
+			}
+		}
+		::CoTaskMemFree(id);
+
+		if (!str.IsEmpty())
+		{
+			str.InsertChar(L'/', 0);
+			str.InsertString(lpszName, 0);
+			if ((attr & SFGAO_FOLDER) != 0)
+			{
+				hr = DoDeleteDirectoryRecursive(hWndOwner, astrMsgs, str, pDirectory);
+			}
+			if (SUCCEEDED(hr))
+			{
+				str.InsertChar(L'/', 0);
+				str.InsertString(pDirectory->m_strDirectory, 0);
+				hr = DoDeleteFileOrDirectory(hWndOwner, astrMsgs, (attr & SFGAO_FOLDER) != 0, str, NULL);
+			}
+		}
+		if (FAILED(hr))
+		{
+			break;
+		}
+	}
+	pIDList->Release();
+	pDir->Release();
+	return hr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

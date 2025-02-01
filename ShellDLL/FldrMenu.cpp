@@ -536,7 +536,7 @@ void CFTPFileItemMenu::DownloadAndOpenFiles(HWND hWndOwner, bool bAsText, const 
 	for (int i = 0; i < aItems.GetCount(); i++)
 	{
 		CFTPFileItem* pItem = aItems.GetItem(i);
-		void* pvTransfer = m_aTransfers.GetItem(i);
+		auto* pvTransfer = m_aTransfers.GetItem(i);
 		if (!bQuit && pvTransfer)
 		{
 			IStream* pStream;
@@ -625,6 +625,9 @@ void CFTPFileItemMenu::DownloadAndOpenFiles(HWND hWndOwner, bool bAsText, const 
 									case STRRET_CSTR:
 										str = strret.cStr;
 										break;
+									case STRRET_OFFSET:
+										str = (LPCSTR)(((LPCBYTE)pidl) + strret.uOffset);
+										break;
 								}
 							}
 							::CoTaskMemFree(pidl);
@@ -660,7 +663,7 @@ void CFTPFileItemMenu::TransferCanceled(void* pvTransfer)
 {
 	if (pvTransfer)
 	{
-		int i = m_aTransfers.FindItem(pvTransfer);
+		int i = m_aTransfers.FindItem(static_cast<CTransferDialog::CTransferItem*>(pvTransfer));
 		if (i >= 0)
 			m_aTransfers.SetItem(i, NULL);
 	}

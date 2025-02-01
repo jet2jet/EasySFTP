@@ -76,11 +76,11 @@ static HRESULT __stdcall SetPasteSucceeded(IDataObject* pObject, DWORD dwEffect)
 static HRESULT __stdcall GetRelativeDataObject(IShellFolder* pFolder, HWND hWndOwner, PCUIDLIST_RELATIVE pidlRelative, IDataObject** ppObject)
 {
 	if (IsSingleIDList(pidlRelative))
-		return pFolder->GetUIObjectOf(hWndOwner, 1, (PCUITEMID_CHILD_ARRAY) &pidlRelative, IID_IDataObject, NULL, (void**) ppObject);
+		return pFolder->GetUIObjectOf(hWndOwner, 1, (PCUITEMID_CHILD_ARRAY)&pidlRelative, IID_IDataObject, NULL, (void**)ppObject);
 	IShellFolder* p2;
-	PITEMID_CHILD pidlChild = ::GetChildItemIDList((PCUIDLIST_ABSOLUTE) pidlRelative);
-	PIDLIST_RELATIVE pidlParent = (PIDLIST_RELATIVE) ::RemoveOneChild((PCUIDLIST_ABSOLUTE) pidlRelative);
-	HRESULT hr = pFolder->BindToObject(pidlParent, NULL, IID_IShellFolder, (void**) &p2);
+	PITEMID_CHILD pidlChild = ::GetChildItemIDList((PCUIDLIST_ABSOLUTE)pidlRelative);
+	PIDLIST_RELATIVE pidlParent = (PIDLIST_RELATIVE) ::RemoveOneChild((PCUIDLIST_ABSOLUTE)pidlRelative);
+	HRESULT hr = pFolder->BindToObject(pidlParent, NULL, IID_IShellFolder, (void**)&p2);
 	if (SUCCEEDED(hr))
 	{
 		PCITEMID_CHILD pcidlChild = pidlChild;
@@ -89,6 +89,57 @@ static HRESULT __stdcall GetRelativeDataObject(IShellFolder* pFolder, HWND hWndO
 	::CoTaskMemFree(pidlParent);
 	::CoTaskMemFree(pidlChild);
 	return hr;
+}
+
+static HRESULT __stdcall RetrieveDirectoryRecursive(CMyPtrArrayT<CTransferDialog::CTransferItem>& aTransfers, CTransferDialog& dlgTransfer, const CMyStringW& strDirectory, LPCWSTR lpszBase)
+{
+	CMyStringW str, strBase, strRelative;
+
+	::MyGetFileTitleStringW(strDirectory, str);
+	if (lpszBase != NULL)
+	{
+		strBase = lpszBase;
+		strBase += L'/';
+	}
+	strBase += str;
+	CTransferDialog::CTransferItem* pvObject = dlgTransfer.AddTransferItem(0, strBase, strDirectory, true);
+	aTransfers.Add(pvObject);
+
+	str = strDirectory;
+	str += L'\\';
+	str += L'*';
+	WIN32_FIND_DATAW wfd;
+	auto handle = ::MyFindFirstFileW(str, &wfd);
+	if (handle == INVALID_HANDLE_VALUE)
+	{
+		return S_OK;
+	}
+	while (true)
+	{
+		if (wfd.cFileName[0] != L'.' || (wfd.cFileName[1] &&
+			(wfd.cFileName[1] != L'.' || wfd.cFileName[2])))
+		{
+			::MyGetFullPathStringW(strDirectory, wfd.cFileName, str);
+
+			if ((wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+			{
+				RetrieveDirectoryRecursive(aTransfers, dlgTransfer, str, strBase);
+			}
+			else
+			{
+				strRelative = strBase + L'/' + wfd.cFileName;
+				ULONGLONG uliSize = GetFileSizeByName(str);
+				CTransferDialog::CTransferItem* pvObject = dlgTransfer.AddTransferItem(uliSize, strRelative, str, true);
+				aTransfers.Add(pvObject);
+			}
+		}
+		if (!::MyFindNextFileW(handle, &wfd))
+		{
+			break;
+		}
+	}
+	::FindClose(handle);
+	return S_OK;
 }
 
 CFTPDropHandler::CFTPDropHandler(CFTPDirectoryBase* pDirectory, HWND hWndOwner)
@@ -116,7 +167,7 @@ STDMETHODIMP CFTPDropHandler::QueryInterface(REFIID riid, void** ppv)
 	if (IsEqualIID(riid, IID_IUnknown) ||
 		IsEqualIID(riid, IID_IDropTarget))
 	{
-		*ppv = (IDropTarget*) this;
+		*ppv = (IDropTarget*)this;
 		AddRef();
 		return S_OK;
 	}
@@ -127,14 +178,14 @@ STDMETHODIMP_(ULONG) CFTPDropHandler::AddRef()
 {
 	if (!m_uRef)
 		return 0;
-	return (ULONG) ::InterlockedIncrement((LONG*) &m_uRef);
+	return (ULONG) ::InterlockedIncrement((LONG*)&m_uRef);
 }
 
 STDMETHODIMP_(ULONG) CFTPDropHandler::Release()
 {
 	if (!m_uRef)
 		return 0;
-	ULONG u = (ULONG) ::InterlockedDecrement((LONG*) &m_uRef);
+	ULONG u = (ULONG) ::InterlockedDecrement((LONG*)&m_uRef);
 	if (u)
 		return u;
 	delete this;
@@ -243,18 +294,18 @@ STDMETHODIMP CFTPDropHandler::Drop(IDataObject* pDataObj, DWORD grfKeyState, POI
 			0, m_hWndOwner, NULL);
 		switch (uID)
 		{
-			case ID_DROP_COPY:
-				dwEP = DROPEFFECT_COPY;
-				break;
-			case ID_DROP_MOVE:
-				dwEP = DROPEFFECT_MOVE;
-				break;
-			case ID_DROP_LINK:
-				dwEP = DROPEFFECT_LINK;
-				break;
-			default:
-				*pdwEffect = DROPEFFECT_NONE;
-				return S_OK;
+		case ID_DROP_COPY:
+			dwEP = DROPEFFECT_COPY;
+			break;
+		case ID_DROP_MOVE:
+			dwEP = DROPEFFECT_MOVE;
+			break;
+		case ID_DROP_LINK:
+			dwEP = DROPEFFECT_LINK;
+			break;
+		default:
+			*pdwEffect = DROPEFFECT_NONE;
+			return S_OK;
 		}
 	}
 
@@ -468,7 +519,7 @@ void CFTPDropHandler::CFTPDropHandlerOperation::TransferCanceled(void* pvTransfe
 
 void CFTPDropHandler::CFTPDropHandlerOperation::TransferInProgress(void* pvObject, ULONGLONG uliPosition)
 {
-	m_dlgTransfer.UpdateTransferItem(pvObject, uliPosition);
+	m_dlgTransfer.UpdateTransferItem(static_cast<CTransferDialog::CTransferItem*>(pvObject), uliPosition);
 }
 
 bool CFTPDropHandler::CFTPDropHandlerOperation::TransferIsCanceled(void* pvObject)
@@ -524,12 +575,12 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::RetrieveFileContents(IDataObj
 			union FILEGROUPDESCRIPTOR_UNION {
 				FILEGROUPDESCRIPTORA a;
 				FILEGROUPDESCRIPTORW w;
-			} * pGroup;
+			} *pGroup;
 			union FILEDESCRIPTOR_UNION {
 				FILEDESCRIPTORA a;
 				FILEDESCRIPTORW w;
-			} * pDesc;
-			CMySimpleArray<void*> aTransfers;
+			} *pDesc;
+			CMyPtrArrayT<CTransferDialog::CTransferItem> aTransfers;
 			pGroup = (FILEGROUPDESCRIPTOR_UNION*) ::GlobalLock(stg.hGlobal);
 			fmt.cfFormat = theApp.m_nCFFileContents;
 			fmt.tymed = TYMED_ISTREAM;
@@ -537,10 +588,10 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::RetrieveFileContents(IDataObj
 			m_bCanceled = false;
 			m_dlgTransfer.CreateW(m_hWndOwner);
 			if (bUni)
-				pDesc = (FILEDESCRIPTOR_UNION*) pGroup->w.fgd;
+				pDesc = (FILEDESCRIPTOR_UNION*)pGroup->w.fgd;
 			else
-				pDesc = (FILEDESCRIPTOR_UNION*) pGroup->a.fgd;
-			for (fmt.lindex = 0; fmt.lindex < (LONG) pGroup->w.cItems; fmt.lindex++)
+				pDesc = (FILEDESCRIPTOR_UNION*)pGroup->a.fgd;
+			for (fmt.lindex = 0; fmt.lindex < (LONG)pGroup->w.cItems; fmt.lindex++)
 			{
 				if ((bUni && !(pDesc->w.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) ||
 					(!bUni && !(pDesc->a.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)))
@@ -581,16 +632,16 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::RetrieveFileContents(IDataObj
 				else
 					aTransfers.Add(NULL);
 				if (bUni)
-					pDesc = (FILEDESCRIPTOR_UNION*) (&pDesc->w + 1);
+					pDesc = (FILEDESCRIPTOR_UNION*)(&pDesc->w + 1);
 				else
-					pDesc = (FILEDESCRIPTOR_UNION*) (&pDesc->a + 1);
+					pDesc = (FILEDESCRIPTOR_UNION*)(&pDesc->a + 1);
 			}
 
 			if (bUni)
-				pDesc = (FILEDESCRIPTOR_UNION*) pGroup->w.fgd;
+				pDesc = (FILEDESCRIPTOR_UNION*)pGroup->w.fgd;
 			else
-				pDesc = (FILEDESCRIPTOR_UNION*) pGroup->a.fgd;
-			for (fmt.lindex = 0; fmt.lindex < (LONG) pGroup->w.cItems; fmt.lindex++)
+				pDesc = (FILEDESCRIPTOR_UNION*)pGroup->a.fgd;
+			for (fmt.lindex = 0; fmt.lindex < (LONG)pGroup->w.cItems; fmt.lindex++)
 			{
 				CMyStringW strName;
 				if (bUni)
@@ -636,7 +687,7 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::RetrieveFileContents(IDataObj
 						hr = m_pDirectory->IsTextFile(strName);
 						hr = MyCreateTextStream(stg2.pstm,
 							hr == S_OK ?
-								TEXTMODE_FOR_SEND_LOCAL_STREAM(m_pDirectory->m_pRoot->m_bTextMode) : 0,
+							TEXTMODE_FOR_SEND_LOCAL_STREAM(m_pDirectory->m_pRoot->m_bTextMode) : 0,
 							&pStream2);
 						if (SUCCEEDED(hr))
 							pStream = pStream2;
@@ -646,7 +697,7 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::RetrieveFileContents(IDataObj
 					else
 						pStream->AddRef();
 
-					void* pvObject = aTransfers.GetItem((int) fmt.lindex);
+					auto* pvObject = aTransfers.GetItem((int)fmt.lindex);
 					hr = m_pDirectory->m_pRoot->WriteFTPItem(m_hWndOwner, m_pDirectory, strName, pStream,
 						pvObject, this);
 					pStream->Release();
@@ -667,9 +718,9 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::RetrieveFileContents(IDataObj
 							bUni ? &pDesc->w.ftLastWriteTime : &pDesc->a.ftLastWriteTime);
 				}
 				if (bUni)
-					pDesc = (FILEDESCRIPTOR_UNION*) (&pDesc->w + 1);
+					pDesc = (FILEDESCRIPTOR_UNION*)(&pDesc->w + 1);
 				else
-					pDesc = (FILEDESCRIPTOR_UNION*) (&pDesc->a + 1);
+					pDesc = (FILEDESCRIPTOR_UNION*)(&pDesc->a + 1);
 			}
 			::ReleaseStgMedium(&stg);
 			m_dlgTransfer.DestroyWindow();
@@ -698,91 +749,107 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::RetrieveFileName(HGLOBAL hGlo
 {
 	HRESULT hr;
 	LPDROPFILES lpdf = (LPDROPFILES) ::GlobalLock(hGlobal);
-	LPBYTE lpb = (((LPBYTE) lpdf) + lpdf->pFiles);
+	LPBYTE lpb = (((LPBYTE)lpdf) + lpdf->pFiles);
 	CMyStringW strFile, strName;
-	CMySimpleArray<void*> aTransfers;
+	CMyPtrArrayT<CTransferDialog::CTransferItem> aTransfers;
 
 	m_bCanceled = false;
 	m_dlgTransfer.CreateW(m_hWndOwner);
 	hr = S_OK;
 	while (true)
 	{
-		if ((lpdf->fWide && !*((LPWSTR) lpb)) || (!lpdf->fWide && !*((LPSTR) lpb)))
+		if ((lpdf->fWide && !*((LPWSTR)lpb)) || (!lpdf->fWide && !*((LPSTR)lpb)))
 			break;
 		if (lpdf->fWide)
 		{
-			strFile = (LPCWSTR) lpb;
-			LPCWSTR lpw = wcsrchr((LPCWSTR) lpb, L'\\');
+			strFile = (LPCWSTR)lpb;
+			LPCWSTR lpw = wcsrchr((LPCWSTR)lpb, L'\\');
 			if (lpw)
 				strName = lpw + 1;
 			else
 				strName = strFile;
-			while (*((LPWSTR&) lpb)++);
+			while (*((LPWSTR&)lpb)++);
 		}
 		else
 		{
-			strFile = (LPCSTR) lpb;
-			LPCSTR lp = (LPCSTR) _mbsrchr((const unsigned char*)(LPCSTR) lpb, '\\');
+			strFile = (LPCSTR)lpb;
+			LPCSTR lp = (LPCSTR)_mbsrchr((const unsigned char*)(LPCSTR)lpb, '\\');
 			if (lp)
 				strName = lp + 1;
 			else
 				strName = strFile;
-			while (*((LPSTR&) lpb)++);
+			while (*((LPSTR&)lpb)++);
 		}
-		ULONGLONG uliSize = GetFileSizeByName(strFile);
-		void* pvObject = m_dlgTransfer.AddTransferItem(uliSize, strName, strFile, true);
-		aTransfers.Add(pvObject);
+		if (::MyIsDirectoryW(strFile))
+		{
+			hr = RetrieveDirectoryRecursive(aTransfers, m_dlgTransfer, strFile, NULL);
+			if (FAILED(hr))
+			{
+				break;
+			}
+		}
+		else
+		{
+			ULONGLONG uliSize = GetFileSizeByName(strFile);
+			CTransferDialog::CTransferItem* pvObject = m_dlgTransfer.AddTransferItem(uliSize, strName, strFile, true);
+			aTransfers.Add(pvObject);
+		}
 	}
-	lpb = (((LPBYTE) lpdf) + lpdf->pFiles);
-	for (int nIndex = 0; ; nIndex++)
+	if (SUCCEEDED(hr))
 	{
-		if ((lpdf->fWide && !*((LPWSTR) lpb)) || (!lpdf->fWide && !*((LPSTR) lpb)))
-			break;
-		if (lpdf->fWide)
+		CMyStringArrayW aDirectories;
+		for (int nIndex = 0; nIndex < aTransfers.GetCount(); nIndex++)
 		{
-			strFile = (LPCWSTR) lpb;
-			LPCWSTR lpw = wcsrchr((LPCWSTR) lpb, L'\\');
-			if (lpw)
-				strName = lpw + 1;
+			CTransferDialog::CTransferItem* pvObject = aTransfers.GetItem(nIndex);
+			auto isDir = ::MyIsDirectoryW(pvObject->strLocalFileName);
+			if (isDir)
+			{
+				aDirectories.Add(pvObject->strLocalFileName);
+				hr = m_pDirectory->m_pRoot->CreateFTPDirectory(m_hWndOwner, m_pDirectory, pvObject->strDestName);
+				if (FAILED(hr))
+					break;
+			}
 			else
-				strName = strFile;
-			while (*((LPWSTR&) lpb)++);
+			{
+				IStream* pStream;
+				BYTE bTextMode = m_pDirectory->m_pRoot->m_bTextMode;
+				hr = m_pDirectory->IsTextFile(pvObject->strLocalFileName);
+				if (hr != S_OK)
+					bTextMode = TEXTMODE_NO_CONVERT;
+				hr = MyOpenTextFileToStream(pvObject->strLocalFileName, false,
+					TEXTMODE_FOR_SEND_LOCAL_STREAM(bTextMode),
+					&pStream);
+				if (FAILED(hr))
+					break;
+				hr = m_pDirectory->m_pRoot->WriteFTPItem(m_hWndOwner, m_pDirectory, pvObject->strDestName, pStream,
+					pvObject, this);
+				pStream->Release();
+				if (FAILED(hr))
+					break;
+			}
+			if (m_bCanceled)
+			{
+				m_dlgTransfer.RemoveTransferItem(pvObject, true);
+				hr = E_ABORT;
+				break;
+			}
+			strFile = pvObject->strLocalFileName;
+			m_dlgTransfer.RemoveTransferItem(pvObject);
+			if (m_dwEffect == DROPEFFECT_MOVE)
+			{
+				if (!isDir)
+				{
+					::MyDeleteFileW(strFile);
+				}
+			}
 		}
-		else
-		{
-			strFile = (LPCSTR) lpb;
-			LPCSTR lp = (LPCSTR) _mbsrchr((const unsigned char*)(LPCSTR) lpb, '\\');
-			if (lp)
-				strName = lp + 1;
-			else
-				strName = strFile;
-			while (*((LPSTR&) lpb)++);
-		}
-		IStream* pStream;
-		BYTE bTextMode = m_pDirectory->m_pRoot->m_bTextMode;
-		hr = m_pDirectory->IsTextFile(strFile);
-		if (hr != S_OK)
-			bTextMode = TEXTMODE_NO_CONVERT;
-		hr = MyOpenTextFileToStream(strFile, false,
-			TEXTMODE_FOR_SEND_LOCAL_STREAM(bTextMode),
-			&pStream);
-		if (FAILED(hr))
-			break;
-		void* pvObject = aTransfers.GetItem(nIndex);
-		hr = m_pDirectory->m_pRoot->WriteFTPItem(m_hWndOwner, m_pDirectory, strName, pStream,
-			pvObject, this);
-		pStream->Release();
-		if (FAILED(hr))
-			break;
-		if (m_bCanceled)
-		{
-			m_dlgTransfer.RemoveTransferItem(pvObject, true);
-			hr = E_ABORT;
-			break;
-		}
-		m_dlgTransfer.RemoveTransferItem(pvObject);
 		if (m_dwEffect == DROPEFFECT_MOVE)
-			::MyDeleteFileW(strFile);
+		{
+			for (int nIndex = 0; nIndex < aDirectories.GetCount(); nIndex++)
+			{
+				::MyRemoveDirectoryW(aDirectories.GetItem(nIndex));
+			}
+		}
 	}
 	::GlobalUnlock(hGlobal);
 	m_dlgTransfer.DestroyWindow();
@@ -869,7 +936,7 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::DoOperation()
 					{
 						PCUIDLIST_ABSOLUTE pidlFolder = (PCUIDLIST_ABSOLUTE)
 							(((LPBYTE)lpid) + lpid->aoffset[0]);
-						IShellFolder* pFolder, *pDesktop;
+						IShellFolder* pFolder, * pDesktop;
 						hr = ::SHGetDesktopFolder(&pDesktop);
 						if (SUCCEEDED(hr))
 						{
@@ -930,7 +997,7 @@ HRESULT CFTPDropHandler::CFTPDropHandlerOperation::DoOperation()
 
 UINT __stdcall CFTPDropHandler::CFTPDropHandlerOperation::_ThreadProc(void* pvArg)
 {
-	CFTPDropHandlerOperation* pThis = (CFTPDropHandlerOperation*) pvArg;
+	CFTPDropHandlerOperation* pThis = (CFTPDropHandlerOperation*)pvArg;
 
 	::OleInitialize(NULL);
 	while (!pThis->m_bStarted && !pThis->m_bFailedToStart)

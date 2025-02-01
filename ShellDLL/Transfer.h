@@ -24,12 +24,26 @@ public:
 
 	enum { IDD = IDD_TRANSFER };
 
+	struct CTransferItem
+	{
+		ULONGLONG uliCurrent;
+		ULONGLONG uliMax;
+		DWORD dwStartTime;
+		DWORD dwCurrentTime;
+		CMyStringW strDestName;
+		CMyStringW strLocalFileName;
+		int iIconIndex;
+		bool bWaiting;
+		bool bFinished;
+		bool bCanceled;
+	};
+
 public:
-	void* AddTransferItem(ULONGLONG uliMax, LPCWSTR lpszFileName, LPCWSTR lpszLocalFileName = NULL, bool bWaiting = false);
-	void SetTransferItemSize(void* pvItem, ULONGLONG uliMax);
-	void SetTransferItemLocalFileName(void* pvItem, LPCWSTR lpszLocalFileName);
-	void UpdateTransferItem(void* pvItem, ULONGLONG uliPosition);
-	void RemoveTransferItem(void* pvItem, bool bCanceled = false);
+	CTransferItem* AddTransferItem(ULONGLONG uliMax, LPCWSTR lpszDestName, LPCWSTR lpszLocalFileName = NULL, bool bWaiting = false);
+	void SetTransferItemSize(CTransferItem* pvItem, ULONGLONG uliMax);
+	void SetTransferItemLocalFileName(CTransferItem* pvItem, LPCWSTR lpszLocalFileName);
+	void UpdateTransferItem(CTransferItem* pvItem, ULONGLONG uliPosition);
+	void RemoveTransferItem(CTransferItem* pvItem, bool bCanceled = false);
 	void ClearAllItems();
 
 protected:

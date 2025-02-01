@@ -274,6 +274,7 @@ protected:
 	inline int DoRetryAuthentication(const char* pszAuthList, bool bFirstAttempt)
 		{ return m_pFolderRoot->DoRetryAuthentication(m_hWndOwner, m_pUser, true, pszAuthList, bFirstAttempt); }
 	void DoNextReadDirectory(CSFTPWaitDirectoryData* pData);
+	virtual HRESULT DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW& astrMsgs, bool bIsDirectory, LPCWSTR lpszFile, CFTPDirectoryBase* pDirectory = NULL);
 
 	class CSFTPStreamCounter : public IUnknown
 	{

@@ -361,48 +361,19 @@ STDMETHODIMP CSFTPFolderFTP::DoDeleteFTPItems(HWND hWndOwner, CFTPDirectoryBase*
 		strFile += pItem->strFileName;
 
 		{
-			HRESULT hr2;
-			CFTPWaitConfirm* pData = new CFTPWaitConfirm();
-			if (!pData)
-				hr2 = E_OUTOFMEMORY;
-			else
+			HRESULT hr2 = S_OK;
+			if (pItem->IsDirectory())
 			{
-				pData->nCode = 0;
-				pData->bWaiting = true;
-				if (!m_pConnection)
-					hr2 = OLE_E_NOTRUNNING;
-				else if (!m_pConnection->SendCommand(L"DELE", strFile, pData))
-					hr2 = E_UNEXPECTED;
-				else if (!WaitForReceive(&pData->bWaiting))
-					hr2 = E_UNEXPECTED;
-				else
-				{
-					hr2 = (pData->nCode < 300 ? S_OK : E_FAIL);
-				}
-
-				if (SUCCEEDED(hr2))
-					pDirectory->UpdateRemoveFile(pItem->strFileName, pItem->IsDirectory());
+				hr2 = DoDeleteDirectoryRecursive(hWndOwner, astrMsgs, strFile, pDirectory);
 			}
-			if (FAILED(hr2))
+			if (SUCCEEDED(hr2))
 			{
-				CMyStringW str, str2;
-				if (hr2 == OLE_E_NOTRUNNING)
-					str2.LoadString(IDS_COMMAND_CONNECTION_ERROR);
-				else if (!pData)
-					str2.LoadString(IDS_COMMAND_OUTOFMEMORY);
-				else if (!pData->nCode)
-					str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
-				else
-					GetFTPStatusMessage(pData->nCode, pData->strMsg, str2);
-				str = strFile;
-				str += L": ";
-				str += str2;
-				astrMsgs.Add(str);
-				if (SUCCEEDED(hr))
-					hr = hr2;
+				hr2 = DoDeleteFileOrDirectory(hWndOwner, astrMsgs, pItem->IsDirectory(), strFile, pDirectory);
 			}
-			if (pData)
-				delete pData;
+			if (SUCCEEDED(hr))
+			{
+				hr = hr2;
+			}
 		}
 	}
 	if (FAILED(hr))
@@ -1010,6 +981,55 @@ CFTPFileItem* CSFTPFolderFTP::RetrieveFileItem2(LPCWSTR lpszFullPathName)
 	delete pData;
 
 	return pItem;
+}
+
+HRESULT CSFTPFolderFTP::DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW& astrMsgs, bool bIsDirectory, LPCWSTR lpszFile, CFTPDirectoryBase* pDirectory)
+{
+	HRESULT hr;
+	CFTPWaitConfirm* pData = new CFTPWaitConfirm();
+	if (!pData)
+		hr = E_OUTOFMEMORY;
+	else
+	{
+		pData->nCode = 0;
+		pData->bWaiting = true;
+		if (!m_pConnection)
+			hr = OLE_E_NOTRUNNING;
+		else if (!m_pConnection->SendCommand(bIsDirectory ? L"RMD" : L"DELE", lpszFile, pData))
+			hr = E_UNEXPECTED;
+		else if (!WaitForReceive(&pData->bWaiting))
+			hr = E_UNEXPECTED;
+		else
+		{
+			hr = (pData->nCode < 300 ? S_OK : E_FAIL);
+		}
+
+		if (SUCCEEDED(hr) && pDirectory != NULL)
+		{
+			auto pName = wcsrchr(lpszFile, L'/');
+			pName = pName != NULL ? pName + 1 : lpszFile;
+			pDirectory->UpdateRemoveFile(pName, bIsDirectory);
+		}
+	}
+	if (FAILED(hr))
+	{
+		CMyStringW str, str2;
+		if (hr == OLE_E_NOTRUNNING)
+			str2.LoadString(IDS_COMMAND_CONNECTION_ERROR);
+		else if (!pData)
+			str2.LoadString(IDS_COMMAND_OUTOFMEMORY);
+		else if (!pData->nCode)
+			str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
+		else
+			GetFTPStatusMessage(pData->nCode, pData->strMsg, str2);
+		str = lpszFile;
+		str += L": ";
+		str += str2;
+		astrMsgs.Add(str);
+	}
+	if (pData)
+		delete pData;
+	return hr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

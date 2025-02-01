@@ -67,7 +67,7 @@ protected:
 	IUnknown* m_pUnkSite;
 
 	CTransferDialog m_dlgTransfer;
-	CMyPtrArray m_aTransfers;
+	CMyPtrArrayT<CTransferDialog::CTransferItem> m_aTransfers;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

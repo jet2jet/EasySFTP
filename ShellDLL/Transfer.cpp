@@ -11,20 +11,6 @@
 #define LIST_PADDING          3
 #define LIST_TEXT_MARGIN      4
 
-struct CTransferItem
-{
-	ULONGLONG uliCurrent;
-	ULONGLONG uliMax;
-	DWORD dwStartTime;
-	DWORD dwCurrentTime;
-	CMyStringW strFileName;
-	CMyStringW strLocalFileName;
-	int iIconIndex;
-	bool bWaiting;
-	bool bFinished;
-	bool bCanceled;
-};
-
 CTransferDialog::CTransferDialog(CTransferDialogListener* pListener)
 	: CMyDialog(IDD)
 	, m_pListener(pListener)
@@ -73,13 +59,13 @@ static HIMAGELIST __stdcall RetrieveFileIcon(LPCWSTR lpszFileName, int* pnIconIn
 	return himl;
 }
 
-void* CTransferDialog::AddTransferItem(ULONGLONG uliMax, LPCWSTR lpszFileName, LPCWSTR lpszLocalFileName, bool bWaiting)
+CTransferDialog::CTransferItem* CTransferDialog::AddTransferItem(ULONGLONG uliMax, LPCWSTR lpszDestName, LPCWSTR lpszLocalFileName, bool bWaiting)
 {
 	HIMAGELIST himl;
 	CTransferItem* pItem = new CTransferItem();
 	pItem->uliCurrent = 0;
 	pItem->uliMax = uliMax;
-	pItem->strFileName = lpszFileName;
+	pItem->strDestName = lpszDestName;
 	if (lpszLocalFileName)
 		pItem->strLocalFileName = lpszLocalFileName;
 	pItem->dwStartTime = pItem->dwCurrentTime = GetTickCount();
@@ -92,7 +78,7 @@ void* CTransferDialog::AddTransferItem(ULONGLONG uliMax, LPCWSTR lpszFileName, L
 		if (!MyIsExistFileW(lpszLocalFileName))
 			lpszLocalFileName = NULL;
 	}
-	himl = RetrieveFileIcon(lpszLocalFileName ? lpszLocalFileName : lpszFileName,
+	himl = RetrieveFileIcon(lpszLocalFileName ? lpszLocalFileName : lpszDestName,
 		&pItem->iIconIndex, lpszLocalFileName == NULL);
 	if (himl && !m_himlSystemLarge)
 		m_himlSystemLarge = himl;
@@ -110,95 +96,64 @@ void* CTransferDialog::AddTransferItem(ULONGLONG uliMax, LPCWSTR lpszFileName, L
 	return pItem;
 }
 
-void CTransferDialog::SetTransferItemSize(void* pvItem, ULONGLONG uliMax)
+void CTransferDialog::SetTransferItemSize(CTransferItem* pvItem, ULONGLONG uliMax)
 {
-	for (int i = 0; i < m_aItems.GetCount(); i++)
+	if (pvItem == NULL)
 	{
-		if (m_aItems.GetItem(i) == pvItem)
-		{
-			register CTransferItem* p;
-			p = (CTransferItem*) pvItem;
-			p->uliMax = uliMax;
-			p->uliCurrent = 0;
-			p->dwCurrentTime = GetTickCount();
-			if (p->bWaiting)
-			{
-				p->bWaiting = false;
-				p->dwStartTime = p->dwCurrentTime;
-			}
-
-			//RECT rc;
-			//::SendDlgItemMessage(m_hWnd, IDC_FILE_LIST, LB_GETITEMRECT, (WPARAM) IntToPtr(i), (LPARAM) &rc);
-			//::InvalidateRect(::GetDlgItem(m_hWnd, IDC_FILE_LIST), &rc, FALSE);
-			return;
-		}
+		return;
+	}
+	pvItem->uliMax = uliMax;
+	pvItem->uliCurrent = 0;
+	pvItem->dwCurrentTime = GetTickCount();
+	if (pvItem->bWaiting)
+	{
+		pvItem->bWaiting = false;
+		pvItem->dwStartTime = pvItem->dwCurrentTime;
 	}
 }
 
-void CTransferDialog::SetTransferItemLocalFileName(void* pvItem, LPCWSTR lpszLocalFileName)
+void CTransferDialog::SetTransferItemLocalFileName(CTransferItem* pvItem, LPCWSTR lpszLocalFileName)
 {
-	for (int i = 0; i < m_aItems.GetCount(); i++)
+	if (pvItem == NULL)
 	{
-		if (m_aItems.GetItem(i) == pvItem)
-		{
-			register CTransferItem* p;
-			p = (CTransferItem*) pvItem;
-			p->strLocalFileName = lpszLocalFileName;
-			return;
-		}
+		return;
+	}
+	pvItem->strLocalFileName = lpszLocalFileName;
+}
+
+void CTransferDialog::UpdateTransferItem(CTransferItem* pvItem, ULONGLONG uliPosition)
+{
+	if (pvItem == NULL)
+	{
+		return;
+	}
+	pvItem->uliCurrent = uliPosition;
+	pvItem->dwCurrentTime = GetTickCount();
+	if (pvItem->bWaiting)
+	{
+		pvItem->bWaiting = false;
+		pvItem->dwStartTime = pvItem->dwCurrentTime;
 	}
 }
 
-void CTransferDialog::UpdateTransferItem(void* pvItem, ULONGLONG uliPosition)
+void CTransferDialog::RemoveTransferItem(CTransferItem* pvItem, bool bCanceled)
 {
-	for (int i = 0; i < m_aItems.GetCount(); i++)
+	if (pvItem == NULL)
 	{
-		if (m_aItems.GetItem(i) == pvItem)
-		{
-			register CTransferItem* p;
-			p = (CTransferItem*) pvItem;
-			p->uliCurrent = uliPosition;
-			p->dwCurrentTime = GetTickCount();
-			if (p->bWaiting)
-			{
-				p->bWaiting = false;
-				p->dwStartTime = p->dwCurrentTime;
-			}
-
-			//RECT rc;
-			//::SendDlgItemMessage(m_hWnd, IDC_FILE_LIST, LB_GETITEMRECT, (WPARAM) IntToPtr(i), (LPARAM) &rc);
-			//::InvalidateRect(::GetDlgItem(m_hWnd, IDC_FILE_LIST), &rc, FALSE);
-			return;
-		}
+		return;
 	}
-}
+	pvItem->bFinished = true;
+	pvItem->bCanceled = bCanceled;
+	m_nRealItemCount--;
+	if (MyIsExistFileW(pvItem->strLocalFileName))
+		RetrieveFileIcon(pvItem->strLocalFileName, &pvItem->iIconIndex, false);
 
-void CTransferDialog::RemoveTransferItem(void* pvItem, bool bCanceled)
-{
-	for (int i = 0; i < m_aItems.GetCount(); i++)
+	if (m_nRealItemCount == 0)
 	{
-		if (m_aItems.GetItem(i) == pvItem)
-		{
-			register CTransferItem* p;
-			p = (CTransferItem*) pvItem;
-			//::SendDlgItemMessage(m_hWnd, IDC_FILE_LIST, LB_DELETESTRING, (WPARAM) IntToPtr(i), 0);
-			//m_aItems.RemoveItem(i);
-			//delete p;
-			p->bFinished = true;
-			p->bCanceled = bCanceled;
-			m_nRealItemCount--;
-			if (MyIsExistFileW(p->strLocalFileName))
-				RetrieveFileIcon(p->strLocalFileName, &p->iIconIndex, false);
-
-			if (m_nRealItemCount == 0)
-			{
-				::KillTimer(m_hWnd, (UINT_PTR)(void*) this);
-				::InvalidateRect(::GetDlgItem(m_hWnd, IDC_FILE_LIST), NULL, FALSE);
-			}
-			UpdateWindowTitle();
-			return;
-		}
+		::KillTimer(m_hWnd, (UINT_PTR)(void*) this);
+		::InvalidateRect(::GetDlgItem(m_hWnd, IDC_FILE_LIST), NULL, FALSE);
 	}
+	UpdateWindowTitle();
 }
 
 void CTransferDialog::ClearAllItems()
@@ -394,7 +349,7 @@ LRESULT CTransferDialog::OnDrawItem(WPARAM wParam, LPARAM lParam)
 			rc.top = rc.bottom - tm.tmHeight;
 			rc.left = LIST_PADDING + m_nCXIcon + LIST_TEXT_MARGIN;
 			rc.right = lpdis->rcItem.right - LIST_PADDING;
-			MyDrawRectString(lpdis->hDC, &rc, pItem->strFileName);
+			MyDrawRectString(lpdis->hDC, &rc, pItem->strDestName);
 
 			CMyStringW strTransfer;
 			if (pItem->bFinished && pItem->bCanceled)

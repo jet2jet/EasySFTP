@@ -1980,8 +1980,7 @@ void CMainWindow::UpdateUIItem(CCommandUIItem* pUIItem)
 			break;
 		case ID_EDIT_DOWNLOAD_ALL:
 		case ID_EDIT_UPLOAD_ALL:
-			// not implemented yet
-			pUIItem->Enable(false);
+			pUIItem->Enable(IS_CONNECTED());
 			break;
 		//case ID_EDIT_PASTE:
 		//	if (IsWindowOrChildrenFocused(m_wndListViewServer, hWndFocus))

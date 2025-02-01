@@ -122,6 +122,7 @@ protected:
 	CFTPWaitPassive* PassiveStarted(CFTPWaitEstablishPassive* pWait, CTextSocket* pSocket);
 	void DoReceivePassive(CFTPWaitPassive* pPassive);
 	CFTPFileItem* RetrieveFileItem2(LPCWSTR lpszFullPathName);
+	virtual HRESULT DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW& astrMsgs, bool bIsDirectory, LPCWSTR lpszFile, CFTPDirectoryBase* pDirectory = NULL);
 
 public:
 	bool WaitForReceive(bool* pbWaiting, CFTPWaitPassive* pPassive = NULL);
