@@ -386,15 +386,23 @@ static void __stdcall FreeSFTPFileAttributeExtendedData(int nCount, CSFTPFileAtt
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#define SFTPHANDLE_SIGNATURE 0x19fc4fad
+
 struct CSFTPHandle
 {
+	DWORD dwSignature;
 	size_t nSize;
 	//BYTE data[1];
 	BYTE* data() const { return (BYTE*) (this + 1); }
 	HSFTPHANDLE handle() const
 		{ return (HSFTPHANDLE) this; }
 	static inline CSFTPHandle* __stdcall FromHandle(HSFTPHANDLE h)
-		{ return (CSFTPHandle*) h; }
+	{
+		auto p = (CSFTPHandle*)h;
+		if (p->dwSignature != SFTPHANDLE_SIGNATURE)
+			return NULL;
+		return p;
+	}
 };
 
 typedef CMyPtrArrayT<CSFTPMessage> CSFTPMessageArray;
@@ -681,9 +689,12 @@ ULONG CSFTPChannel::ReadDirectory(HSFTPHANDLE hSFTP)
 {
 	CExBuffer buf;
 	CSFTPHandle* pHandle;
+	pHandle = CSFTPHandle::FromHandle(hSFTP);
+	if (!pHandle)
+		return 0;
+
 	m_uCurMsgID = GetNextMsgID(SSH_FXP_READDIR);
 
-	pHandle = CSFTPHandle::FromHandle(hSFTP);
 	buf.AppendToBuffer((BYTE) SSH_FXP_READDIR);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE(pHandle->data(), pHandle->nSize);
@@ -697,9 +708,12 @@ ULONG CSFTPChannel::CloseHandle(HSFTPHANDLE hSFTP)
 {
 	CExBuffer buf;
 	CSFTPHandle* pHandle;
+	pHandle = CSFTPHandle::FromHandle(hSFTP);
+	if (!pHandle)
+		return 0;
+
 	m_uCurMsgID = GetNextMsgID(SSH_FXP_CLOSE);
 
-	pHandle = CSFTPHandle::FromHandle(hSFTP);
 	buf.AppendToBuffer((BYTE) SSH_FXP_CLOSE);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE(pHandle->data(), pHandle->nSize);
@@ -775,6 +789,10 @@ ULONG CSFTPChannel::ReadFile(HSFTPHANDLE hSFTP, ULONGLONG uliOffset, size_t nLen
 {
 	CExBuffer buf;
 	CSFTPHandle* pHandle;
+	pHandle = CSFTPHandle::FromHandle(hSFTP);
+	if (!pHandle)
+		return 0;
+
 	m_uCurMsgID = GetNextMsgID(SSH_FXP_READ);
 
 #ifdef _DEBUG
@@ -785,7 +803,6 @@ ULONG CSFTPChannel::ReadFile(HSFTPHANDLE hSFTP, ULONGLONG uliOffset, size_t nLen
 		OutputDebugString(str);
 	}
 #endif
-	pHandle = CSFTPHandle::FromHandle(hSFTP);
 	buf.AppendToBuffer((BYTE) SSH_FXP_READ);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE(pHandle->data(), pHandle->nSize);
@@ -800,9 +817,12 @@ ULONG CSFTPChannel::WriteFile(HSFTPHANDLE hSFTP, ULONGLONG uliOffset, const void
 {
 	CExBuffer buf;
 	CSFTPHandle* pHandle;
+	pHandle = CSFTPHandle::FromHandle(hSFTP);
+	if (!pHandle)
+		return 0;
+
 	m_uCurMsgID = GetNextMsgID(SSH_FXP_WRITE);
 
-	pHandle = CSFTPHandle::FromHandle(hSFTP);
 	buf.AppendToBuffer((BYTE) SSH_FXP_WRITE);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE(pHandle->data(), pHandle->nSize);
@@ -946,9 +966,13 @@ ULONG CSFTPChannel::FStat(HSFTPHANDLE hSFTP, DWORD dwMask)
 {
 	CExBuffer buf;
 	CSFTPHandle* pHandle;
-	m_uCurMsgID = GetNextMsgID(SSH_FXP_FSTAT);
 
 	pHandle = CSFTPHandle::FromHandle(hSFTP);
+	if (!pHandle)
+		return 0;
+
+	m_uCurMsgID = GetNextMsgID(SSH_FXP_FSTAT);
+
 	buf.AppendToBuffer((BYTE) SSH_FXP_FSTAT);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE(pHandle->data(), pHandle->nSize);
@@ -978,9 +1002,12 @@ ULONG CSFTPChannel::FSetStat(HSFTPHANDLE hSFTP, const CSFTPFileAttribute& attr)
 {
 	CExBuffer buf;
 	CSFTPHandle* pHandle;
+	pHandle = CSFTPHandle::FromHandle(hSFTP);
+	if (!pHandle)
+		return 0;
+
 	m_uCurMsgID = GetNextMsgID(SSH_FXP_FSETSTAT);
 
-	pHandle = CSFTPHandle::FromHandle(hSFTP);
 	buf.AppendToBuffer((BYTE) SSH_FXP_FSETSTAT);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE(pHandle->data(), pHandle->nSize);
@@ -1100,9 +1127,12 @@ ULONG CSFTPChannel::FStatVFS(HSFTPHANDLE hSFTP)
 
 	CExBuffer buf;
 	CSFTPHandle* pHandle;
+	pHandle = CSFTPHandle::FromHandle(hSFTP);
+	if (!pHandle)
+		return 0;
+
 	m_uCurMsgID = GetNextMsgID(SSH_FXP_EXTENDED, "fstatvfs@openssh.com");
 
-	pHandle = CSFTPHandle::FromHandle(hSFTP);
 	buf.AppendToBuffer((BYTE) SSH_FXP_EXTENDED);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE("fstatvfs@openssh.com");
@@ -1119,9 +1149,12 @@ ULONG CSFTPChannel::Block(HSFTPHANDLE hSFTP, ULONGLONG uliOffset, ULONGLONG uliL
 
 	CExBuffer buf;
 	CSFTPHandle* pHandle;
+	pHandle = CSFTPHandle::FromHandle(hSFTP);
+	if (!pHandle)
+		return 0;
+
 	m_uCurMsgID = GetNextMsgID(SSH_FXP_BLOCK);
 
-	pHandle = CSFTPHandle::FromHandle(hSFTP);
 	buf.AppendToBuffer((BYTE) SSH_FXP_BLOCK);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE(pHandle->data(), pHandle->nSize);
@@ -1140,9 +1173,12 @@ ULONG CSFTPChannel::Unblock(HSFTPHANDLE hSFTP, ULONGLONG uliOffset, ULONGLONG ul
 
 	CExBuffer buf;
 	CSFTPHandle* pHandle;
+	pHandle = CSFTPHandle::FromHandle(hSFTP);
+	if (!pHandle)
+		return 0;
+
 	m_uCurMsgID = GetNextMsgID(SSH_FXP_BLOCK);
 
-	pHandle = CSFTPHandle::FromHandle(hSFTP);
 	buf.AppendToBuffer((BYTE) SSH_FXP_BLOCK);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE(pHandle->data(), pHandle->nSize);
@@ -1356,6 +1392,7 @@ bool CSFTPChannel::ProcessSFTPHandle(CSFTPChannelListener* pListener, CExBuffer&
 		return false;
 
 	CSFTPHandle* ph = (CSFTPHandle*) malloc(sizeof(CSFTPHandle) + uSize);
+	ph->dwSignature = SFTPHANDLE_SIGNATURE;
 	ph->nSize = (size_t) uSize;
 	memcpy(ph->data(), pvHandle, (size_t) uSize);
 	pListener->SFTPFileHandle(this, pMsg, ph->handle());

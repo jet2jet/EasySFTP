@@ -20,6 +20,29 @@ static void __stdcall GetFTPStatusMessage(int nStatus, LPCWSTR lpszMessage, CMyS
 	}
 }
 
+static void __stdcall FTPItemToStatStg(CFTPFileItem* pItem, DWORD grfStatFlag, DWORD grfMode, DWORD grfStateBits, STATSTG* pStatstg)
+{
+	if (!(grfStatFlag & STATFLAG_NONAME))
+		pStatstg->pwcsName = DuplicateCoMemString(pItem->strFileName);
+	pStatstg->cbSize = pItem->uliSize;
+	pStatstg->type = pItem->IsDirectory() ? STGTY_STORAGE : STGTY_STREAM;
+	pStatstg->mtime = pItem->ftModifyTime;
+	pStatstg->ctime = pItem->ftCreateTime;
+	pStatstg->atime = {};
+	pStatstg->grfLocksSupported = 0;
+	pStatstg->clsid = CLSID_NULL;
+	pStatstg->grfMode = grfMode;
+	pStatstg->grfStateBits = grfStateBits;
+}
+
+static void FormatMfctMfmtString(CMyStringW& str, LPCWSTR lpszFileName, const FILETIME* filetime)
+{
+	SYSTEMTIME st = {};
+	::FileTimeToSystemTime(filetime, &st);
+	str.Format(L"%04hu%02hu%02hu%02hu%02hu%02hu \"%s\"", st.wYear, st.wMonth, st.wDay,
+		st.wHour, st.wMinute, st.wSecond, lpszFileName);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 CSFTPFolderFTPDirectory::CSFTPFolderFTPDirectory(
@@ -59,7 +82,7 @@ STDMETHODIMP_(void) CSFTPFolderFTPDirectory::UpdateItem(CFTPFileItem* pOldItem, 
 	//	case SHCNE_CREATE:
 	//	case SHCNE_MKDIR:
 	//	{
-	//		register CSFTPFolderSFTP* pRoot = (CSFTPFolderSFTP*) m_pRoot;
+	//		register CSFTPFolderFTP* pRoot = (CSFTPFolderFTP*) m_pRoot;
 	//		CMyStringW strFile(m_strDirectory);
 	//		if (((LPCWSTR) strFile)[strFile.GetLength() - 1] != L'/')
 	//			strFile += L'/';
@@ -105,7 +128,7 @@ STDMETHODIMP_(void) CSFTPFolderFTPDirectory::UpdateItem(CFTPFileItem* pOldItem, 
 	//		CSFTPFileData fileData;
 	//		memcpy(&fileData.attr, &pAttr->fileData, sizeof(fileData.attr));
 	//		fileData.strFileName = lpszNewItem;
-	//		CFTPFileItem* pItem = ParseSFTPData(((CSFTPFolderSFTP*) m_pRoot)->m_pChannel->GetServerVersion(), &fileData);
+	//		CFTPFileItem* pItem = ParseSFTPData(((CSFTPFolderFTP*) m_pRoot)->m_pChannel->GetServerVersion(), &fileData);
 	//		delete pAttr;
 
 	//		::EnterCriticalSection(&m_csFiles);
@@ -116,12 +139,12 @@ STDMETHODIMP_(void) CSFTPFolderFTPDirectory::UpdateItem(CFTPFileItem* pOldItem, 
 	//	case SHCNE_UPDATEITEM:
 	//	case SHCNE_UPDATEDIR:
 	//	{
-	//		register CSFTPFolderSFTP* pRoot = (CSFTPFolderSFTP*) m_pRoot;
+	//		register CSFTPFolderFTP* pRoot = (CSFTPFolderFTP*) m_pRoot;
 	//		CMyStringW strFile;
 	//		if (((LPCWSTR) strFile)[strFile.GetLength() - 1] != L'/')
 	//			strFile += L'/';
 	//		strFile += pOldItem->strFileName;
-	//		ULONG uMsgID = ((CSFTPFolderSFTP*) m_pRoot)->m_pChannel->LStat(strFile);
+	//		ULONG uMsgID = ((CSFTPFolderFTP*) m_pRoot)->m_pChannel->LStat(strFile);
 	//		if (!uMsgID)
 	//		{
 	//			break;
@@ -159,7 +182,7 @@ STDMETHODIMP_(void) CSFTPFolderFTPDirectory::UpdateItem(CFTPFileItem* pOldItem, 
 	//			break;
 	//		}
 
-	//		ParseSFTPAttributes(((CSFTPFolderSFTP*) m_pRoot)->m_pChannel->GetServerVersion(), pOldItem, &pAttr->fileData);
+	//		ParseSFTPAttributes(((CSFTPFolderFTP*) m_pRoot)->m_pChannel->GetServerVersion(), pOldItem, &pAttr->fileData);
 	//		delete pAttr;
 	//	}
 	//	break;
@@ -271,6 +294,430 @@ STDMETHODIMP CSFTPFolderFTP::Disconnect()
 	return S_OK;
 }
 
+STDMETHODIMP CSFTPFolderFTP::OpenFile(CFTPDirectoryBase* pDirectory, LPCWSTR lpszName, DWORD grfMode, HANDLE* phFile)
+{
+	if (grfMode & (STGM_READWRITE | STGM_SHARE_DENY_READ | STGM_SHARE_DENY_WRITE | STGM_SHARE_EXCLUSIVE | STGM_PRIORITY | STGM_CONVERT | STGM_TRANSACTED | STGM_NOSCRATCH | STGM_NOSNAPSHOT | STGM_SIMPLE | STGM_DIRECT_SWMR | STGM_DELETEONRELEASE))
+	{
+		return STG_E_INVALIDFLAG;
+	}
+	if ((grfMode & STGM_WRITE) && !(grfMode & STGM_CREATE))
+	{
+		return STG_E_INVALIDFLAG;
+	}
+
+	auto* data = new CFTPHandleData();
+	if (!data)
+	{
+		return E_OUTOFMEMORY;
+	}
+
+	HRESULT hr = S_OK;
+	CMyStringW strFile;
+
+	strFile = pDirectory->m_strDirectory;
+	if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
+		strFile += L'/';
+	strFile += lpszName;
+
+	CFTPFileItem* pItem = NULL;
+
+	// for reading, retrieve file first
+	if (!(grfMode & STGM_WRITE))
+	{
+		pItem = RetrieveFileItem(pDirectory, lpszName);
+		if (!pItem)
+		{
+			delete data;
+			return STG_E_FILENOTFOUND;
+		}
+	}
+
+	CFTPPassiveMessage* pMessage;
+	if (grfMode & STGM_WRITE)
+		pMessage = new CFTPWriteFileMessage(strFile);
+	else
+		pMessage = new CFTPFileRecvMessage(strFile, 0);
+	if (!pMessage)
+	{
+		delete data;
+		return E_OUTOFMEMORY;
+	}
+
+	data->pMessage = pMessage;
+
+	IncrementTransferCount();
+
+	CFTPWaitEstablishPassive* pEstablishWait = StartPassive(pMessage);
+	if (!pEstablishWait)
+	{
+		pMessage->Release();
+		delete data;
+		DecrementTransferCount();
+		return E_OUTOFMEMORY;
+	}
+	else if (!WaitForReceive(&pEstablishWait->bWaiting))
+	{
+		delete pEstablishWait;
+		pMessage->Release();
+		delete data;
+		DecrementTransferCount();
+		return E_FAIL;
+	}
+	data->pPassive = pEstablishWait->pRet;
+	delete pEstablishWait;
+
+	// for writing, retrieve file second
+	if (grfMode & STGM_WRITE)
+	{
+		pItem = RetrieveFileItem(pDirectory, lpszName);
+		if (!pItem)
+		{
+			delete data->pPassive;
+			pMessage->Release();
+			delete data;
+			DecrementTransferCount();
+			return STG_E_FILENOTFOUND;
+		}
+	}
+	data->pDirectory = pDirectory;
+	pDirectory->AddRef();
+	data->pItem = pItem;
+	data->grfMode = grfMode;
+	data->offset = 0;
+	data->dwRefCount = 1;
+
+	FTPItemToStatStg(pItem, STATFLAG_NONAME, grfMode, 0, &data->statstg);
+
+	*phFile = static_cast<HANDLE>(data);
+	return hr;
+}
+
+STDMETHODIMP CSFTPFolderFTP::ReadFile(HANDLE hFile, void* outBuffer, DWORD dwSize, DWORD* pdwRead)
+{
+	if (pdwRead)
+		*pdwRead = 0;
+	if (!hFile || !outBuffer)
+		return E_POINTER;
+	auto data = static_cast<CFTPHandleData*>(hFile);
+	if (data->grfMode & STGM_WRITE)
+		return STG_E_ACCESSDENIED;
+
+	if (!data->pPassive)
+	{
+		// already closed
+		return S_FALSE;
+	}
+
+	auto* pSocket = data->pPassive->pPassive;
+
+	if (pSocket->IsRemoteClosed())
+	{
+		if (m_pConnection)
+			m_pConnection->ClosePassiveSocket(pSocket);
+		delete data->pPassive;
+		data->pPassive = NULL;
+		return S_FALSE;
+	}
+	if (!pSocket->CanReceive(WAIT_RECEIVE_TIME))
+		return E_FAIL;
+	ULONG read = 0;
+	while (dwSize)
+	{
+		if (pSocket->IsRemoteClosed())
+		{
+			if (m_pConnection)
+				m_pConnection->ClosePassiveSocket(pSocket);
+			delete data->pPassive;
+			data->pPassive = NULL;
+			break;
+		}
+		if (!pSocket->CanReceive(WAIT_RECEIVE_TIME))
+			break;
+		int ret = pSocket->Recv(outBuffer, (SIZE_T)dwSize, 0);
+		if (ret < 0)
+			return E_FAIL;
+		if (!ret)
+			break;
+		data->offset += (ULONG)ret;
+		read += (ULONG)ret;
+		outBuffer = ((LPBYTE)outBuffer) + (ULONG)ret;
+		dwSize -= (ULONG)ret;
+	}
+	if (pdwRead)
+		*pdwRead = read;
+	return read ? S_OK : S_FALSE;
+}
+
+STDMETHODIMP CSFTPFolderFTP::WriteFile(HANDLE hFile, const void* inBuffer, DWORD dwSize, DWORD* pdwWritten)
+{
+	if (pdwWritten)
+		*pdwWritten = 0;
+	if (!hFile || !inBuffer)
+		return E_POINTER;
+	auto data = static_cast<CFTPHandleData*>(hFile);
+	if (!(data->grfMode & STGM_WRITE))
+		return STG_E_ACCESSDENIED;
+	if (!data->pPassive)
+		return E_ABORT;
+
+	auto pMessage = static_cast<CFTPWriteFileMessage*>(data->pMessage);
+	pMessage->m_pvBuffer = inBuffer;
+	pMessage->m_dwSize = dwSize;
+
+	if (!pMessage->ReadyToWrite(data->pPassive->pPassive))
+		return E_ABORT;
+
+	data->offset += dwSize;
+	if (pdwWritten)
+		*pdwWritten = dwSize;
+	return S_OK;
+}
+
+STDMETHODIMP CSFTPFolderFTP::SeekFile(HANDLE hFile, LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, ULARGE_INTEGER* lpNewFilePointer)
+{
+	auto data = static_cast<CFTPHandleData*>(hFile);
+
+	if (data->grfMode & STGM_WRITE)
+		return E_NOTIMPL;
+
+	if (dwOrigin == STREAM_SEEK_END || (dwOrigin == STREAM_SEEK_CUR && liDistanceToMove.QuadPart < 0) ||
+		dwOrigin == STREAM_SEEK_SET && (ULONGLONG)liDistanceToMove.QuadPart < data->offset)
+	{
+		if (!m_pConnection->IsCommandAvailable(L"REST"))
+			return E_NOTIMPL;
+
+		// reopen
+
+		ULONGLONG ulTo;
+		switch (dwOrigin)
+		{
+		case STREAM_SEEK_SET:
+			ulTo = (ULONGLONG)liDistanceToMove.QuadPart;
+			break;
+		case STREAM_SEEK_CUR:
+			ulTo = data->offset + liDistanceToMove.QuadPart;
+			break;
+		case STREAM_SEEK_END:
+			ulTo = data->offset + liDistanceToMove.QuadPart;
+			break;
+		default:
+			return STG_E_INVALIDFUNCTION;
+		}
+
+		if (data->pPassive)
+		{
+			if (m_pConnection)
+				m_pConnection->ClosePassiveSocket(data->pPassive->pPassive);
+			delete data->pPassive;
+			data->pPassive = NULL;
+		}
+
+		CMyStringW strFile;
+		strFile = data->pDirectory->m_strDirectory;
+		if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
+			strFile += L'/';
+		strFile += data->pItem->strFileName;
+
+		CFTPFileRecvMessage* pMessage = new CFTPFileRecvMessage(strFile, ulTo);
+		if (!pMessage)
+		{
+			return E_OUTOFMEMORY;
+		}
+		CFTPWaitEstablishPassive* pEstablishWait = StartPassive(pMessage);
+		if (!pEstablishWait)
+		{
+			pMessage->Release();
+			return E_OUTOFMEMORY;
+		}
+		else if (!WaitForReceive(&pEstablishWait->bWaiting))
+		{
+			delete pEstablishWait;
+			pMessage->Release();
+			return E_FAIL;
+		}
+		data->pPassive = pEstablishWait->pRet;
+		delete pEstablishWait;
+		data->offset = ulTo;
+		return S_OK;
+	}
+	ULONGLONG ulTo = (dwOrigin == STREAM_SEEK_SET ? (ULONGLONG)liDistanceToMove.QuadPart :
+		data->offset + liDistanceToMove.QuadPart);
+	void* pb = malloc(8192);
+	while (data->offset < ulTo)
+	{
+		ULONG ul = 8192;
+		if (ulTo - data->offset < 8192)
+			ul = (ULONG)(ulTo - data->offset);
+		HRESULT hr = ReadFile(hFile, pb, ul, &ul);
+		if (FAILED(hr))
+		{
+			free(pb);
+			return hr;
+		}
+	}
+	free(pb);
+	if (lpNewFilePointer)
+		lpNewFilePointer->QuadPart = data->offset;
+	return S_OK;
+}
+
+STDMETHODIMP CSFTPFolderFTP::StatFile(HANDLE hFile, STATSTG* pStatstg, DWORD grfStatFlag)
+{
+	if (!hFile || !pStatstg)
+		return E_POINTER;
+	auto data = static_cast<CFTPHandleData*>(hFile);
+	*pStatstg = data->statstg;
+	if (!(grfStatFlag & STATFLAG_NONAME))
+		pStatstg->pwcsName = DuplicateCoMemString(data->pItem->strFileName);
+	return S_OK;
+}
+
+STDMETHODIMP CSFTPFolderFTP::CloseFile(HANDLE hFile)
+{
+	auto data = static_cast<CFTPHandleData*>(hFile);
+	if (!--data->dwRefCount)
+	{
+		if (data->pPassive)
+		{
+			m_pConnection->ClosePassiveSocket(data->pPassive->pPassive);
+			delete data->pPassive;
+		}
+		if (data->pMessage)
+			data->pMessage->Release();
+		delete data;
+		DecrementTransferCount();
+	}
+	return S_OK;
+}
+
+STDMETHODIMP CSFTPFolderFTP::DuplicateFile(HANDLE hFile, HANDLE* phFile)
+{
+	auto data = static_cast<CFTPHandleData*>(hFile);
+	++data->dwRefCount;
+	*phFile = hFile;
+	return S_OK;
+}
+
+STDMETHODIMP CSFTPFolderFTP::LockRegion(HANDLE hFile, ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType)
+{
+	return STG_E_INVALIDFUNCTION;
+}
+
+STDMETHODIMP CSFTPFolderFTP::UnlockRegion(HANDLE hFile, ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD /*dwLockType*/)
+{
+	return STG_E_INVALIDFUNCTION;
+}
+
+STDMETHODIMP CSFTPFolderFTP::StatDirectory(CFTPDirectoryBase* pDirectory, DWORD grfMode, STATSTG* pStatstg, DWORD grfStatFlag)
+{
+	if (!pStatstg)
+		return E_POINTER;
+	if (pDirectory->m_bIsRoot)
+	{
+		*pStatstg = {};
+		pStatstg->grfMode = m_grfMode;
+		pStatstg->grfStateBits = m_grfStateBits;
+	}
+	else
+	{
+		auto pName = wcsrchr(m_strDirectory, L'/');
+		if (!pName)
+			pName = m_strDirectory;
+		else
+			++pName;
+		auto pItem = pDirectory->m_pParent->GetFileItem(pName);
+		if (!pItem)
+			return STG_E_PATHNOTFOUND;
+		FTPItemToStatStg(pItem, grfStatFlag, grfMode, pDirectory->m_grfStateBits, pStatstg);
+		pStatstg->clsid = pDirectory->m_clsidThis;
+	}
+	return S_OK;
+}
+
+STDMETHODIMP CSFTPFolderFTP::SetFileTime(LPCWSTR lpszFileName, const FILETIME* pctime, const FILETIME* patime, const FILETIME* pmtime)
+{
+	if (!pctime && !pmtime)
+		return S_OK;
+	HRESULT hr = S_OK;
+	bool isSucceededAny = false;
+	if (pctime && m_pConnection->IsCommandAvailable(L"MFCT"))
+	{
+		HRESULT hr2;
+		CFTPWaitConfirm* pData = new CFTPWaitConfirm();
+		if (!pData)
+		{
+			hr2 = E_OUTOFMEMORY;
+		}
+		else
+		{
+			CMyStringW strParam;
+			FormatMfctMfmtString(strParam, lpszFileName, pctime);
+
+			pData->bWaiting = true;
+			pData->nCode = 0;
+			if (!m_pConnection)
+				hr2 = OLE_E_NOTRUNNING;
+			else if (!m_pConnection->SendCommand(L"MFCT", strParam, pData))
+				hr2 = E_UNEXPECTED;
+			else if (!WaitForReceive(&pData->bWaiting))
+				hr2 = E_UNEXPECTED;
+			else
+			{
+				hr2 = (pData->nCode < 300 && pData->nCode != 202 ? S_OK : E_FAIL);
+			}
+
+			if (SUCCEEDED(hr2))
+				isSucceededAny = true;
+			delete pData;
+		}
+		hr = hr2;
+	}
+	if (pmtime && m_pConnection->IsCommandAvailable(L"MFMT"))
+	{
+		HRESULT hr2;
+		CFTPWaitConfirm* pData = new CFTPWaitConfirm();
+		if (!pData)
+		{
+			hr2 = E_OUTOFMEMORY;
+		}
+		else
+		{
+			CMyStringW strParam;
+			FormatMfctMfmtString(strParam, lpszFileName, pctime);
+
+			pData->bWaiting = true;
+			pData->nCode = 0;
+			if (!m_pConnection)
+				hr2 = OLE_E_NOTRUNNING;
+			else if (!m_pConnection->SendCommand(L"MFMT", strParam, pData))
+				hr2 = E_UNEXPECTED;
+			else if (!WaitForReceive(&pData->bWaiting))
+				hr2 = E_UNEXPECTED;
+			else
+			{
+				hr2 = (pData->nCode < 300 && pData->nCode != 202 ? S_OK : E_FAIL);
+			}
+
+			if (SUCCEEDED(hr2))
+				isSucceededAny = true;
+			delete pData;
+		}
+		if (SUCCEEDED(hr))
+			hr = hr2;
+	}
+	if (isSucceededAny)
+	{
+		CFTPDirectoryBase* pDirectory = NULL;
+		auto* pItem = GetFileItem(lpszFileName, &pDirectory);
+		if (pItem && pDirectory)
+		{
+			pDirectory->UpdateFileAttrs(lpszFileName, pItem->IsDirectory());
+			pDirectory->Release();
+		}
+	}
+	return hr;
+}
+
 void CSFTPFolderFTP::IncrementTransferCount()
 {
 	::InterlockedIncrement((LONG*) &m_dwTransferringCount);
@@ -286,7 +733,7 @@ STDMETHODIMP CSFTPFolderFTP::GetFTPItemUIObjectOf(HWND hWndOwner, CFTPDirectoryB
 {
 	if (!m_pConnection)
 		return OLE_E_NOTRUNNING;
-	CFTPDataObject* pObject = new CFTPDataObject(//(CSFTPFolderSFTPDirectory*) pDirectory,
+	CFTPDataObject* pObject = new CFTPDataObject(//(CSFTPFolderFTPDirectory*) pDirectory,
 		m_pMallocData->pMalloc,
 		pDirectory->m_pidlMe,
 		m_strHostName,
@@ -381,89 +828,102 @@ STDMETHODIMP CSFTPFolderFTP::DoDeleteFTPItems(HWND hWndOwner, CFTPDirectoryBase*
 	return hr;
 }
 
-STDMETHODIMP CSFTPFolderFTP::MoveFTPItems(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszFromDir, LPCWSTR lpszFileNames)
+STDMETHODIMP CSFTPFolderFTP::RenameFTPItem(LPCWSTR lpszSrcFileName, LPCWSTR lpszNewFileName, CMyStringW* pstrMsg)
 {
-	HRESULT hr = S_OK;
-	CMyStringW strFile, strFileFrom, strFileTo;
-	CMyStringArrayW astrMsgs;
-	while (*lpszFileNames)
+	CWaitRenameData* pData = NULL;
+	HRESULT hr;
+
+	CFTPFileItem* p = RetrieveFileItem2(lpszSrcFileName);
+	if (!p)
 	{
-		strFile = lpszFileNames;
-		strFileFrom = lpszFromDir;
-		if (((LPCWSTR) strFileFrom)[strFileFrom.GetLength() - 1] != L'/')
-			strFileFrom += L'/';
-		strFileFrom += lpszFileNames;
-
-		strFileTo = pDirectory->m_strDirectory;
-		if (((LPCWSTR) strFileTo)[strFileTo.GetLength() - 1] != L'/')
-			strFileTo += L'/';
-		strFileTo += lpszFileNames;
-
-		while (*lpszFileNames++);
-
-		CWaitRenameData* pData = NULL;
-		HRESULT hr2;
-
-		CFTPFileItem* p = RetrieveFileItem2(strFileFrom);
-		if (!p)
+		hr = E_UNEXPECTED;
+	}
+	else
+	{
+		bool bIsDir = p->IsDirectory();
+		p->Release();
+		pData = new CWaitRenameData();
+		if (!pData)
 		{
-			hr2 = E_UNEXPECTED;
+			hr = E_OUTOFMEMORY;
 		}
 		else
 		{
-			bool bIsDir = p->IsDirectory();
-			p->Release();
-			pData = new CWaitRenameData();
-			if (!pData)
-			{
-				hr2 = E_OUTOFMEMORY;
-			}
+			pData->bWaiting = true;
+			pData->bSecondary = false;
+			pData->nCode = 0;
+			if (!m_pConnection)
+				hr = OLE_E_NOTRUNNING;
+			else if (!m_pConnection->SendDoubleCommand(L"RNFR", lpszSrcFileName, L"RNTO", lpszNewFileName, NULL, pData))
+				hr = E_UNEXPECTED;
+			else if (!WaitForReceive(&pData->bWaiting))
+				hr = E_UNEXPECTED;
 			else
 			{
-				pData->bWaiting = true;
-				pData->bSecondary = false;
-				pData->nCode = 0;
-				if (!m_pConnection)
-					hr2 = OLE_E_NOTRUNNING;
-				else if (!m_pConnection->SendDoubleCommand(L"RNFR", strFileFrom, L"RNTO", strFileTo))
-					hr2 = E_UNEXPECTED;
-				else if (!WaitForReceive(&pData->bWaiting))
-					hr2 = E_UNEXPECTED;
-				else
-				{
-					hr2 = (pData->nCode < 300 && pData->nCode != 202 ? S_OK : E_FAIL);
-				}
-
-				if (SUCCEEDED(hr2))
-					pDirectory->UpdateMoveFile(lpszFromDir, strFile, bIsDir);
+				hr = (pData->nCode < 300 && pData->nCode != 202 ? S_OK : E_FAIL);
 			}
-		}
 
-		if (FAILED(hr2))
-		{
-			CMyStringW str, str2;
-			if (hr2 == OLE_E_NOTRUNNING)
-				str2.LoadString(IDS_COMMAND_CONNECTION_ERROR);
-			else if (hr2 == E_UNEXPECTED)
-				str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
-			else if (!pData)
-				str2.LoadString(IDS_COMMAND_OUTOFMEMORY);
-			else if (!pData->nCode)
-				str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
-			else
-				GetFTPStatusMessage(pData->nCode, pData->strMsg, str2);
-			str = strFile;
-			str += L": ";
-			str += str2;
-			astrMsgs.Add(str);
 			if (SUCCEEDED(hr))
-				hr = hr2;
+			{
+				CMyStringW strOldDirectory = lpszSrcFileName;
+				{
+					auto p = wcsrchr(strOldDirectory.GetBuffer(), L'/');
+					if (p && p != strOldDirectory.operator LPCWSTR())
+					{
+						*p = 0;
+						strOldDirectory.ReleaseBuffer();
+					}
+				}
+				{
+					auto p = wcsrchr(lpszSrcFileName, L'/');
+					if (p)
+						lpszSrcFileName = p + 1;
+				}
+				CMyStringW strNewDirectory = lpszNewFileName;
+				{
+					auto p = wcsrchr(strNewDirectory.GetBuffer(), L'/');
+					if (p && p != strNewDirectory.operator LPCWSTR())
+					{
+						*p = 0;
+						strNewDirectory.ReleaseBuffer();
+					}
+				}
+				{
+					auto p = wcsrchr(lpszNewFileName, L'/');
+					if (p)
+						lpszNewFileName = p + 1;
+				}
+				CFTPDirectoryBase* pDirectory;
+				// strNewDirectory must be absolute path so convert to relative path from 'root'
+				if (SUCCEEDED(OpenNewDirectory(strNewDirectory.operator LPCWSTR() + 1, &pDirectory)))
+				{
+					pDirectory->UpdateMoveFile(strOldDirectory, lpszSrcFileName, bIsDir, lpszNewFileName);
+					pDirectory->Release();
+				}
+			}
 		}
-		if (pData)
-			delete pData;
 	}
-	if (FAILED(hr))
-		theApp.MultipleErrorMsgBox(hWndOwner, astrMsgs);
+
+	if (FAILED(hr) && pstrMsg)
+	{
+		CMyStringW str, str2;
+		if (hr == OLE_E_NOTRUNNING)
+			str2.LoadString(IDS_COMMAND_CONNECTION_ERROR);
+		else if (hr == E_UNEXPECTED)
+			str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
+		else if (!pData)
+			str2.LoadString(IDS_COMMAND_OUTOFMEMORY);
+		else if (!pData->nCode)
+			str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
+		else
+			GetFTPStatusMessage(pData->nCode, pData->strMsg, str2);
+		str = lpszSrcFileName;
+		str += L": ";
+		str += str2;
+		*pstrMsg = str;
+	}
+	if (pData)
+		delete pData;
 	return hr;
 }
 
@@ -949,6 +1409,11 @@ CFTPFileItem* CSFTPFolderFTP::RetrieveFileItem2(LPCWSTR lpszFullPathName)
 		}
 	}
 	if (!WaitForReceive(&pData->bWaiting))
+	{
+		delete pData;
+		return NULL;
+	}
+	if (pData->strResult.IsEmpty())
 	{
 		delete pData;
 		return NULL;

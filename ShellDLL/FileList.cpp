@@ -940,14 +940,13 @@ extern "C" CFTPFileItem* __stdcall ParseMLSxDataEx(LPCWSTR lpszString, CFTPFileI
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void __stdcall TimetToFileTime(time_t t, LPFILETIME pft)
+extern "C" void __stdcall TimetToFileTime(time_t t, LPFILETIME pft)
 {
 	LONGLONG ll = Int32x32To64(t, 10000000) + 116444736000000000;
 	pft->dwLowDateTime = (DWORD) ll;
 	pft->dwHighDateTime = ll >>32;
 }
 
-// used in DragData.cpp
 extern "C" void __stdcall Time64AndNanoToFileTime(ULONGLONG uliTime64, DWORD dwNano, LPFILETIME pft)
 {
 	LONGLONG ll = uliTime64 * 10000000 + Int32x32To64(dwNano, 10) + 116444736000000000;
@@ -955,7 +954,6 @@ extern "C" void __stdcall Time64AndNanoToFileTime(ULONGLONG uliTime64, DWORD dwN
 	pft->dwHighDateTime = ll >>32;
 }
 
-// used in MWndConn.cpp
 extern "C" void __stdcall FileTimeToTimet(time_t* pt, const FILETIME* pft)
 {
 	ULONGLONG ll = (((ULONGLONG) pft->dwHighDateTime) << 32) + pft->dwLowDateTime;
@@ -964,7 +962,6 @@ extern "C" void __stdcall FileTimeToTimet(time_t* pt, const FILETIME* pft)
 	*pt = (time_t) (ll & 0xFFFFFFFF);
 }
 
-// used in MWndConn.cpp
 extern "C" void __stdcall FileTimeToTime64AndNano(ULONGLONG* puliTime64, DWORD* pdwNano, const FILETIME* pft)
 {
 	ULONGLONG ll = (((ULONGLONG) pft->dwHighDateTime) << 32) + pft->dwLowDateTime;
@@ -1015,6 +1012,7 @@ extern "C" void __stdcall ParseSFTPAttributes(ULONG uServerVersion, CFTPFileItem
 		if (pAttr->dwMask & SSH_FILEXFER_ATTR_ACMODTIME)
 		{
 			TimetToFileTime((time_t) pAttr->dwModifiedTime, &pItem->ftModifyTime);
+			pItem->ftCreateTime = {};
 		}
 		if (pAttr->dwMask & SSH_FILEXFER_ATTR_UIDGID)
 		{

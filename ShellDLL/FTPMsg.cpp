@@ -54,7 +54,7 @@ void CFTPFileMListingMessage::EndReceive(UINT* puStatusMsgID)
 CFTPFileSendMessage::CFTPFileSendMessage(IStream* pStreamLocalData,
 		LPCWSTR lpszRemoteFileName)
 	: m_pStreamLocalData(pStreamLocalData), m_strRemoteFileName(lpszRemoteFileName)
-	, m_bFinished(false)
+	, m_bFinished(false), m_pDispatcher(NULL)
 {
 	m_bForWrite = true;
 	m_pvBuffer = malloc(STREAM_BUFFER_SIZE);
@@ -101,6 +101,54 @@ bool CFTPFileSendMessage::ReadyToWrite(CTextSocket* pPassive)
 }
 
 void CFTPFileSendMessage::EndReceive(UINT* puStatusMsgID)
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+CFTPWriteFileMessage::CFTPWriteFileMessage(LPCWSTR lpszRemoteFileName)
+	: m_strRemoteFileName(lpszRemoteFileName)
+	, m_bFinished(false), m_pDispatcher(NULL)
+{
+	m_bForWrite = true;
+	m_pvBuffer = NULL;
+	m_dwSize = 0;
+	//if (lpszTouch)
+	//	m_strTouch = lpszTouch;
+	//else
+	//	m_pDispatcher = NULL;
+}
+
+CFTPWriteFileMessage::~CFTPWriteFileMessage()
+{
+}
+
+bool CFTPWriteFileMessage::SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait)
+{
+	return pConnection->SendCommandWithType(L"STOR", m_strRemoteFileName, L"I", pWait) != NULL;
+}
+
+bool CFTPWriteFileMessage::ReadyToWrite(CTextSocket* pPassive)
+{
+	if (!m_pvBuffer)
+	{
+		m_bCanceled = true;
+		return false;
+	}
+	if (!m_dwSize)
+	{
+		m_bFinished = true;
+		return false;
+	}
+	if (pPassive->IsRemoteClosed())
+		return false;
+	pPassive->Send(m_pvBuffer, (SIZE_T) m_dwSize, 0);
+	m_pvBuffer = NULL;
+	m_dwSize = 0;
+	return true;
+}
+
+void CFTPWriteFileMessage::EndReceive(UINT* puStatusMsgID)
 {
 }
 

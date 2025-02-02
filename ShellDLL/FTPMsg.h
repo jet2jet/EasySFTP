@@ -108,6 +108,47 @@ public:
 	CFTPMessageDispatcher* m_pDispatcher;
 };
 
+class CFTPReadFileMessage : public CUnknownImplT<CFTPPassiveMessage>
+{
+public:
+	CFTPReadFileMessage(LPCWSTR lpszRemoteFileName);
+	virtual ~CFTPReadFileMessage();
+
+	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait);
+	virtual bool ConnectionEstablished(CTextSocket* pPassive) { return true; }
+	virtual bool OnReceive(CTextSocket* pPassive);
+	virtual bool ReadyToWrite(CTextSocket* pPassive) { return false;  }
+	virtual void EndReceive(UINT* puStatusMsgID);
+
+public:
+	CMyStringW m_strRemoteFileName;
+	void* m_pvBuffer;
+	DWORD m_dwSize;
+	DWORD m_dwBufferOffset;
+	bool m_bFinished;
+	CFTPMessageDispatcher* m_pDispatcher;
+};
+
+class CFTPWriteFileMessage : public CUnknownImplT<CFTPPassiveMessage>
+{
+public:
+	CFTPWriteFileMessage(LPCWSTR lpszRemoteFileName);
+	virtual ~CFTPWriteFileMessage();
+
+	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait);
+	virtual bool ConnectionEstablished(CTextSocket* pPassive) { return true; }
+	virtual bool OnReceive(CTextSocket* pPassive) { return false; }
+	virtual bool ReadyToWrite(CTextSocket* pPassive);
+	virtual void EndReceive(UINT* puStatusMsgID);
+
+public:
+	CMyStringW m_strRemoteFileName;
+	const void* m_pvBuffer;
+	DWORD m_dwSize;
+	bool m_bFinished;
+	CFTPMessageDispatcher* m_pDispatcher;
+};
+
 //class CFTPStream : public CManagedUnknownImplT<IStream>
 class CFTPStream : public CUnknownImplT<IStream>
 {

@@ -135,6 +135,11 @@ struct CServerFileAttrData
 struct CSFTPFileData;
 struct CSFTPFileAttribute;
 
+extern "C" void __stdcall TimetToFileTime(time_t t, LPFILETIME pft);
+extern "C" void __stdcall Time64AndNanoToFileTime(ULONGLONG uliTime64, DWORD dwNano, LPFILETIME pft);
+extern "C" void __stdcall FileTimeToTimet(time_t * pt, const FILETIME * pft);
+extern "C" void __stdcall FileTimeToTime64AndNano(ULONGLONG * puliTime64, DWORD * pdwNano, const FILETIME * pft);
+
 extern "C" CFTPFileItem* __stdcall ParseUnixFileList(LPCWSTR lpszString);
 extern "C" CFTPFileItem* __stdcall PickupUnixFileList(LPCWSTR lpszString, LPCWSTR lpszFileName, CFTPFileItem* pItem);
 extern "C" CFTPFileItem* __stdcall ParseDOSFileList(LPCWSTR lpszString, char* pnYearFollows, bool* pbY2KProblem);

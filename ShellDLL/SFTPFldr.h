@@ -65,6 +65,15 @@ struct CSFTPWaitAttrData : public CSFTPWaitConfirm
 	};
 };
 
+struct CSFTPWaitReadData : public CSFTPWaitConfirm
+{
+	inline CSFTPWaitReadData() : CSFTPWaitConfirm(WRD_READDATA), outBuffer(NULL), bufferCapacity(0), readBytes(0) {}
+
+	void* outBuffer;
+	DWORD bufferCapacity;
+	DWORD readBytes;
+};
+
 struct CSFTPSendFileData
 {
 	bool bForSend;
@@ -159,7 +168,7 @@ public:
 		CFTPFileItem* pItem, LPCWSTR pszName, SHGDNF uFlags);
 	STDMETHOD(DoDeleteFTPItems)(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
 		const CMyPtrArrayT<CFTPFileItem>& aItems);
-	STDMETHOD(MoveFTPItems)(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszFromDir, LPCWSTR lpszFileNames);
+	STDMETHOD(RenameFTPItem)(LPCWSTR lpszSrcFileName, LPCWSTR lpszNewFileName, CMyStringW* pstrMsg);
 	STDMETHOD(UpdateFTPItemAttributes)(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
 		CServerFilePropertyDialog* pDialog, const CMyPtrArrayT<CServerFileAttrData>& aAttrs, bool* pabResults);
 	STDMETHOD(CreateFTPDirectory)(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszName);
@@ -173,9 +182,23 @@ public:
 	STDMETHOD(Disconnect)();
 	STDMETHOD(IsConnected)() { return m_pClient != NULL ? S_OK : S_FALSE; }
 	STDMETHOD(IsTransferring)() { return m_dwTransferringCount > 0 ? S_OK : S_FALSE; }
+
+	STDMETHOD(OpenFile)(CFTPDirectoryBase* pDirectory, LPCWSTR lpszName, DWORD grfMode, HANDLE* phFile);
+	STDMETHOD(ReadFile)(HANDLE hFile, void* outBuffer, DWORD dwSize, DWORD* pdwRead);
+	STDMETHOD(WriteFile)(HANDLE hFile, const void* inBuffer, DWORD dwSize, DWORD* pdwWritten);
+	STDMETHOD(SeekFile)(HANDLE hFile, LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, ULARGE_INTEGER* lpNewFilePointer);
+	STDMETHOD(StatFile)(HANDLE hFile, STATSTG* pStatstg, DWORD grfStatFlag);
+	STDMETHOD(CloseFile)(HANDLE hFile);
+	STDMETHOD(DuplicateFile)(HANDLE hFile, HANDLE* phFile);
+	STDMETHOD(LockRegion)(HANDLE hFile, ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType);
+	STDMETHOD(UnlockRegion)(HANDLE hFile, ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType);
+	STDMETHOD(StatDirectory)(CFTPDirectoryBase* pDirectory, DWORD grfMode, STATSTG* pStatstg, DWORD grfStatFlag);
+	STDMETHOD(SetFileTime)(LPCWSTR lpszFileName, const FILETIME* pctime, const FILETIME* patime, const FILETIME* pmtime);
+
 	STDMETHOD_(IShellFolder*, GetParentFolder)() { return m_pFolderRoot; }
 
 	virtual LPCWSTR GetProtocolName(int& nDefPort) const { nDefPort = 22; return L"sftp"; }
+	virtual bool IsLockSupported() const { return m_pChannel && m_pChannel->GetServerVersion() >= 6; }
 	virtual void PreShowPropertyDialog(CServerFilePropertyDialog* pDialog);
 	// pDialog may be NULL
 	// return: whether the protocol supports creation of shortcut (link)
@@ -195,7 +218,7 @@ public:
 	virtual void ChannelExitStatus(CSSHChannel* pChannel, int nExitCode);
 	virtual void ChannelConfirm(CSSHChannel* pChannel, bool bSucceeded, int nReason);
 	virtual void ChannelDataReceived(CSSHChannel* pChannel, const void* pvData, size_t nSize)
-		{ }
+	{ }
 	virtual void SFTPOpened(CSFTPChannel* pChannel);
 	virtual void SFTPConfirm(CSFTPChannel* pChannel, CSFTPMessage* pMsg,
 		int nStatus, const CMyStringW& strMessage);
@@ -272,15 +295,20 @@ protected:
 	UINT _OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived);
 	void DoReceiveSocket();
 	inline int DoRetryAuthentication(const char* pszAuthList, bool bFirstAttempt)
-		{ return m_pFolderRoot->DoRetryAuthentication(m_hWndOwner, m_pUser, true, pszAuthList, bFirstAttempt); }
+	{
+		return m_pFolderRoot->DoRetryAuthentication(m_hWndOwner, m_pUser, true, pszAuthList, bFirstAttempt);
+	}
 	void DoNextReadDirectory(CSFTPWaitDirectoryData* pData);
 	virtual HRESULT DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW& astrMsgs, bool bIsDirectory, LPCWSTR lpszFile, CFTPDirectoryBase* pDirectory = NULL);
+	HRESULT _StatFile(HANDLE hFile, STATSTG* pStatstg, DWORD grfStatFlag);
 
 	class CSFTPStreamCounter : public IUnknown
 	{
 	public:
 		inline CSFTPFolderSFTP* This() const
-			{ return (CSFTPFolderSFTP*) (((DWORD_PTR) this) - (DWORD_PTR) offsetof(CSFTPFolderSFTP, m_xStreamCounter)); }
+		{
+			return (CSFTPFolderSFTP*)(((DWORD_PTR)this) - (DWORD_PTR)offsetof(CSFTPFolderSFTP, m_xStreamCounter));
+		}
 		STDMETHOD(QueryInterface)(REFIID riid, void FAR* FAR* ppv) { return E_NOINTERFACE; }
 		STDMETHOD_(ULONG, AddRef)()
 		{
@@ -293,4 +321,15 @@ protected:
 			return 1;
 		}
 	} m_xStreamCounter;
+
+	class CSFTPHandleData
+	{
+	public:
+		CMyStringW strName;
+		HSFTPHANDLE hSFTP;
+		ULONGLONG offset;
+		STATSTG statstg;
+		DWORD grfMode;
+		DWORD dwRefCount;
+	};
 };

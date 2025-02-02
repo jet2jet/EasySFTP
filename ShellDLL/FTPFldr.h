@@ -53,7 +53,7 @@ public:
 		CFTPFileItem* pItem, LPCWSTR pszName, SHGDNF uFlags);
 	STDMETHOD(DoDeleteFTPItems)(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
 		const CMyPtrArrayT<CFTPFileItem>& aItems);
-	STDMETHOD(MoveFTPItems)(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszFromDir, LPCWSTR lpszFileNames);
+	STDMETHOD(RenameFTPItem)(LPCWSTR lpszSrcFileName, LPCWSTR lpszNewFileName, CMyStringW* pstrMsg);
 	STDMETHOD(UpdateFTPItemAttributes)(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
 		CServerFilePropertyDialog* pDialog, const CMyPtrArrayT<CServerFileAttrData>& aAttrs, bool* pabResults);
 	STDMETHOD(CreateFTPDirectory)(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszName);
@@ -66,9 +66,23 @@ public:
 	STDMETHOD(Disconnect)();
 	STDMETHOD(IsConnected)() { return m_pConnection != NULL ? S_OK : S_FALSE; }
 	STDMETHOD(IsTransferring)() { return m_dwTransferringCount > 0 ? S_OK : S_FALSE; }
+
+	STDMETHOD(OpenFile)(CFTPDirectoryBase* pDirectory, LPCWSTR lpszName, DWORD grfMode, HANDLE* phFile);
+	STDMETHOD(ReadFile)(HANDLE hFile, void* outBuffer, DWORD dwSize, DWORD* pdwRead);
+	STDMETHOD(WriteFile)(HANDLE hFile, const void* inBuffer, DWORD dwSize, DWORD* pdwWritten);
+	STDMETHOD(SeekFile)(HANDLE hFile, LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, ULARGE_INTEGER* lpNewFilePointer);
+	STDMETHOD(StatFile)(HANDLE hFile, STATSTG* pStatstg, DWORD grfStatFlag);
+	STDMETHOD(CloseFile)(HANDLE hFile);
+	STDMETHOD(DuplicateFile)(HANDLE hFile, HANDLE* phFile);
+	STDMETHOD(LockRegion)(HANDLE hFile, ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType);
+	STDMETHOD(UnlockRegion)(HANDLE hFile, ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType);
+	STDMETHOD(StatDirectory)(CFTPDirectoryBase* pDirectory, DWORD grfMode, STATSTG* pStatstg, DWORD grfStatFlag);
+	STDMETHOD(SetFileTime)(LPCWSTR lpszFileName, const FILETIME* pctime, const FILETIME* patime, const FILETIME* pmtime);
+
 	STDMETHOD_(IShellFolder*, GetParentFolder)() { return m_pFolderRoot; }
 
 	virtual LPCWSTR GetProtocolName(int& nDefPort) const { nDefPort = 21; return L"ftp"; }
+	virtual bool IsLockSupported() const { return false; }
 	virtual void PreShowPropertyDialog(CServerFilePropertyDialog* pDialog);
 	virtual void PreShowServerInfoDialog(CServerInfoDialog* pDialog);
 	virtual bool ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszDirectory, bool* pbReceived);
@@ -146,6 +160,19 @@ protected:
 		CSFTPFolderFTP* m_pRoot;
 		CFTPDirectoryBase* m_pDirectory;
 		char m_nServerSystemType;
+	};
+
+	class CFTPHandleData
+	{
+	public:
+		CFTPDirectoryBase* pDirectory;
+		CFTPPassiveMessage* pMessage;
+		CFTPWaitPassive* pPassive;
+		CFTPFileItem* pItem;
+		ULONGLONG offset;
+		STATSTG statstg;
+		DWORD grfMode;
+		DWORD dwRefCount;
 	};
 
 	friend class CFTPStream;
