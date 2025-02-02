@@ -172,6 +172,7 @@
     <ClInclude Include="IDList.h" />
     <ClInclude Include="INIFile.h" />
     <ClInclude Include="KeyList.h" />
+    <ClInclude Include="Lock.h" />
     <ClInclude Include="MyDialog.h" />
     <ClInclude Include="MyFunc.h" />
     <ClInclude Include="MyProp.h" />

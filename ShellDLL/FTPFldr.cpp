@@ -202,7 +202,7 @@ CSFTPFolderFTP::CSFTPFolderFTP(CDelegateMallocData* pMallocData, CFTPDirectoryIt
 	//m_hWndTimer = NULL;
 	//m_nPort = 22;
 	m_pConnection = NULL;
-	//::InitializeCriticalSection(&m_csSocket);
+	::InitializeCriticalSection(&m_csSocket);
 	m_dwTransferringCount = 0;
 	m_nServerCharset = scsUTF8;
 	m_pFolderRoot->AddRef();
@@ -212,11 +212,12 @@ CSFTPFolderFTP::~CSFTPFolderFTP()
 {
 	Disconnect();
 	m_pFolderRoot->Release();
-	//::DeleteCriticalSection(&m_csSocket);
+	::DeleteCriticalSection(&m_csSocket);
 }
 
 bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserInfo* pUser)
 {
+	CMyScopedCSLock lock(m_csSocket);
 	m_hWndOwner = hWnd;
 
 	if (pUser)
@@ -245,7 +246,7 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserIn
 		m_strHostName = str;
 	}
 	m_pConnection = new CFTPConnection();
-	m_pConnection->m_socket.SetCharset((ServerCharset) m_nServerCharset);
+	m_pConnection->m_socket.SetCharset((ServerCharset)m_nServerCharset);
 
 	if (!m_pConnection->Connect(nPort, lpszHostName))
 	{
@@ -263,7 +264,7 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserIn
 	m_bY2KProblem = false;
 
 	m_idTimer = theApp.RegisterTimer(KEEP_CONNECTION_TIME_SPAN,
-		(PFNEASYSFTPTIMERPROC) KeepConnectionTimerProc, (LPARAM) this);
+		(PFNEASYSFTPTIMERPROC)KeepConnectionTimerProc, (LPARAM)this);
 
 	//SetStatusText(ID_STATUS_HOST, lpszHostName);
 
@@ -347,24 +348,28 @@ STDMETHODIMP CSFTPFolderFTP::OpenFile(CFTPDirectoryBase* pDirectory, LPCWSTR lps
 
 	IncrementTransferCount();
 
-	CFTPWaitEstablishPassive* pEstablishWait = StartPassive(pMessage);
-	if (!pEstablishWait)
 	{
-		pMessage->Release();
-		delete data;
-		DecrementTransferCount();
-		return E_OUTOFMEMORY;
-	}
-	else if (!WaitForReceive(&pEstablishWait->bWaiting))
-	{
+		CMyScopedCSLock lock(m_csSocket);
+
+		CFTPWaitEstablishPassive* pEstablishWait = StartPassive(pMessage);
+		if (!pEstablishWait)
+		{
+			pMessage->Release();
+			delete data;
+			DecrementTransferCount();
+			return E_OUTOFMEMORY;
+		}
+		else if (!WaitForReceive(&pEstablishWait->bWaiting))
+		{
+			delete pEstablishWait;
+			pMessage->Release();
+			delete data;
+			DecrementTransferCount();
+			return E_FAIL;
+		}
+		data->pPassive = pEstablishWait->pRet;
 		delete pEstablishWait;
-		pMessage->Release();
-		delete data;
-		DecrementTransferCount();
-		return E_FAIL;
 	}
-	data->pPassive = pEstablishWait->pRet;
-	delete pEstablishWait;
 
 	// for writing, retrieve file second
 	if (grfMode & STGM_WRITE)
@@ -407,6 +412,8 @@ STDMETHODIMP CSFTPFolderFTP::ReadFile(HANDLE hFile, void* outBuffer, DWORD dwSiz
 		// already closed
 		return S_FALSE;
 	}
+
+	CMyScopedCSLock lock(m_csSocket);
 
 	auto* pSocket = data->pPassive->pPassive;
 
@@ -460,6 +467,8 @@ STDMETHODIMP CSFTPFolderFTP::WriteFile(HANDLE hFile, const void* inBuffer, DWORD
 	if (!data->pPassive)
 		return E_ABORT;
 
+	CMyScopedCSLock lock(m_csSocket);
+
 	auto pMessage = static_cast<CFTPWriteFileMessage*>(data->pMessage);
 	pMessage->m_pvBuffer = inBuffer;
 	pMessage->m_dwSize = dwSize;
@@ -503,6 +512,8 @@ STDMETHODIMP CSFTPFolderFTP::SeekFile(HANDLE hFile, LARGE_INTEGER liDistanceToMo
 		default:
 			return STG_E_INVALIDFUNCTION;
 		}
+
+		CMyScopedCSLock lock(m_csSocket);
 
 		if (data->pPassive)
 		{
@@ -577,6 +588,7 @@ STDMETHODIMP CSFTPFolderFTP::CloseFile(HANDLE hFile)
 	auto data = static_cast<CFTPHandleData*>(hFile);
 	if (!--data->dwRefCount)
 	{
+		CMyScopedCSLock lock(m_csSocket);
 		if (data->pPassive)
 		{
 			m_pConnection->ClosePassiveSocket(data->pPassive->pPassive);
@@ -638,72 +650,77 @@ STDMETHODIMP CSFTPFolderFTP::SetFileTime(LPCWSTR lpszFileName, const FILETIME* p
 {
 	if (!pctime && !pmtime)
 		return S_OK;
+
 	HRESULT hr = S_OK;
 	bool isSucceededAny = false;
-	if (pctime && m_pConnection->IsCommandAvailable(L"MFCT"))
-	{
-		HRESULT hr2;
-		CFTPWaitConfirm* pData = new CFTPWaitConfirm();
-		if (!pData)
-		{
-			hr2 = E_OUTOFMEMORY;
-		}
-		else
-		{
-			CMyStringW strParam;
-			FormatMfctMfmtString(strParam, lpszFileName, pctime);
 
-			pData->bWaiting = true;
-			pData->nCode = 0;
-			if (!m_pConnection)
-				hr2 = OLE_E_NOTRUNNING;
-			else if (!m_pConnection->SendCommand(L"MFCT", strParam, pData))
-				hr2 = E_UNEXPECTED;
-			else if (!WaitForReceive(&pData->bWaiting))
-				hr2 = E_UNEXPECTED;
+	{
+		CMyScopedCSLock lock(m_csSocket);
+		if (pctime && m_pConnection->IsCommandAvailable(L"MFCT"))
+		{
+			HRESULT hr2;
+			CFTPWaitConfirm* pData = new CFTPWaitConfirm();
+			if (!pData)
+			{
+				hr2 = E_OUTOFMEMORY;
+			}
 			else
 			{
-				hr2 = (pData->nCode < 300 && pData->nCode != 202 ? S_OK : E_FAIL);
+				CMyStringW strParam;
+				FormatMfctMfmtString(strParam, lpszFileName, pctime);
+
+				pData->bWaiting = true;
+				pData->nCode = 0;
+				if (!m_pConnection)
+					hr2 = OLE_E_NOTRUNNING;
+				else if (!m_pConnection->SendCommand(L"MFCT", strParam, pData))
+					hr2 = E_UNEXPECTED;
+				else if (!WaitForReceive(&pData->bWaiting))
+					hr2 = E_UNEXPECTED;
+				else
+				{
+					hr2 = (pData->nCode < 300 && pData->nCode != 202 ? S_OK : E_FAIL);
+				}
+
+				if (SUCCEEDED(hr2))
+					isSucceededAny = true;
+				delete pData;
 			}
-
-			if (SUCCEEDED(hr2))
-				isSucceededAny = true;
-			delete pData;
-		}
-		hr = hr2;
-	}
-	if (pmtime && m_pConnection->IsCommandAvailable(L"MFMT"))
-	{
-		HRESULT hr2;
-		CFTPWaitConfirm* pData = new CFTPWaitConfirm();
-		if (!pData)
-		{
-			hr2 = E_OUTOFMEMORY;
-		}
-		else
-		{
-			CMyStringW strParam;
-			FormatMfctMfmtString(strParam, lpszFileName, pctime);
-
-			pData->bWaiting = true;
-			pData->nCode = 0;
-			if (!m_pConnection)
-				hr2 = OLE_E_NOTRUNNING;
-			else if (!m_pConnection->SendCommand(L"MFMT", strParam, pData))
-				hr2 = E_UNEXPECTED;
-			else if (!WaitForReceive(&pData->bWaiting))
-				hr2 = E_UNEXPECTED;
-			else
-			{
-				hr2 = (pData->nCode < 300 && pData->nCode != 202 ? S_OK : E_FAIL);
-			}
-
-			if (SUCCEEDED(hr2))
-				isSucceededAny = true;
-			delete pData;
-		}
-		if (SUCCEEDED(hr))
 			hr = hr2;
+		}
+		if (pmtime && m_pConnection->IsCommandAvailable(L"MFMT"))
+		{
+			HRESULT hr2;
+			CFTPWaitConfirm* pData = new CFTPWaitConfirm();
+			if (!pData)
+			{
+				hr2 = E_OUTOFMEMORY;
+			}
+			else
+			{
+				CMyStringW strParam;
+				FormatMfctMfmtString(strParam, lpszFileName, pctime);
+
+				pData->bWaiting = true;
+				pData->nCode = 0;
+				if (!m_pConnection)
+					hr2 = OLE_E_NOTRUNNING;
+				else if (!m_pConnection->SendCommand(L"MFMT", strParam, pData))
+					hr2 = E_UNEXPECTED;
+				else if (!WaitForReceive(&pData->bWaiting))
+					hr2 = E_UNEXPECTED;
+				else
+				{
+					hr2 = (pData->nCode < 300 && pData->nCode != 202 ? S_OK : E_FAIL);
+				}
+
+				if (SUCCEEDED(hr2))
+					isSucceededAny = true;
+				delete pData;
+			}
+			if (SUCCEEDED(hr))
+				hr = hr2;
+		}
 	}
 	if (isSucceededAny)
 	{
@@ -720,12 +737,12 @@ STDMETHODIMP CSFTPFolderFTP::SetFileTime(LPCWSTR lpszFileName, const FILETIME* p
 
 void CSFTPFolderFTP::IncrementTransferCount()
 {
-	::InterlockedIncrement((LONG*) &m_dwTransferringCount);
+	::InterlockedIncrement((LONG*)&m_dwTransferringCount);
 }
 
 void CSFTPFolderFTP::DecrementTransferCount()
 {
-	::InterlockedDecrement((LONG*) &m_dwTransferringCount);
+	::InterlockedDecrement((LONG*)&m_dwTransferringCount);
 }
 
 STDMETHODIMP CSFTPFolderFTP::GetFTPItemUIObjectOf(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
@@ -751,9 +768,9 @@ STDMETHODIMP CSFTPFolderFTP::SetFTPItemNameOf(HWND hWnd, CFTPDirectoryBase* pDir
 {
 	CMyStringW strFrom(pDirectory->m_strDirectory), strTo(pDirectory->m_strDirectory);
 	size_t dw = strFrom.GetLength() - 1;
-	if (((LPCWSTR) strFrom)[dw] != L'/')
+	if (((LPCWSTR)strFrom)[dw] != L'/')
 		strFrom += L'/';
-	if (((LPCWSTR) strTo)[dw] != L'/')
+	if (((LPCWSTR)strTo)[dw] != L'/')
 		strTo += L'/';
 	strFrom += pItem->strFileName;
 	strTo += pszName;
@@ -764,6 +781,8 @@ STDMETHODIMP CSFTPFolderFTP::SetFTPItemNameOf(HWND hWnd, CFTPDirectoryBase* pDir
 		::MyMessageBoxW(hWnd, MAKEINTRESOURCEW(IDS_COMMAND_OUTOFMEMORY), NULL, MB_ICONHAND);
 		return E_OUTOFMEMORY;
 	}
+
+	CMyScopedCSLock lock(m_csSocket);
 
 	pWait->nCode = 0;
 	pWait->bWaiting = true;
@@ -803,7 +822,7 @@ STDMETHODIMP CSFTPFolderFTP::DoDeleteFTPItems(HWND hWndOwner, CFTPDirectoryBase*
 		pItem = aItems.GetItem(i);
 
 		strFile = pDirectory->m_strDirectory;
-		if (((LPCWSTR) strFile)[strFile.GetLength() - 1] != L'/')
+		if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
 			strFile += L'/';
 		strFile += pItem->strFileName;
 
@@ -849,6 +868,8 @@ STDMETHODIMP CSFTPFolderFTP::RenameFTPItem(LPCWSTR lpszSrcFileName, LPCWSTR lpsz
 		}
 		else
 		{
+			CMyScopedCSLock lock(m_csSocket);
+
 			pData->bWaiting = true;
 			pData->bSecondary = false;
 			pData->nCode = 0;
@@ -938,7 +959,7 @@ STDMETHODIMP CSFTPFolderFTP::UpdateFTPItemAttributes(HWND hWndOwner, CFTPDirecto
 		CServerFileAttrData* pAttr = aAttrs.GetItem(i);
 
 		strFile = pDirectory->m_strDirectory;
-		if (((LPCWSTR) strFile)[strFile.GetLength() - 1] != L'/')
+		if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
 			strFile += L'/';
 		strFile += pAttr->pItem->strFileName;
 
@@ -950,8 +971,10 @@ STDMETHODIMP CSFTPFolderFTP::UpdateFTPItemAttributes(HWND hWndOwner, CFTPDirecto
 		}
 		else
 		{
+			CMyScopedCSLock lock(m_csSocket);
+
 			CMyStringW strMod;
-			strMod.Format(L"%03o \"%s\"", pAttr->nUnixMode, (LPCWSTR) strFile);
+			strMod.Format(L"%03o \"%s\"", pAttr->nUnixMode, (LPCWSTR)strFile);
 
 			pData->bWaiting = true;
 			pData->nCode = 0;
@@ -999,7 +1022,7 @@ STDMETHODIMP CSFTPFolderFTP::UpdateFTPItemAttributes(HWND hWndOwner, CFTPDirecto
 STDMETHODIMP CSFTPFolderFTP::CreateFTPDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszName)
 {
 	CMyStringW strFile(pDirectory->m_strDirectory);
-	if (strFile.IsEmpty() || ((LPCWSTR) strFile)[strFile.GetLength() - 1] != L'/')
+	if (strFile.IsEmpty() || ((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
 		strFile += L'/';
 	strFile += lpszName;
 
@@ -1009,6 +1032,8 @@ STDMETHODIMP CSFTPFolderFTP::CreateFTPDirectory(HWND hWndOwner, CFTPDirectoryBas
 		::MyMessageBoxW(hWndOwner, MAKEINTRESOURCEW(IDS_COMMAND_OUTOFMEMORY), NULL, MB_ICONHAND);
 		return E_OUTOFMEMORY;
 	}
+
+	CMyScopedCSLock lock(m_csSocket);
 
 	pWait->nCode = 0;
 	pWait->bWaiting = true;
@@ -1040,7 +1065,7 @@ STDMETHODIMP CSFTPFolderFTP::CreateFTPItemStream(CFTPDirectoryBase* pDirectory, 
 {
 	CMyStringW strFileName = pDirectory->m_strDirectory;
 	if (strFileName.IsEmpty() ||
-		((LPCWSTR) strFileName)[strFileName.GetLength() - 1] != L'/')
+		((LPCWSTR)strFileName)[strFileName.GetLength() - 1] != L'/')
 		strFileName += L'/';
 	strFileName += pItem->strFileName;
 
@@ -1086,7 +1111,7 @@ STDMETHODIMP CSFTPFolderFTP::WriteFTPItem(HWND hWndOwner, CFTPDirectoryBase* pDi
 	CMyStringW strFile, strMsg;
 
 	strFile = pDirectory->m_strDirectory;
-	if (((LPCWSTR) strFile)[strFile.GetLength() - 1] != L'/')
+	if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
 		strFile += L'/';
 	strFile += lpszName;
 
@@ -1104,9 +1129,11 @@ STDMETHODIMP CSFTPFolderFTP::WriteFTPItem(HWND hWndOwner, CFTPDirectoryBase* pDi
 	}
 	else
 	{
+		::EnterCriticalSection(&m_csSocket);
 		CFTPWaitEstablishPassive* pEstablishWait = StartPassive(pMessage);
 		if (!pEstablishWait)
 		{
+			::LeaveCriticalSection(&m_csSocket);
 			pMessage->Release();
 			hr = E_OUTOFMEMORY;
 			CMyStringW str;
@@ -1128,6 +1155,7 @@ STDMETHODIMP CSFTPFolderFTP::WriteFTPItem(HWND hWndOwner, CFTPDirectoryBase* pDi
 		}
 		else
 		{
+			::LeaveCriticalSection(&m_csSocket);
 			CFTPWaitPassive* pPassive = pEstablishWait->pRet;
 			delete pEstablishWait;
 			if (!WaitForReceive(&pPassive->bWaiting))
@@ -1230,7 +1258,7 @@ void CSFTPFolderFTP::PreShowServerInfoDialog(CServerInfoDialog* pDialog)
 	{
 		size_t nLen;
 		const sockaddr* psa = m_pConnection->m_socket.GetConnectedAddress(&nLen);
-		getnameinfo(psa, (socklen_t) nLen, str.GetBufferA(NI_MAXHOST + 1), NI_MAXHOST + 1, NULL, 0, NI_NUMERICHOST);
+		getnameinfo(psa, (socklen_t)nLen, str.GetBufferA(NI_MAXHOST + 1), NI_MAXHOST + 1, NULL, 0, NI_NUMERICHOST);
 		str.ReleaseBufferA();
 		pDialog->m_strInfo += str;
 	}
@@ -1250,26 +1278,23 @@ void CSFTPFolderFTP::PreShowServerInfoDialog(CServerInfoDialog* pDialog)
 
 bool CSFTPFolderFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszDirectory, bool* pbReceived)
 {
-	//::EnterCriticalSection(&m_csSocket);
 	if (!m_pConnection)
 	{
 		if (!Connect(hWndOwner, m_strHostName, m_nPort, NULL))
 		{
-			//::LeaveCriticalSection(&m_csSocket);
 			return false;
 		}
 	}
 	if (*pbReceived)
 	{
-		//::LeaveCriticalSection(&m_csSocket);
 		return true;
 	}
 
+	CMyScopedCSLock lock(m_csSocket);
 	*pbReceived = true;
 	CFTPFileListingHandler* pHandler = new CFTPFileListingHandler(this, pDirectory);
 	if (!pHandler)
 	{
-		//::LeaveCriticalSection(&m_csSocket);
 		return false;
 	}
 	CFTPPassiveMessage* pMessage;
@@ -1285,7 +1310,6 @@ bool CSFTPFolderFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirect
 	{
 		delete pEstablishWait;
 		delete pHandler;
-		//::LeaveCriticalSection(&m_csSocket);
 		return false;
 	}
 	CFTPWaitPassive* pPassiveWait = pEstablishWait->pRet;
@@ -1296,7 +1320,6 @@ bool CSFTPFolderFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirect
 	{
 		delete pPassiveWait;
 		delete pHandler;
-		//::LeaveCriticalSection(&m_csSocket);
 		return false;
 	}
 
@@ -1305,7 +1328,6 @@ bool CSFTPFolderFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirect
 	{
 		delete pPassiveWait;
 		delete pHandler;
-		//::LeaveCriticalSection(&m_csSocket);
 		return false;
 	}
 
@@ -1321,7 +1343,6 @@ bool CSFTPFolderFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirect
 	{
 		delete pPassiveWait;
 		delete pHandler;
-		//::LeaveCriticalSection(&m_csSocket);
 		return false;
 	}
 
@@ -1334,24 +1355,26 @@ bool CSFTPFolderFTP::ValidateDirectory(LPCWSTR lpszParentDirectory, PCUIDLIST_RE
 {
 	CMyStringW strPath = lpszParentDirectory;
 	bool bLastIsNotDelimiter, bFirst;
-	bLastIsNotDelimiter = (strPath.IsEmpty() || ((LPCWSTR) strPath)[strPath.GetLength() - 1] != L'/');
+	bLastIsNotDelimiter = (strPath.IsEmpty() || ((LPCWSTR)strPath)[strPath.GetLength() - 1] != L'/');
 	CMyStringW str;
 	bFirst = true;
 	while (pidlChild && pidlChild->mkid.cb)
 	{
-		if (!PickupFileName((PUITEMID_CHILD) pidlChild, str))
+		if (!PickupFileName((PUITEMID_CHILD)pidlChild, str))
 			return false;
 		if (bLastIsNotDelimiter)
 			strPath += L'/';
 		strPath += str;
 		bLastIsNotDelimiter = true;
-		pidlChild = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlChild) + pidlChild->mkid.cb);
+		pidlChild = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlChild) + pidlChild->mkid.cb);
 	}
 
 	// validate only if connected
 #if 1 || defined(_FORCE_VALIDATE)
 	if (m_pConnection)
 	{
+		CMyScopedCSLock lock(m_csSocket);
+
 		CWaitMakeDirData* pData = new CWaitMakeDirData();
 		pData->nWaitFlags = CWaitMakeDirData::flagWaitingForRealPath1;
 		pData->strRemoteDirectory = strPath;
@@ -1377,7 +1400,7 @@ CFTPFileItem* CSFTPFolderFTP::RetrieveFileItem(CFTPDirectoryBase* pDirectory, LP
 {
 	CMyStringW strFileName(pDirectory->m_strDirectory);
 	if (strFileName.IsEmpty() ||
-		((LPCWSTR) strFileName)[strFileName.GetLength() - 1] != L'/')
+		((LPCWSTR)strFileName)[strFileName.GetLength() - 1] != L'/')
 		strFileName += L'/';
 	strFileName += lpszFileName;
 	return RetrieveFileItem2(strFileName);
@@ -1385,6 +1408,7 @@ CFTPFileItem* CSFTPFolderFTP::RetrieveFileItem(CFTPDirectoryBase* pDirectory, LP
 
 CFTPFileItem* CSFTPFolderFTP::RetrieveFileItem2(LPCWSTR lpszFullPathName)
 {
+	CMyScopedCSLock lock(m_csSocket);
 	bool bMLST = false;
 	CFTPWaitAttrData* pData = new CFTPWaitAttrData();
 	pData->strFileName = lpszFullPathName;
@@ -1425,22 +1449,22 @@ CFTPFileItem* CSFTPFolderFTP::RetrieveFileItem2(LPCWSTR lpszFullPathName)
 	{
 		switch (m_nServerSystemType)
 		{
-			case SVT_UNKNOWN:
-				pItem = ParseUnixFileList(pData->strResult);
-				if (!pItem)
-				{
-					pItem = ParseDOSFileList(pData->strResult, &m_nYearFollows, &m_bY2KProblem);
-				}
-				break;
-			case SVT_UNIX:
-				pItem = ParseUnixFileList(pData->strResult);
-				break;
-			case SVT_DOS:
-			case SVT_WINDOWS:
+		case SVT_UNKNOWN:
+			pItem = ParseUnixFileList(pData->strResult);
+			if (!pItem)
+			{
 				pItem = ParseDOSFileList(pData->strResult, &m_nYearFollows, &m_bY2KProblem);
-				break;
-			default:
-				pItem = NULL;
+			}
+			break;
+		case SVT_UNIX:
+			pItem = ParseUnixFileList(pData->strResult);
+			break;
+		case SVT_DOS:
+		case SVT_WINDOWS:
+			pItem = ParseDOSFileList(pData->strResult, &m_nYearFollows, &m_bY2KProblem);
+			break;
+		default:
+			pItem = NULL;
 		}
 	}
 	delete pData;
@@ -1456,6 +1480,7 @@ HRESULT CSFTPFolderFTP::DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW&
 		hr = E_OUTOFMEMORY;
 	else
 	{
+		CMyScopedCSLock lock(m_csSocket);
 		pData->nCode = 0;
 		pData->bWaiting = true;
 		if (!m_pConnection)
@@ -1563,22 +1588,22 @@ void CSFTPFolderFTP::ShowFTPErrorMessage(int code, LPCWSTR lpszMessage)
 
 void CALLBACK CSFTPFolderFTP::KeepConnectionTimerProc(UINT_PTR idEvent, LPARAM lParam)
 {
-	CSFTPFolderFTP* pThis = (CSFTPFolderFTP*) lParam;
+	CSFTPFolderFTP* pThis = (CSFTPFolderFTP*)lParam;
 
 	// send 'ignore'/no-op message to keep connection
+	CMyScopedCSLock lock(pThis->m_csSocket);
 	if (pThis->m_pConnection)
 		pThis->m_pConnection->SendCommand(L"NOOP", NULL);
 }
 
 void CSFTPFolderFTP::OnFTPSocketReceive()
 {
-	//::EnterCriticalSection(&m_csSocket);
+	CMyScopedCSLock lock(m_csSocket);
 	_OnFTPSocketReceiveThreadUnsafe();
-	//::LeaveCriticalSection(&m_csSocket);
 }
 
 // in FileList.cpp
-extern "C" bool __stdcall _ParseToFileTime(LPCWSTR lpszString, LPCWSTR lpszStop, FILETIME* pftTime);
+extern "C" bool __stdcall _ParseToFileTime(LPCWSTR lpszString, LPCWSTR lpszStop, FILETIME * pftTime);
 
 void CSFTPFolderFTP::_OnFTPSocketReceiveThreadUnsafe()
 {
@@ -1600,90 +1625,90 @@ void CSFTPFolderFTP::_OnFTPSocketReceiveThreadUnsafe()
 		switch (code)
 		{
 			// response for NOOP, etc.
-			case 200:
-				break;
+		case 200:
+			break;
 			// response for FEAT
-			case 211:
-				if (pWait && pWait->nWaitType == CWaitResponseData::WRD_GETFEATURE)
-				{
-					m_bLoggingIn = false;
-					m_pConnection->InitAvaliableCommands(str);
-				}
-				break;
+		case 211:
+			if (pWait && pWait->nWaitType == CWaitResponseData::WRD_GETFEATURE)
+			{
+				m_bLoggingIn = false;
+				m_pConnection->InitAvaliableCommands(str);
+			}
+			break;
 			// initial message
-			case 220:
-				m_strServerInfo = str;
-				m_pConnection->SendCommand(L"USER", m_pUser->strName);
-				//SetStatusText(MAKEINTRESOURCEW(IDS_AUTHENTICATING));
-				break;
+		case 220:
+			m_strServerInfo = str;
+			m_pConnection->SendCommand(L"USER", m_pUser->strName);
+			//SetStatusText(MAKEINTRESOURCEW(IDS_AUTHENTICATING));
+			break;
 			// response for SYST
-			case 215:
-				ConvertToLowerLenW(str.GetBuffer(), (SIZE_T) str.GetLength());
-				if (wcsstr(str, L"unix"))
-					m_nServerSystemType = SVT_UNIX;
-				else if (wcsstr(str, L"dos"))
-					m_nServerSystemType = SVT_DOS;
-				else if (wcsstr(str, L"windows"))
-					m_nServerSystemType = SVT_WINDOWS;
-				//else
-				//	m_nServerSystemType = SVT_UNKNOWN;
-				m_pConnection->SendCommand(L"FEAT", NULL,
-					new CWaitFeatureData());
-				////UpdateServerFolderAbsolute(L"/");
-				//UpdateServerFolderAbsolute(L".");
-				break;
+		case 215:
+			ConvertToLowerLenW(str.GetBuffer(), (SIZE_T)str.GetLength());
+			if (wcsstr(str, L"unix"))
+				m_nServerSystemType = SVT_UNIX;
+			else if (wcsstr(str, L"dos"))
+				m_nServerSystemType = SVT_DOS;
+			else if (wcsstr(str, L"windows"))
+				m_nServerSystemType = SVT_WINDOWS;
+			//else
+			//	m_nServerSystemType = SVT_UNKNOWN;
+			m_pConnection->SendCommand(L"FEAT", NULL,
+				new CWaitFeatureData());
+			////UpdateServerFolderAbsolute(L"/");
+			//UpdateServerFolderAbsolute(L".");
+			break;
 			// response for USER
-			case 331:
-				m_pConnection->SecureSendCommand(L"PASS", m_pUser->strPassword);
-				break;
-			case 230:
-				//SetStatusText(MAKEINTRESOURCEW(IDS_CONNECTED));
-				{
-					LPWSTR lpw = str.GetBuffer();
-					LPWSTR lpw2R = wcsrchr(lpw, L'\r');
-					LPWSTR lpw2L = wcsrchr(lpw, L'\n');
-					if (lpw2R || lpw2L)
-					{
-						if (lpw2R)
-							*lpw2R = 0;
-						else
-							*lpw2L = 0;
-						str.ReleaseBuffer();
-					}
-					else
-						str.Empty();
-					m_strWelcomeMessage = str;
-				}
-				m_pConnection->SendCommand(L"SYST", NULL);
-				m_pUser->Release();
-				m_pUser = NULL;
-				break;
-			case 530:
-				switch (DoRetryAuthentication(false))
-				{
-					case 1:
-						m_pConnection->SendCommand(L"USER", m_pUser->strName);
-						break;
-					case 0:
-						Disconnect();
-						break;
-					case -1:
-						Disconnect();
-						::MyMessageBoxW(m_hWndOwner, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
-						break;
-				}
-				break;
-			case 500:
-			default:
-				if (pWait && pWait->nWaitType == CWaitResponseData::WRD_GETFEATURE)
-				{
-					m_bLoggingIn = false;
-					m_pConnection->InitAvaliableCommands(NULL);
-					delete ((CWaitFeatureData*) pWait);
-				}
+		case 331:
+			m_pConnection->SecureSendCommand(L"PASS", m_pUser->strPassword);
+			break;
+		case 230:
+		//SetStatusText(MAKEINTRESOURCEW(IDS_CONNECTED));
+		{
+			LPWSTR lpw = str.GetBuffer();
+			LPWSTR lpw2R = wcsrchr(lpw, L'\r');
+			LPWSTR lpw2L = wcsrchr(lpw, L'\n');
+			if (lpw2R || lpw2L)
+			{
+				if (lpw2R)
+					*lpw2R = 0;
 				else
-					Disconnect();
+					*lpw2L = 0;
+				str.ReleaseBuffer();
+			}
+			else
+				str.Empty();
+			m_strWelcomeMessage = str;
+		}
+		m_pConnection->SendCommand(L"SYST", NULL);
+		m_pUser->Release();
+		m_pUser = NULL;
+		break;
+		case 530:
+			switch (DoRetryAuthentication(false))
+			{
+			case 1:
+				m_pConnection->SendCommand(L"USER", m_pUser->strName);
 				break;
+			case 0:
+				Disconnect();
+				break;
+			case -1:
+				Disconnect();
+				::MyMessageBoxW(m_hWndOwner, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
+				break;
+			}
+			break;
+		case 500:
+		default:
+			if (pWait && pWait->nWaitType == CWaitResponseData::WRD_GETFEATURE)
+			{
+				m_bLoggingIn = false;
+				m_pConnection->InitAvaliableCommands(NULL);
+				delete ((CWaitFeatureData*)pWait);
+			}
+			else
+				Disconnect();
+			break;
 		}
 		if (pWait)
 			delete pWait;
@@ -1692,571 +1717,653 @@ void CSFTPFolderFTP::_OnFTPSocketReceiveThreadUnsafe()
 
 	switch (code)
 	{
-		case 125:
-		case 150:
+	case 125:
+	case 150:
+	{
+		if (pWait)
 		{
-			if (pWait)
+			CFTPWaitPassive* pw = (CFTPWaitPassive*)pWait;
+			if (pw->nWaitFlags == CFTPWaitPassive::flagError)
 			{
-				CFTPWaitPassive* pw = (CFTPWaitPassive*) pWait;
-				if (pw->nWaitFlags == CFTPWaitPassive::flagError)
+				m_pConnection->ClosePassiveSocket(pw->pPassive);
+				delete pw->pPassive;
+				pw->pPassive = NULL;
+			}
+			else
+			{
+				CFTPPassiveMessage* pMessage = pw->pMessage;
+				CTextSocket* pPassive = pw->pPassive;
+				if (pMessage->ConnectionEstablished(pPassive))
 				{
-					m_pConnection->ClosePassiveSocket(pw->pPassive);
-					delete pw->pPassive;
-					pw->pPassive = NULL;
+					//m_aWaitPassives.Add(pw);
+					pw->nWaitFlags = CFTPWaitPassive::flagWaitingForPassiveDone;
 				}
 				else
 				{
-					CFTPPassiveMessage* pMessage = pw->pMessage;
-					CTextSocket* pPassive = pw->pPassive;
-					if (pMessage->ConnectionEstablished(pPassive))
-					{
-						//m_aWaitPassives.Add(pw);
-						pw->nWaitFlags = CFTPWaitPassive::flagWaitingForPassiveDone;
-					}
-					else
-					{
-						pw->nWaitFlags = CFTPWaitPassive::flagError;
-					}
-				}
-				pw->bWaiting = false;
-			}
-		}
-		break;
-		// response for NOOP, SITE, etc.
-		case 200:
-		{
-			if (pWait)
-			{
-				switch (pWait->nWaitType)
-				{
-					//case CWaitResponseData::WRD_MAKEDIR:
-					//{
-					//	CWaitMakeDirData* pData = (CWaitMakeDirData*) pWait;
-					//	switch (pData->nWaitFlags)
-					//	{
-					//		case CWaitMakeDirData::flagWaitingForFileListings:
-					//		{
-					//			m_pConnection->SendCommand(L"PWD", NULL, pWait);
-					//			//m_aWaitResponse.Enqueue(pWait);
-					//		}
-					//		break;
-					//		case CWaitMakeDirData::flagWaitingForRealPath:
-					//		{
-					//			m_pConnection->SendCommand(L"PWD", NULL, pWait);
-					//			//m_aWaitResponse.Enqueue(pWait);
-					//		}
-					//		break;
-					//	}
-					//}
-					//break;
-					//case CWaitResponseData::WRD_GETFILEINFO:
-					//{
-					//	CWaitFileInfoData* pData = (CWaitFileInfoData*) pWait;
-					//	if (pData->nInfoType == CWaitFileInfoData::fileInfoSize)
-					//		m_pConnection->SendCommand(L"SIZE", pData->strFileName, pData);
-					//	else
-					//	{
-					//		pData->bSucceeded = false;
-					//		pData->bWaiting = false;
-					//	}
-					//}
-					//break;
-					case CWaitResponseData::WRD_PASSIVEMSG:
-						// usually using SendCommandWithType; ignore it
-						break;
-					case CWaitResponseData::WRD_CONFIRM:
-					{
-						CFTPWaitConfirm* pData = (CFTPWaitConfirm*) pWait;
-						pData->nCode = code;
-						pData->strMsg = str;
-						pData->bWaiting = false;
-					}
-					break;
+					pw->nWaitFlags = CFTPWaitPassive::flagError;
 				}
 			}
+			pw->bWaiting = false;
 		}
-		break;
-		// 'Command not implemented, superfluous at this site'
-		case 202:
+	}
+	break;
+	// response for NOOP, SITE, etc.
+	case 200:
+	{
+		if (pWait)
 		{
-			if (pWait)
+			switch (pWait->nWaitType)
 			{
-				switch (pWait->nWaitType)
-				{
-					case CWaitResponseData::WRD_CONFIRM:
-					{
-						CFTPWaitConfirm* pData = (CFTPWaitConfirm*) pWait;
-						pData->nCode = code;
-						pData->strMsg = str;
-						pData->bWaiting = false;
-					}
-					break;
-				}
+				//case CWaitResponseData::WRD_MAKEDIR:
+				//{
+				//	CWaitMakeDirData* pData = (CWaitMakeDirData*) pWait;
+				//	switch (pData->nWaitFlags)
+				//	{
+				//		case CWaitMakeDirData::flagWaitingForFileListings:
+				//		{
+				//			m_pConnection->SendCommand(L"PWD", NULL, pWait);
+				//			//m_aWaitResponse.Enqueue(pWait);
+				//		}
+				//		break;
+				//		case CWaitMakeDirData::flagWaitingForRealPath:
+				//		{
+				//			m_pConnection->SendCommand(L"PWD", NULL, pWait);
+				//			//m_aWaitResponse.Enqueue(pWait);
+				//		}
+				//		break;
+				//	}
+				//}
+				//break;
+				//case CWaitResponseData::WRD_GETFILEINFO:
+				//{
+				//	CWaitFileInfoData* pData = (CWaitFileInfoData*) pWait;
+				//	if (pData->nInfoType == CWaitFileInfoData::fileInfoSize)
+				//		m_pConnection->SendCommand(L"SIZE", pData->strFileName, pData);
+				//	else
+				//	{
+				//		pData->bSucceeded = false;
+				//		pData->bWaiting = false;
+				//	}
+				//}
+				//break;
+			case CWaitResponseData::WRD_PASSIVEMSG:
+				// usually using SendCommandWithType; ignore it
+				break;
+			case CWaitResponseData::WRD_CONFIRM:
+			{
+				CFTPWaitConfirm* pData = (CFTPWaitConfirm*)pWait;
+				pData->nCode = code;
+				pData->strMsg = str;
+				pData->bWaiting = false;
+			}
+			break;
 			}
 		}
-		break;
-		case 211:
-		case 212:
-		case 213:
+	}
+	break;
+	// 'Command not implemented, superfluous at this site'
+	case 202:
+	{
+		if (pWait)
 		{
-			// response for STAT, SIZE, MDTM, etc.
-			if (pWait)
+			switch (pWait->nWaitType)
 			{
-				switch (pWait->nWaitType)
-				{
-					case CWaitResponseData::WRD_FTPWAITATTR:
-					{
-						CFTPWaitAttrData* pData = (CFTPWaitAttrData*) pWait;
-						LPCWSTR lpLine = str;
-						LPCWSTR lp = wcsrchr(lpLine, L'\n');
-						if (lp)
-							str.ReleaseBuffer((DWORD) ((DWORD_PTR) lp - (DWORD_PTR) lpLine));
-						lpLine = str;
-						lp = wcschr(lpLine, L'\n');
-						if (lp)
-							str.DeleteString(0, (DWORD) ((DWORD_PTR) lp - (DWORD_PTR) lpLine));
-
-						//AddFileDataIfNeed(pData->bIsDir ? L"." : pData->strFileName, str);
-						//delete pData;
-						pData->strResult = str;
-						pData->bWaiting = false;
-					}
-					break;
-					case CWaitResponseData::WRD_GETFILEINFO:
-					{
-						CWaitFileInfoData* pData = (CWaitFileInfoData*) pWait;
-						switch (pData->nInfoType)
-						{
-							case CWaitFileInfoData::fileInfoSize:
-							{
-								LPCWSTR lp = NULL;
-								pData->uliSize.QuadPart = _wcstoi64(str, (wchar_t**) &lp, 10);
-								pData->bSucceeded = (lp && !*lp);
-								pData->bWaiting = false;
-							}
-							break;
-							case CWaitFileInfoData::fileInfoMDTM:
-								pData->bSucceeded = _ParseToFileTime(str, NULL, &pData->ftModifiedTime);
-								pData->bWaiting = false;
-								break;
-						}
-					}
-					break;
-					case CWaitResponseData::WRD_CONFIRM:
-					{
-						CFTPWaitConfirm* pData = (CFTPWaitConfirm*) pWait;
-						pData->nCode = code;
-						pData->strMsg = str;
-						pData->bWaiting = false;
-					}
-					break;
-				}
+			case CWaitResponseData::WRD_CONFIRM:
+			{
+				CFTPWaitConfirm* pData = (CFTPWaitConfirm*)pWait;
+				pData->nCode = code;
+				pData->strMsg = str;
+				pData->bWaiting = false;
+			}
+			break;
 			}
 		}
-		break;
-		case 226:
-		case 451:   // transfer aborted
+	}
+	break;
+	case 211:
+	case 212:
+	case 213:
+	{
+		// response for STAT, SIZE, MDTM, etc.
+		if (pWait)
 		{
-			// response for finishing passive
-			if (pWait)
+			switch (pWait->nWaitType)
 			{
-				if (pWait->nWaitType == CWaitResponseData::WRD_PASSIVEMSG)
-				{
-					CFTPWaitPassive* pData = (CFTPWaitPassive*) pWait;
-					pData->bWaiting = false;
-					pData->nWaitFlags = (code >= 400 ? CFTPWaitPassive::flagError : CFTPWaitPassive::flagFinished);
-				}
-				else if (pWait->nWaitType == CWaitResponseData::WRD_CONFIRM)
-				{
-					CFTPWaitConfirm* pData = (CFTPWaitConfirm*) pWait;
-					pData->bWaiting = false;
-					pData->nCode = code;
-					pData->strMsg = str;
-				}
-			}
-		}
-		break;
-		case 227:
-		{
-			if (pWait->nWaitType == CWaitResponseData::WRD_PASSIVE)
+			case CWaitResponseData::WRD_FTPWAITATTR:
 			{
-				CTextSocket* pRet = NULL;
-				CMyStringW strIP, strTemp;
-				int port;
-				LPCWSTR lp, lp2, lp3;
-				register int iTemp;
-				// "227 Entering Passive Mode (n1,n2,n3,n4,p1,p2)"
-				lp = wcschr(str, L'(');
+				CFTPWaitAttrData* pData = (CFTPWaitAttrData*)pWait;
+				LPCWSTR lpLine = str;
+				LPCWSTR lp = wcsrchr(lpLine, L'\n');
 				if (lp)
-				{
-					lp++;
-					lp2 = wcschr(lp, L')');
-					if (lp2)
-					{
-						bool bSucceeded = true;
-						str.SetString(lp, ((DWORD) ((LPCBYTE) lp2 - (LPCBYTE) lp)) / sizeof(WCHAR));
-						lp2 = lp = str;
-						code = 6;
-						port = 0;
-						while (true)
-						{
-							lp2 = wcschr(lp, L',');
-							if (code > 1)
-							{
-								if (!lp2 || lp == lp2)
-									break;
-							}
-							iTemp = (int) wcstol(lp, (wchar_t**) &lp3, 10);
-							if ((code == 1 && *lp3) || (code > 1 && lp == lp3))
-							{
-								//return NULL;
-								bSucceeded = false;
-								break;
-							}
-							if (code >= 3)
-							{
-								strTemp.Format(L"%d", iTemp);
-								strIP += strTemp;
-								if (code < 5)
-									strIP += L'.';
-							}
-							else if (code == 2)
-								port = iTemp;
-							else
-								port |= iTemp << 8;
-							code--;
-							if (!code)
-							{
-								if (lp2)
-									bSucceeded = false;
-								//	return NULL;
-								break;
-							}
-							lp = lp2 + 1;
-						}
-						if (!lp)
-						{
-							pRet = new CTextSocket();
-							if (!pRet->Connect(port, strIP, AF_INET, SOCK_STREAM))
-							{
-								delete pRet;
-								pRet = NULL;
-							}
-						}
-					}
-				}
-
-				CFTPWaitEstablishPassive* pData = (CFTPWaitEstablishPassive*) pWait;
-				if (pRet)
-				{
-					pData->pRet = PassiveStarted(pData, pRet);
-					if (!pData->pRet)
-						delete pRet;
-				}
-				else
-				{
-					pData->bWaiting = false;
-					pData->pRet = NULL;
-				}
-			}
-		}
-		break;
-		case 229:
-		{
-			if (pWait->nWaitType == CWaitResponseData::WRD_PASSIVE)
-			{
-				CTextSocket* pRet = NULL;
-				// "229 Entering Extended Passive Mode (|||<port>|)"
-				// ('|' is a delimiter which may be replaced by any other chars)
-				LPCWSTR lp = wcschr(str, L'(');
+					str.ReleaseBuffer((DWORD)((DWORD_PTR)lp - (DWORD_PTR)lpLine));
+				lpLine = str;
+				lp = wcschr(lpLine, L'\n');
 				if (lp)
-				{
-					lp++;
-					LPCWSTR lp2 = wcschr(lp, L')');
-					if (lp2)
-					{
-						str.SetString(lp, ((DWORD) ((LPCBYTE) lp2 - (LPCBYTE) lp)) / sizeof(WCHAR));
-						lp = str;
-						code = 5;
-						WCHAR chDelimiter = *lp;
-						LPCWSTR lp3;
-						int port = 0;
-						while (code)
-						{
-							lp2 = wcschr(lp, chDelimiter);
-							if (!lp2)
-							{
-								//if (code > 1)
-								//	code = -1;
-								break;
-							}
-							if (code == 2)
-							{
-								if (lp == lp2)
-									break;
-								port = (int) wcstol(lp, (wchar_t**) &lp3, 10);
-								if (lp3 != lp2)
-									break;
-							}
-							else if (lp != lp2)
-								break;
-							code--;
-							lp = lp2 + 1;
-						}
-						if (!*lp && port)
-						{
-							pRet = new CTextSocket();
-							if (!pRet->Connect(m_pConnection->m_socket.GetThisAddrInfo(), port))
-							{
-								delete pRet;
-								pRet = NULL;
-							}
-						}
-					}
-				}
+					str.DeleteString(0, (DWORD)((DWORD_PTR)lp - (DWORD_PTR)lpLine));
 
-				CFTPWaitEstablishPassive* pData = (CFTPWaitEstablishPassive*) pWait;
-				if (pRet)
-				{
-					pData->pRet = PassiveStarted(pData, pRet);
-					if (!pData->pRet)
-						delete pRet;
-				}
-				else
-				{
-					pData->bWaiting = false;
-					pData->pRet = NULL;
-				}
+				//AddFileDataIfNeed(pData->bIsDir ? L"." : pData->strFileName, str);
+				//delete pData;
+				pData->strResult = str;
+				pData->bWaiting = false;
 			}
-		}
-		break;
-		// response for file operations (succeeded)
-		case 250:
-			if (pWait)
+			break;
+			case CWaitResponseData::WRD_GETFILEINFO:
 			{
-				switch (pWait->nWaitType)
+				CWaitFileInfoData* pData = (CWaitFileInfoData*)pWait;
+				switch (pData->nInfoType)
 				{
-					case CWaitResponseData::WRD_FTPWAITATTR:
-					{
-						CFTPWaitAttrData* pData = (CFTPWaitAttrData*) pWait;
-						CMyStringW strAttr;
-						LPCWSTR lp = wcschr(str, L'\n');
-						if (lp)
-						{
-							lp++;
-							while (*lp == L' ')
-								lp++;
-							LPCWSTR lp2 = wcschr(lp, L'\n');
-							if (lp2)
-							{
-								strAttr.SetString(lp, (DWORD) (((DWORD_PTR) lp2 - (DWORD_PTR) lp) / sizeof(WCHAR)));
-								//m_wndListViewServer.AddMFileDataIfNeed(strAttr);
-								pData->strResult = strAttr;
-							}
-						}
-						//delete pData;
-						pData->bWaiting = false;
-						//SetStatusText(MAKEINTRESOURCEW(IDS_COMMAND_OK));
-					}
-					break;
-					case CWaitResponseData::WRD_RENAME:
-					{
-						CWaitRenameData* pData = (CWaitRenameData*) pWait;
-						pData->bWaiting = false;
-						pData->nCode = code;
-						pData->strMsg = str;
-					}
-					break;
-					case CWaitResponseData::WRD_MAKEDIR:
-					{
-						CWaitMakeDirData* pData = (CWaitMakeDirData*) pWait;
-						switch (pData->nWaitFlags)
-						{
-							case CWaitMakeDirData::flagWaitingForRealPath1:
-								pData->nWaitFlags = CWaitMakeDirData::flagWaitingForRealPath2;
-								//m_aWaitResponse.Enqueue(pData);
-								break;
-							default:
-								//delete pData;
-								pData->nWaitFlags = CWaitMakeDirData::flagError;
-								pData->bWaiting = false;
-								break;
-						}
-					}
-					break;
-					case CWaitResponseData::WRD_CONFIRM:
-					{
-						CFTPWaitConfirm* pData = (CFTPWaitConfirm*) pWait;
-						pData->nCode = code;
-						pData->strMsg = str;
-						pData->bWaiting = false;
-					}
+				case CWaitFileInfoData::fileInfoSize:
+				{
+					LPCWSTR lp = NULL;
+					pData->uliSize.QuadPart = _wcstoi64(str, (wchar_t**)&lp, 10);
+					pData->bSucceeded = (lp && !*lp);
+					pData->bWaiting = false;
+				}
+				break;
+				case CWaitFileInfoData::fileInfoMDTM:
+					pData->bSucceeded = _ParseToFileTime(str, NULL, &pData->ftModifiedTime);
+					pData->bWaiting = false;
 					break;
 				}
 			}
 			break;
+			case CWaitResponseData::WRD_CONFIRM:
+			{
+				CFTPWaitConfirm* pData = (CFTPWaitConfirm*)pWait;
+				pData->nCode = code;
+				pData->strMsg = str;
+				pData->bWaiting = false;
+			}
+			break;
+			}
+		}
+	}
+	break;
+	case 226:
+	case 451:   // transfer aborted
+	{
+		// response for finishing passive
+		if (pWait)
+		{
+			if (pWait->nWaitType == CWaitResponseData::WRD_PASSIVEMSG)
+			{
+				CFTPWaitPassive* pData = (CFTPWaitPassive*)pWait;
+				pData->bWaiting = false;
+				pData->nWaitFlags = (code >= 400 ? CFTPWaitPassive::flagError : CFTPWaitPassive::flagFinished);
+			}
+			else if (pWait->nWaitType == CWaitResponseData::WRD_CONFIRM)
+			{
+				CFTPWaitConfirm* pData = (CFTPWaitConfirm*)pWait;
+				pData->bWaiting = false;
+				pData->nCode = code;
+				pData->strMsg = str;
+			}
+		}
+	}
+	break;
+	case 227:
+	{
+		if (pWait->nWaitType == CWaitResponseData::WRD_PASSIVE)
+		{
+			CTextSocket* pRet = NULL;
+			CMyStringW strIP, strTemp;
+			int port;
+			LPCWSTR lp, lp2, lp3;
+			register int iTemp;
+			// "227 Entering Passive Mode (n1,n2,n3,n4,p1,p2)"
+			lp = wcschr(str, L'(');
+			if (lp)
+			{
+				lp++;
+				lp2 = wcschr(lp, L')');
+				if (lp2)
+				{
+					bool bSucceeded = true;
+					str.SetString(lp, ((DWORD)((LPCBYTE)lp2 - (LPCBYTE)lp)) / sizeof(WCHAR));
+					lp2 = lp = str;
+					code = 6;
+					port = 0;
+					while (true)
+					{
+						lp2 = wcschr(lp, L',');
+						if (code > 1)
+						{
+							if (!lp2 || lp == lp2)
+								break;
+						}
+						iTemp = (int)wcstol(lp, (wchar_t**)&lp3, 10);
+						if ((code == 1 && *lp3) || (code > 1 && lp == lp3))
+						{
+							//return NULL;
+							bSucceeded = false;
+							break;
+						}
+						if (code >= 3)
+						{
+							strTemp.Format(L"%d", iTemp);
+							strIP += strTemp;
+							if (code < 5)
+								strIP += L'.';
+						}
+						else if (code == 2)
+							port = iTemp;
+						else
+							port |= iTemp << 8;
+						code--;
+						if (!code)
+						{
+							if (lp2)
+								bSucceeded = false;
+							//	return NULL;
+							break;
+						}
+						lp = lp2 + 1;
+					}
+					if (!lp)
+					{
+						pRet = new CTextSocket();
+						if (!pRet->Connect(port, strIP, AF_INET, SOCK_STREAM))
+						{
+							delete pRet;
+							pRet = NULL;
+						}
+					}
+				}
+			}
+
+			CFTPWaitEstablishPassive* pData = (CFTPWaitEstablishPassive*)pWait;
+			if (pRet)
+			{
+				pData->pRet = PassiveStarted(pData, pRet);
+				if (!pData->pRet)
+					delete pRet;
+			}
+			else
+			{
+				pData->bWaiting = false;
+				pData->pRet = NULL;
+			}
+		}
+	}
+	break;
+	case 229:
+	{
+		if (pWait->nWaitType == CWaitResponseData::WRD_PASSIVE)
+		{
+			CTextSocket* pRet = NULL;
+			// "229 Entering Extended Passive Mode (|||<port>|)"
+			// ('|' is a delimiter which may be replaced by any other chars)
+			LPCWSTR lp = wcschr(str, L'(');
+			if (lp)
+			{
+				lp++;
+				LPCWSTR lp2 = wcschr(lp, L')');
+				if (lp2)
+				{
+					str.SetString(lp, ((DWORD)((LPCBYTE)lp2 - (LPCBYTE)lp)) / sizeof(WCHAR));
+					lp = str;
+					code = 5;
+					WCHAR chDelimiter = *lp;
+					LPCWSTR lp3;
+					int port = 0;
+					while (code)
+					{
+						lp2 = wcschr(lp, chDelimiter);
+						if (!lp2)
+						{
+							//if (code > 1)
+							//	code = -1;
+							break;
+						}
+						if (code == 2)
+						{
+							if (lp == lp2)
+								break;
+							port = (int)wcstol(lp, (wchar_t**)&lp3, 10);
+							if (lp3 != lp2)
+								break;
+						}
+						else if (lp != lp2)
+							break;
+						code--;
+						lp = lp2 + 1;
+					}
+					if (!*lp && port)
+					{
+						pRet = new CTextSocket();
+						if (!pRet->Connect(m_pConnection->m_socket.GetThisAddrInfo(), port))
+						{
+							delete pRet;
+							pRet = NULL;
+						}
+					}
+				}
+			}
+
+			CFTPWaitEstablishPassive* pData = (CFTPWaitEstablishPassive*)pWait;
+			if (pRet)
+			{
+				pData->pRet = PassiveStarted(pData, pRet);
+				if (!pData->pRet)
+					delete pRet;
+			}
+			else
+			{
+				pData->bWaiting = false;
+				pData->pRet = NULL;
+			}
+		}
+	}
+	break;
+	// response for file operations (succeeded)
+	case 250:
+		if (pWait)
+		{
+			switch (pWait->nWaitType)
+			{
+			case CWaitResponseData::WRD_FTPWAITATTR:
+			{
+				CFTPWaitAttrData* pData = (CFTPWaitAttrData*)pWait;
+				CMyStringW strAttr;
+				LPCWSTR lp = wcschr(str, L'\n');
+				if (lp)
+				{
+					lp++;
+					while (*lp == L' ')
+						lp++;
+					LPCWSTR lp2 = wcschr(lp, L'\n');
+					if (lp2)
+					{
+						strAttr.SetString(lp, (DWORD)(((DWORD_PTR)lp2 - (DWORD_PTR)lp) / sizeof(WCHAR)));
+						//m_wndListViewServer.AddMFileDataIfNeed(strAttr);
+						pData->strResult = strAttr;
+					}
+				}
+				//delete pData;
+				pData->bWaiting = false;
+				//SetStatusText(MAKEINTRESOURCEW(IDS_COMMAND_OK));
+			}
+			break;
+			case CWaitResponseData::WRD_RENAME:
+			{
+				CWaitRenameData* pData = (CWaitRenameData*)pWait;
+				pData->bWaiting = false;
+				pData->nCode = code;
+				pData->strMsg = str;
+			}
+			break;
+			case CWaitResponseData::WRD_MAKEDIR:
+			{
+				CWaitMakeDirData* pData = (CWaitMakeDirData*)pWait;
+				switch (pData->nWaitFlags)
+				{
+				case CWaitMakeDirData::flagWaitingForRealPath1:
+					pData->nWaitFlags = CWaitMakeDirData::flagWaitingForRealPath2;
+					//m_aWaitResponse.Enqueue(pData);
+					break;
+				default:
+					//delete pData;
+					pData->nWaitFlags = CWaitMakeDirData::flagError;
+					pData->bWaiting = false;
+					break;
+				}
+			}
+			break;
+			case CWaitResponseData::WRD_CONFIRM:
+			{
+				CFTPWaitConfirm* pData = (CFTPWaitConfirm*)pWait;
+				pData->nCode = code;
+				pData->strMsg = str;
+				pData->bWaiting = false;
+			}
+			break;
+			}
+		}
+		break;
 		// resonse for PWD, CWD, and MKD
-		case 257:
+	case 257:
+	{
+		if (pWait)
+		{
+			switch (pWait->nWaitType)
+			{
+			case CWaitResponseData::WRD_MAKEDIR:
+			{
+				CWaitMakeDirData* pDir = (CWaitMakeDirData*)pWait;
+				switch (pDir->nWaitFlags)
+				{
+				case CWaitMakeDirData::flagWaitingForRealPath2:
+				{
+					if (pDir->bRPError)
+						pDir->nWaitFlags = CWaitMakeDirData::flagError;
+					else
+					{
+						LPCWSTR lpw = str;
+						LPCWSTR lpw2;
+						while (*lpw == L' ')
+							lpw++;
+						if (*lpw == '\"')
+						{
+							lpw2 = ++lpw;
+							while (*lpw2)
+							{
+								if (*lpw2 == L'\"')
+									break;
+								lpw2++;
+							}
+							pDir->strRemoteDirectory.SetString(lpw, ((DWORD)((LPCBYTE)lpw2 - (LPCBYTE)lpw)) / sizeof(WCHAR));
+						}
+						pDir->nWaitFlags = CWaitMakeDirData::flagFinished;
+					}
+					pDir->bWaiting = false;
+				}
+				break;
+				//case CWaitMakeDirData::flagWaitingForMKDSend:
+				//	if (pDir->pSendFile)
+				//		DoSendConfirm(pDir->pSendFile, true);
+				//	else
+				//		DoSendFolder(pDir->strLocalDirectory, pDir->strRemoteDirectory);
+				//	break;
+				//case CWaitMakeDirData::flagWaitingForMKDNoSend:
+				//	if (pDir->pvData)
+				//	{
+				//		CFTPFileItem* pItem = m_wndListViewServer.EndCreateLabelEdit(&pDir->strRemoteDirectory);
+				//		if (pItem)
+				//		{
+				//			// 改めてサーバーから属性情報を得る
+				//			CFTPWaitAttrData* pAttr = new CFTPWaitAttrData();
+				//			pAttr->bIsDir = (pItem->type == fitypeDir);
+				//			pAttr->strFileName = pDir->strRemoteDirectory;
+				//			if (m_pConnection->IsCommandAvailable(L"MLST"))
+				//			{
+				//				SendCommand(L"MLST", pDir->strRemoteDirectory);
+				//			}
+				//			else
+				//			{
+				//				//if (pData->bIsDir)
+				//				//	str += L"/?";
+				//				SendCommand(L"STAT", pDir->strRemoteDirectory);
+				//			}
+				//			m_aWaitResponse.Enqueue(pAttr);
+				//		}
+				//	}
+				//	break;
+				}
+				//delete pDir;
+				break;
+			}
+			break;
+			case CWaitResponseData::WRD_CONFIRM:
+			{
+				CFTPWaitConfirm* pData = (CFTPWaitConfirm*)pWait;
+				pData->nCode = code;
+				pData->strMsg = str;
+				pData->bWaiting = false;
+			}
+			break;
+			}
+		}
+	}
+	break;
+	case 350:
+	{
+		if (pWait)
+		{
+			if (pWait->nWaitType == CWaitResponseData::WRD_RENAME)
+			{
+				CWaitRenameData* pData = (CWaitRenameData*)pWait;
+				//if (pData->pItem)
+				//	m_wndListViewServer.RefreshFileItem(pData->iItem);
+				//delete pData;
+				pData->bSecondary = true;
+			}
+			else if (pWait->nWaitType == CWaitResponseData::WRD_PASSIVEMSG)
+			{
+				// do nothing (response to REST)
+			}
+		}
+	}
+	break;
+	case 450: // Requested file action not taken. File unavailable (e.g., file busy).
+	{
+		if (pWait)
+		{
+			switch (pWait->nWaitType)
+			{
+			case CWaitResponseData::WRD_MAKEDIR:
+			{
+				CWaitMakeDirData* pData = (CWaitMakeDirData*)pWait;
+				switch (pData->nWaitFlags)
+				{
+				case CWaitMakeDirData::flagWaitingForRealPath1:
+					pData->nWaitFlags = CWaitMakeDirData::flagWaitingForRealPath2;
+					pData->bRPError = true;
+					break;
+				case CWaitMakeDirData::flagWaitingForRealPath2:
+					pData->nWaitFlags = CWaitMakeDirData::flagError;
+					pData->bRPError = true;
+					pData->bWaiting = false;
+					break;
+				}
+			}
+			break;
+			case CWaitResponseData::WRD_RENAME:
+			{
+				CWaitRenameData* pData = (CWaitRenameData*)pWait;
+				//if (pData->pItem)
+				//	m_wndListViewServer.RefreshFileItem(pData->iItem);
+				//delete pData;
+				if (pData->bSecondary)
+					pData->bWaiting = false;
+				if (!pData->nCode)
+				{
+					pData->nCode = code;
+					pData->strMsg = str;
+					pData->bSecondary = true;
+				}
+				pWait = NULL;
+				str.Empty();
+			}
+			break;
+			case CWaitResponseData::WRD_FTPWAITATTR:
+			{
+				CFTPWaitAttrData* pData = (CFTPWaitAttrData*)pWait;
+				pData->strResult.Empty();
+				//pData->bWaiting = false;
+				str.Empty();
+			}
+			break;
+			case CWaitResponseData::WRD_CONFIRM:
+			{
+				CFTPWaitConfirm* pData = (CFTPWaitConfirm*)pWait;
+				pData->nCode = code;
+				pData->strMsg = str;
+				//pData->bWaiting = false;
+				str.Empty();
+			}
+			break;
+			}
+			if (pWait)
+				pWait->bWaiting = false;
+		}
+		if (!str.IsEmpty())
+		{
+			//::MessageBeep(MB_ICONEXCLAMATION);
+			//SetStatusText(str);
+			ShowFTPErrorMessage(code, str);
+		}
+	}
+	break;
+
+	case 421: // Service not available, closing control connection.
+	default:
+		if (code == 421 || code >= 500)
 		{
 			if (pWait)
 			{
 				switch (pWait->nWaitType)
 				{
-					case CWaitResponseData::WRD_MAKEDIR:
-					{
-						CWaitMakeDirData* pDir = (CWaitMakeDirData*) pWait;
-						switch (pDir->nWaitFlags)
-						{
-							case CWaitMakeDirData::flagWaitingForRealPath2:
-							{
-								if (pDir->bRPError)
-									pDir->nWaitFlags = CWaitMakeDirData::flagError;
-								else
-								{
-									LPCWSTR lpw = str;
-									LPCWSTR lpw2;
-									while (*lpw == L' ')
-										lpw++;
-									if (*lpw == '\"')
-									{
-										lpw2 = ++lpw;
-										while (*lpw2)
-										{
-											if (*lpw2 == L'\"')
-												break;
-											lpw2++;
-										}
-										pDir->strRemoteDirectory.SetString(lpw, ((DWORD) ((LPCBYTE) lpw2 - (LPCBYTE) lpw)) / sizeof(WCHAR));
-									}
-									pDir->nWaitFlags = CWaitMakeDirData::flagFinished;
-								}
-								pDir->bWaiting = false;
-							}
-							break;
-							//case CWaitMakeDirData::flagWaitingForMKDSend:
-							//	if (pDir->pSendFile)
-							//		DoSendConfirm(pDir->pSendFile, true);
-							//	else
-							//		DoSendFolder(pDir->strLocalDirectory, pDir->strRemoteDirectory);
-							//	break;
-							//case CWaitMakeDirData::flagWaitingForMKDNoSend:
-							//	if (pDir->pvData)
-							//	{
-							//		CFTPFileItem* pItem = m_wndListViewServer.EndCreateLabelEdit(&pDir->strRemoteDirectory);
-							//		if (pItem)
-							//		{
-							//			// 改めてサーバーから属性情報を得る
-							//			CFTPWaitAttrData* pAttr = new CFTPWaitAttrData();
-							//			pAttr->bIsDir = (pItem->type == fitypeDir);
-							//			pAttr->strFileName = pDir->strRemoteDirectory;
-							//			if (m_pConnection->IsCommandAvailable(L"MLST"))
-							//			{
-							//				SendCommand(L"MLST", pDir->strRemoteDirectory);
-							//			}
-							//			else
-							//			{
-							//				//if (pData->bIsDir)
-							//				//	str += L"/?";
-							//				SendCommand(L"STAT", pDir->strRemoteDirectory);
-							//			}
-							//			m_aWaitResponse.Enqueue(pAttr);
-							//		}
-							//	}
-							//	break;
-						}
-						//delete pDir;
-						break;
-					}
-					break;
-					case CWaitResponseData::WRD_CONFIRM:
-					{
-						CFTPWaitConfirm* pData = (CFTPWaitConfirm*) pWait;
-						pData->nCode = code;
-						pData->strMsg = str;
-						pData->bWaiting = false;
-					}
-					break;
-				}
-			}
-		}
-		break;
-		case 350:
-		{
-			if (pWait)
-			{
-				if (pWait->nWaitType == CWaitResponseData::WRD_RENAME)
+				case CWaitResponseData::WRD_PASSIVE:
 				{
-					CWaitRenameData* pData = (CWaitRenameData*) pWait;
+					CFTPWaitEstablishPassive* pData = (CFTPWaitEstablishPassive*)pWait;
+					// 'EPSV' is not supported, so we use 'PASV'
+					m_pConnection->SendCommand(L"PASV", NULL, pData);
+				}
+				break;
+				case CWaitResponseData::WRD_PASSIVEMSG:
+				{
+					CFTPWaitPassive* pData = (CFTPWaitPassive*)pWait;
+					pData->nWaitFlags = CFTPWaitPassive::flagError;
+				}
+				break;
+				case CWaitResponseData::WRD_FTPWAITATTR:
+				{
+					CFTPWaitAttrData* pData = (CFTPWaitAttrData*)pWait;
+					//delete pData;
+					pData->strResult.Empty();
+					pData->bWaiting = false;
+					str.Empty();
+				}
+				break;
+				case CWaitResponseData::WRD_RENAME:
+				{
+					CWaitRenameData* pData = (CWaitRenameData*)pWait;
 					//if (pData->pItem)
 					//	m_wndListViewServer.RefreshFileItem(pData->iItem);
 					//delete pData;
-					pData->bSecondary = true;
-				}
-				else if (pWait->nWaitType == CWaitResponseData::WRD_PASSIVEMSG)
-				{
-					// do nothing (response to REST)
-				}
-			}
-		}
-		break;
-		case 450: // Requested file action not taken. File unavailable (e.g., file busy).
-		{
-			if (pWait)
-			{
-				switch (pWait->nWaitType)
-				{
-					case CWaitResponseData::WRD_MAKEDIR:
+					if (pData->bSecondary)
+						pData->bWaiting = false;
+					if (!pData->nCode)
 					{
-						CWaitMakeDirData* pData = (CWaitMakeDirData*) pWait;
-						switch (pData->nWaitFlags)
-						{
-							case CWaitMakeDirData::flagWaitingForRealPath1:
-								pData->nWaitFlags = CWaitMakeDirData::flagWaitingForRealPath2;
-								pData->bRPError = true;
-								break;
-							case CWaitMakeDirData::flagWaitingForRealPath2:
-								pData->nWaitFlags = CWaitMakeDirData::flagError;
-								pData->bRPError = true;
-								pData->bWaiting = false;
-								break;
-						}
-					}
-					break;
-					case CWaitResponseData::WRD_RENAME:
-					{
-						CWaitRenameData* pData = (CWaitRenameData*) pWait;
-						//if (pData->pItem)
-						//	m_wndListViewServer.RefreshFileItem(pData->iItem);
-						//delete pData;
-						if (pData->bSecondary)
-							pData->bWaiting = false;
-						if (!pData->nCode)
-						{
-							pData->nCode = code;
-							pData->strMsg = str;
-							pData->bSecondary = true;
-						}
-						pWait = NULL;
-						str.Empty();
-					}
-					break;
-					case CWaitResponseData::WRD_FTPWAITATTR:
-					{
-						CFTPWaitAttrData* pData = (CFTPWaitAttrData*) pWait;
-						pData->strResult.Empty();
-						//pData->bWaiting = false;
-						str.Empty();
-					}
-					break;
-					case CWaitResponseData::WRD_CONFIRM:
-					{
-						CFTPWaitConfirm* pData = (CFTPWaitConfirm*) pWait;
 						pData->nCode = code;
 						pData->strMsg = str;
-						//pData->bWaiting = false;
-						str.Empty();
+						pData->bSecondary = true;
 					}
-					break;
+					str.Empty();
+				}
+				break;
+				case CWaitResponseData::WRD_MAKEDIR:
+				{
+					CWaitMakeDirData* pDir = (CWaitMakeDirData*)pWait;
+					if (pDir->nWaitFlags == CWaitMakeDirData::flagWaitingForRealPath1)
+					{
+						pDir->nWaitFlags = CWaitMakeDirData::flagWaitingForRealPath2;
+						pDir->bRPError = true;
+						pWait = NULL;
+					}
+					else
+						pDir->nWaitFlags = CWaitMakeDirData::flagError;
+				}
+				break;
+				case CWaitResponseData::WRD_CONFIRM:
+				{
+					CFTPWaitConfirm* pData = (CFTPWaitConfirm*)pWait;
+					pData->nCode = code;
+					pData->strMsg = str;
+					//pData->bWaiting = false;
+					str.Empty();
+				}
+				break;
 				}
 				if (pWait)
 					pWait->bWaiting = false;
@@ -2269,88 +2376,6 @@ void CSFTPFolderFTP::_OnFTPSocketReceiveThreadUnsafe()
 			}
 		}
 		break;
-
-		case 421: // Service not available, closing control connection.
-		default:
-			if (code == 421 || code >= 500)
-			{
-				if (pWait)
-				{
-					switch (pWait->nWaitType)
-					{
-						case CWaitResponseData::WRD_PASSIVE:
-						{
-							CFTPWaitEstablishPassive* pData = (CFTPWaitEstablishPassive*) pWait;
-							// 'EPSV' is not supported, so we use 'PASV'
-							m_pConnection->SendCommand(L"PASV", NULL, pData);
-						}
-						break;
-						case CWaitResponseData::WRD_PASSIVEMSG:
-						{
-							CFTPWaitPassive* pData = (CFTPWaitPassive*) pWait;
-							pData->nWaitFlags = CFTPWaitPassive::flagError;
-						}
-						break;
-						case CWaitResponseData::WRD_FTPWAITATTR:
-						{
-							CFTPWaitAttrData* pData = (CFTPWaitAttrData*) pWait;
-							//delete pData;
-							pData->strResult.Empty();
-							pData->bWaiting = false;
-							str.Empty();
-						}
-						break;
-						case CWaitResponseData::WRD_RENAME:
-						{
-							CWaitRenameData* pData = (CWaitRenameData*) pWait;
-							//if (pData->pItem)
-							//	m_wndListViewServer.RefreshFileItem(pData->iItem);
-							//delete pData;
-							if (pData->bSecondary)
-								pData->bWaiting = false;
-							if (!pData->nCode)
-							{
-								pData->nCode = code;
-								pData->strMsg = str;
-								pData->bSecondary = true;
-							}
-							str.Empty();
-						}
-						break;
-						case CWaitResponseData::WRD_MAKEDIR:
-						{
-							CWaitMakeDirData* pDir = (CWaitMakeDirData*) pWait;
-							if (pDir->nWaitFlags == CWaitMakeDirData::flagWaitingForRealPath1)
-							{
-								pDir->nWaitFlags = CWaitMakeDirData::flagWaitingForRealPath2;
-								pDir->bRPError = true;
-								pWait = NULL;
-							}
-							else
-								pDir->nWaitFlags = CWaitMakeDirData::flagError;
-						}
-						break;
-						case CWaitResponseData::WRD_CONFIRM:
-						{
-							CFTPWaitConfirm* pData = (CFTPWaitConfirm*) pWait;
-							pData->nCode = code;
-							pData->strMsg = str;
-							//pData->bWaiting = false;
-							str.Empty();
-						}
-						break;
-					}
-					if (pWait)
-						pWait->bWaiting = false;
-				}
-				if (!str.IsEmpty())
-				{
-					//::MessageBeep(MB_ICONEXCLAMATION);
-					//SetStatusText(str);
-					ShowFTPErrorMessage(code, str);
-				}
-			}
-			break;
 	}
 }
 
@@ -2358,7 +2383,7 @@ void CSFTPFolderFTP::DoReceiveSocket()
 {
 	//while (true)
 	{
-		OnFTPSocketReceive();
+		_OnFTPSocketReceiveThreadUnsafe();
 		//if (!m_pSocket || !m_pSocket->CanReceive())
 		//	break;
 		::Sleep(0);
@@ -2497,24 +2522,24 @@ bool CSFTPFolderFTP::CFTPFileListingHandler::ReceiveFileListing(CTextSocket* pPa
 	{
 		switch (m_pRoot->m_nServerSystemType)
 		{
-			case SVT_UNKNOWN:
-				pItem = ParseUnixFileList(str2);
-				if (!pItem)
-				{
-					pItem = ParseDOSFileList(str2, &m_pRoot->m_nYearFollows, &m_pRoot->m_bY2KProblem);
-					if (!pItem)
-						return true;
-				}
-				break;
-			case SVT_UNIX:
-				pItem = ParseUnixFileList(str2);
-				break;
-			case SVT_DOS:
-			case SVT_WINDOWS:
+		case SVT_UNKNOWN:
+			pItem = ParseUnixFileList(str2);
+			if (!pItem)
+			{
 				pItem = ParseDOSFileList(str2, &m_pRoot->m_nYearFollows, &m_pRoot->m_bY2KProblem);
-				break;
-			default:
-				pItem = NULL;
+				if (!pItem)
+					return true;
+			}
+			break;
+		case SVT_UNIX:
+			pItem = ParseUnixFileList(str2);
+			break;
+		case SVT_DOS:
+		case SVT_WINDOWS:
+			pItem = ParseDOSFileList(str2, &m_pRoot->m_nYearFollows, &m_pRoot->m_bY2KProblem);
+			break;
+		default:
+			pItem = NULL;
 		}
 	}
 

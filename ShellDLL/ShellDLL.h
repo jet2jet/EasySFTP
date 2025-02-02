@@ -19,6 +19,7 @@
 #include "Func.h"
 #include "TextStrm.h"
 #include "MySocket.h"
+#include "Lock.h"
 
 #include "AppClass.h"
 #include "MyWindow.h"
