@@ -37,25 +37,37 @@ public:
 	void Close();
 	bool IsConnected() const { return m_socket != INVALID_SOCKET; }
 	int Send(LPCVOID lpBuffer, SIZE_T nSize, int flags)
-		{ return ::send(m_socket, (const char*) lpBuffer, (int) nSize, flags); }
+	{
+		return ::send(m_socket, (const char*)lpBuffer, (int)nSize, flags);
+	}
 	int Recv(LPVOID lpBuffer, SIZE_T nSize, int flags)
-		{ return ::recv(m_socket, (char*) lpBuffer, (int) nSize, flags); }
+	{
+		return ::recv(m_socket, (char*)lpBuffer, (int)nSize, flags);
+	}
 	bool AsyncSelect(HWND hWnd, UINT uMsg, long lEvent);
 	bool SetSocketOption(int nLevel, int nOptionName, const void* pValue, SIZE_T nLen)
-		{ return ::setsockopt(m_socket, nLevel, nOptionName, (const char*) pValue, (int) nLen) == 0; }
+	{
+		return ::setsockopt(m_socket, nLevel, nOptionName, (const char*)pValue, (int)nLen) == 0;
+	}
 	bool IoControl(long nCmd, DWORD dwArgument)
-		{ return ::ioctlsocket(m_socket, nCmd, &dwArgument) == 0; }
+	{
+		return ::ioctlsocket(m_socket, nCmd, &dwArgument) == 0;
+	}
 	bool IoControl(long nCmd, DWORD* pdwArgument)
-		{ return ::ioctlsocket(m_socket, nCmd, pdwArgument) == 0; }
+	{
+		return ::ioctlsocket(m_socket, nCmd, pdwArgument) == 0;
+	}
 
 	bool CanReceive(DWORD dwWaitMilliseconds = 0) const;
 	bool IsRemoteClosed() const;
 	bool EnableAsyncSelect(bool bEnable, bool bUseRefCount = false);
 
-//protected:
+	//protected:
 	const addrinfo* GetThisAddrInfo() const { return m_pAI; }
 	const sockaddr* GetConnectedAddress(size_t* pnAddrLen) const
-		{ *pnAddrLen = m_nAddrLen; return m_pAddress; }
+	{
+		*pnAddrLen = m_nAddrLen; return m_pAddress;
+	}
 
 private:
 	SOCKET m_socket;
@@ -79,7 +91,7 @@ public:
 
 	int SendString(const CMyStringW& string);
 	int SecureSendString(const _SecureStringW& string);
-	bool ReceiveLine(CMyStringW& ret);
+	bool ReceiveLine(CMyStringW& ret, bool (*pfnPumpMessage)() = NULL);
 
 private:
 	ServerCharset m_charset;

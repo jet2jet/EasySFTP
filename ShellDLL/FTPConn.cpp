@@ -305,7 +305,7 @@ bool CFTPConnection::ReceiveMessage(int& nCode, CMyStringW& rstrMessage, CWaitRe
 	bSecond = false;
 	while (true)
 	{
-		while (!m_socket.ReceiveLine(str))
+		while (!m_socket.ReceiveLine(str, []() { return theApp.MyPumpMessage2(); }))
 		{
 			if (!bSecond || !m_socket.CanReceive(WAIT_RECEIVE_TIME))
 			{

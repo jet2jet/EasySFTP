@@ -359,7 +359,7 @@ STDMETHODIMP CSFTPFolderFTP::OpenFile(CFTPDirectoryBase* pDirectory, LPCWSTR lps
 			DecrementTransferCount();
 			return E_OUTOFMEMORY;
 		}
-		else if (!WaitForReceive(&pEstablishWait->bWaiting))
+		else if (!WaitForReceive(&pEstablishWait->bWaiting) || !pEstablishWait->pRet)
 		{
 			delete pEstablishWait;
 			pMessage->Release();
@@ -540,7 +540,7 @@ STDMETHODIMP CSFTPFolderFTP::SeekFile(HANDLE hFile, LARGE_INTEGER liDistanceToMo
 			pMessage->Release();
 			return E_OUTOFMEMORY;
 		}
-		else if (!WaitForReceive(&pEstablishWait->bWaiting))
+		else if (!WaitForReceive(&pEstablishWait->bWaiting) || !pEstablishWait->pRet)
 		{
 			delete pEstablishWait;
 			pMessage->Release();
@@ -1078,7 +1078,7 @@ STDMETHODIMP CSFTPFolderFTP::CreateFTPItemStream(CFTPDirectoryBase* pDirectory, 
 	//pMessage->Release();
 	//if (!pEstablishWait)
 	//	return E_FAIL;
-	//if (!WaitForReceive(&pEstablishWait->bWaiting))
+	//if (!WaitForReceive(&pEstablishWait->bWaiting) || !pEstablishWait->pRet)
 	//{
 	//	delete pEstablishWait;
 	//	return E_FAIL;
@@ -1142,7 +1142,7 @@ STDMETHODIMP CSFTPFolderFTP::WriteFTPItem(HWND hWndOwner, CFTPDirectoryBase* pDi
 			strMsg += L": ";
 			strMsg += str;
 		}
-		else if (!WaitForReceive(&pEstablishWait->bWaiting))
+		else if (!WaitForReceive(&pEstablishWait->bWaiting) || !pEstablishWait->pRet)
 		{
 			delete pEstablishWait;
 			pMessage->Release();
@@ -1158,7 +1158,7 @@ STDMETHODIMP CSFTPFolderFTP::WriteFTPItem(HWND hWndOwner, CFTPDirectoryBase* pDi
 			::LeaveCriticalSection(&m_csSocket);
 			CFTPWaitPassive* pPassive = pEstablishWait->pRet;
 			delete pEstablishWait;
-			if (!WaitForReceive(&pPassive->bWaiting))
+			if (!WaitForReceive(&pPassive->bWaiting) || pPassive->nWaitFlags == CFTPWaitPassive::flagError)
 			{
 				delete pPassive;
 				pMessage->Release();
@@ -1184,38 +1184,45 @@ STDMETHODIMP CSFTPFolderFTP::WriteFTPItem(HWND hWndOwner, CFTPDirectoryBase* pDi
 					}
 					pStatus->TransferInProgress(pvObject, pMessage->m_uliOffset);
 				}
-				CFTPWaitConfirm* pConfirm = new CFTPWaitConfirm();
-				pConfirm->bWaiting = true;
-				m_pConnection->ClosePassiveSocket(pPassive->pPassive, pConfirm);
-				delete pPassive;
-				if (!WaitForReceive(&pConfirm->bWaiting))
+				if (pMessage->m_bCanceled)
 				{
-					hr = E_FAIL;
-					CMyStringW str;
-					str.LoadString(IDS_COMMAND_FAILED);
-					strMsg = strFile;
-					strMsg += L": ";
-					strMsg += str;
-				}
-				else if (pConfirm->nCode >= 300)
-				{
-					hr = E_FAIL;
-					strMsg = strFile;
-					strMsg += L": ";
-					strMsg += pConfirm->strMsg;
-				}
-				else if (!pMessage->m_bFinished || pMessage->m_bCanceled)
-				{
-					CMyStringW str;
-					hr = E_FAIL;
-					strMsg = strFile;
-					strMsg += L": ";
-					str.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
-					strMsg += str;
+					delete pPassive;
 				}
 				else
-					pDirectory->UpdateNewFile(lpszName, false);
-				delete pConfirm;
+				{
+					CFTPWaitConfirm* pConfirm = new CFTPWaitConfirm();
+					pConfirm->bWaiting = true;
+					m_pConnection->ClosePassiveSocket(pPassive->pPassive, pConfirm);
+					delete pPassive;
+					if (!WaitForReceive(&pConfirm->bWaiting))
+					{
+						hr = E_FAIL;
+						CMyStringW str;
+						str.LoadString(IDS_COMMAND_FAILED);
+						strMsg = strFile;
+						strMsg += L": ";
+						strMsg += str;
+					}
+					else if (pConfirm->nCode >= 300)
+					{
+						hr = E_FAIL;
+						strMsg = strFile;
+						strMsg += L": ";
+						strMsg += pConfirm->strMsg;
+					}
+					else if (!pMessage->m_bFinished || pMessage->m_bCanceled)
+					{
+						CMyStringW str;
+						hr = E_FAIL;
+						strMsg = strFile;
+						strMsg += L": ";
+						str.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
+						strMsg += str;
+					}
+					else
+						pDirectory->UpdateNewFile(lpszName, false);
+					delete pConfirm;
+				}
 				pMessage->Release();
 			}
 		}
@@ -2478,16 +2485,17 @@ bool CSFTPFolderFTP::WaitForReceive(bool* pbWaiting, CFTPWaitPassive* pPassive)
 					Disconnect();
 					return false;
 				}
-				if (m_pConnection->m_socket.CanReceive(WAIT_RECEIVE_TIME))
+				if (m_pConnection->m_socket.CanReceive())
 				{
 					DoReceiveSocket();
-					if (!m_pConnection || !theApp.MyPumpMessage())
-						return false;
 				}
+				if (!m_pConnection || !theApp.MyPumpMessage())
+					return false;
 			}
 			else
 				return false;
 		}
+		::Sleep(1);
 	}
 	return true;
 }
@@ -2513,7 +2521,7 @@ bool CSFTPFolderFTP::CFTPFileListingHandler::ReceiveFileListing(CTextSocket* pPa
 	CFTPFileItem* pItem;
 	CMyStringW str2;
 
-	if (!pPassive->ReceiveLine(str2))
+	if (!pPassive->ReceiveLine(str2, []() { return theApp.MyPumpMessage2(); }))
 		return false;
 
 	if (bMListing)

@@ -19,7 +19,7 @@ CMySocket::CMySocket(void)
 	m_pAddress = NULL;
 	m_nEnable = 1;
 	m_hWndAsync = NULL;
-	m_uMsg = (UINT) -1;
+	m_uMsg = (UINT)-1;
 	m_lEvent = 0;
 }
 
@@ -83,15 +83,15 @@ bool CMySocket::Connect(const addrinfo* pai, int port)
 			if (port != -1)
 			{
 				register size_t len = pai->ai_addrlen;
-				paddr = (sockaddr*) malloc(len);
+				paddr = (sockaddr*)malloc(len);
 				memcpy(paddr, pai->ai_addr, len);
-				((sockaddr_in6*) paddr)->sin6_port = htons((u_short) port);
-				ret = ::connect(m_socket, paddr, (int) len);
+				((sockaddr_in6*)paddr)->sin6_port = htons((u_short)port);
+				ret = ::connect(m_socket, paddr, (int)len);
 			}
 			else
 			{
 				paddr = NULL;
-				ret = ::connect(m_socket, pai->ai_addr, (int) pai->ai_addrlen);
+				ret = ::connect(m_socket, pai->ai_addr, (int)pai->ai_addrlen);
 			}
 			if (!ret)
 			{
@@ -99,7 +99,7 @@ bool CMySocket::Connect(const addrinfo* pai, int port)
 					m_pAddress = paddr;
 				else
 				{
-					m_pAddress = (sockaddr*) malloc(pai->ai_addrlen);
+					m_pAddress = (sockaddr*)malloc(pai->ai_addrlen);
 					memcpy(m_pAddress, pai->ai_addr, pai->ai_addrlen);
 				}
 				m_nAddrLen = pai->ai_addrlen;
@@ -158,7 +158,7 @@ bool CMySocket::CanReceive(DWORD dwWaitMilliseconds) const
 
 	FD_ZERO(&fset);
 	FD_SET(m_socket, &fset);
-	tv.tv_sec = (long) (dwWaitMilliseconds / 1000);
+	tv.tv_sec = (long)(dwWaitMilliseconds / 1000);
 	tv.tv_usec = (dwWaitMilliseconds % 1000) * 1000;
 	ret = ::select(1, &fset, NULL, NULL, &tv);
 	if (ret == SOCKET_ERROR)
@@ -167,7 +167,7 @@ bool CMySocket::CanReceive(DWORD dwWaitMilliseconds) const
 		return false;
 	if (!FD_ISSET(m_socket, &fset))
 		return false;
-	ret = ::recv(m_socket, (char*) &tv, 1, MSG_PEEK);
+	ret = ::recv(m_socket, (char*)&tv, 1, MSG_PEEK);
 	if (ret < 1)
 	{
 #ifdef _DEBUG
@@ -204,13 +204,13 @@ bool CMySocket::IsRemoteClosed() const
 		return false;
 	if (!FD_ISSET(m_socket, &fset))
 		return false;
-	ret = ::recv(m_socket, (char*) &tv, 1, MSG_PEEK);
+	ret = ::recv(m_socket, (char*)&tv, 1, MSG_PEEK);
 	return ret == 0;
 }
 
 bool CMySocket::EnableAsyncSelect(bool bEnable, bool bUseRefCount)
 {
-	if (m_socket == INVALID_SOCKET || m_uMsg == (UINT) -1)
+	if (m_socket == INVALID_SOCKET || m_uMsg == (UINT)-1)
 		return false;
 	int ne = m_nEnable;
 	if (bUseRefCount)
@@ -243,15 +243,15 @@ bool CMySocket::EnableAsyncSelect(bool bEnable, bool bUseRefCount)
 		// remove all messages whose wParam is equal to m_socket
 		MSG msg;
 		int nCount = 16, i = 0;
-		MSG* pmsgCache = (MSG*) malloc(sizeof(MSG) * nCount);
+		MSG* pmsgCache = (MSG*)malloc(sizeof(MSG) * nCount);
 		while (::PeekMessage(&msg, m_hWndAsync, m_uMsg, m_uMsg, PM_REMOVE))
 		{
-			if ((SOCKET) msg.wParam != m_socket)
+			if ((SOCKET)msg.wParam != m_socket)
 			{
 				if (i == nCount)
 				{
 					nCount += 16;
-					MSG* pmg = (MSG*) realloc(pmsgCache, sizeof(MSG) * nCount);
+					MSG* pmg = (MSG*)realloc(pmsgCache, sizeof(MSG) * nCount);
 					if (!pmg)
 						break;
 					pmsgCache = pmg;
@@ -281,7 +281,7 @@ static bool __stdcall _ExpandBuffer(LPBYTE& lpBuffer, size_t nPos, size_t& nBuff
 	register LPBYTE lpNewBuffer;
 	if (nPos >= nBufferSize)
 	{
-		lpNewBuffer = (LPBYTE) realloc(lpBuffer, nBufferSize + RECV_BUFFER_SIZE);
+		lpNewBuffer = (LPBYTE)realloc(lpBuffer, nBufferSize + RECV_BUFFER_SIZE);
 		if (!lpNewBuffer)
 			return false;
 		lpBuffer = lpNewBuffer;
@@ -301,25 +301,25 @@ int CTextSocket::SendString(const CMyStringW& string)
 	lp = NULL;
 	switch (m_charset)
 	{
-		case scsUTF8:
-			lpSend = buff.AllocUTF8String(&dwSize);
-			break;
-		case scsShiftJIS:
-			dwSize = buff.GetLengthA();
-			lpSend = (LPCBYTE)(LPCSTR) buff;
-			break;
-		case scsEUC:
-			dwSize = buff.GetLengthA();
-			lpSend = (LPCBYTE)(LPCSTR) buff;
-			lp = (LPBYTE) malloc((size_t) dwSize);
-			memcpy(lp, lpSend, (size_t) dwSize);
-			::ShiftJISToEUCString((LPSTR) lp, dwSize);
-			lpSend = lp;
-			break;
-		default:
-			return 0;
+	case scsUTF8:
+		lpSend = buff.AllocUTF8String(&dwSize);
+		break;
+	case scsShiftJIS:
+		dwSize = buff.GetLengthA();
+		lpSend = (LPCBYTE)(LPCSTR)buff;
+		break;
+	case scsEUC:
+		dwSize = buff.GetLengthA();
+		lpSend = (LPCBYTE)(LPCSTR)buff;
+		lp = (LPBYTE)malloc((size_t)dwSize);
+		memcpy(lp, lpSend, (size_t)dwSize);
+		::ShiftJISToEUCString((LPSTR)lp, dwSize);
+		lpSend = lp;
+		break;
+	default:
+		return 0;
 	}
-	ret = Send(lpSend, (SIZE_T) dwSize, 0);
+	ret = Send(lpSend, (SIZE_T)dwSize, 0);
 	if (lp)
 		free(lp);
 	return ret;
@@ -337,36 +337,36 @@ int CTextSocket::SecureSendString(const _SecureStringW& string)
 	lp = NULL;
 	switch (m_charset)
 	{
-		case scsUTF8:
-			lpSend = buff.AllocUTF8String(&dwSize);
-			break;
-		case scsShiftJIS:
-			dwSize = buff.GetLengthA();
-			lpSend = (LPCBYTE)(LPCSTR) buff;
-			break;
-		case scsEUC:
-			dwSize = buff.GetLengthA();
-			lpSend = (LPCBYTE)(LPCSTR) buff;
-			lp = (LPBYTE) malloc((size_t) dwSize);
-			memcpy(lp, lpSend, (size_t) dwSize);
-			::ShiftJISToEUCString((LPSTR) lp, dwSize);
-			lpSend = lp;
-			break;
-		default:
-			_SecureStringW::SecureEmptyString(buff);
-			return 0;
+	case scsUTF8:
+		lpSend = buff.AllocUTF8String(&dwSize);
+		break;
+	case scsShiftJIS:
+		dwSize = buff.GetLengthA();
+		lpSend = (LPCBYTE)(LPCSTR)buff;
+		break;
+	case scsEUC:
+		dwSize = buff.GetLengthA();
+		lpSend = (LPCBYTE)(LPCSTR)buff;
+		lp = (LPBYTE)malloc((size_t)dwSize);
+		memcpy(lp, lpSend, (size_t)dwSize);
+		::ShiftJISToEUCString((LPSTR)lp, dwSize);
+		lpSend = lp;
+		break;
+	default:
+		_SecureStringW::SecureEmptyString(buff);
+		return 0;
 	}
-	ret = Send(lpSend, (SIZE_T) dwSize, 0);
+	ret = Send(lpSend, (SIZE_T)dwSize, 0);
 	if (lp)
 	{
-		_SecureStringW::SecureEmptyBuffer(lp, (size_t) dwSize);
+		_SecureStringW::SecureEmptyBuffer(lp, (size_t)dwSize);
 		free(lp);
 	}
 	_SecureStringW::SecureEmptyString(buff);
 	return ret;
 }
 
-bool CTextSocket::ReceiveLine(CMyStringW& ret)
+bool CTextSocket::ReceiveLine(CMyStringW& ret, bool (*pfnPumpMessage)())
 {
 	LPBYTE lpBuffer, lpPos;
 	BYTE b, b2;
@@ -375,14 +375,30 @@ bool CTextSocket::ReceiveLine(CMyStringW& ret)
 
 	ret.Empty();
 	nBufferSize = RECV_BUFFER_SIZE;
-	lpBuffer = (LPBYTE) malloc(RECV_BUFFER_SIZE);
+	lpBuffer = (LPBYTE)malloc(RECV_BUFFER_SIZE);
 	if (!lpBuffer)
 		return false;
 	lpPos = lpBuffer;
 	b2 = 0;
 	while (true)
 	{
-		iRet = Recv(&b, 1, 0);
+		if (pfnPumpMessage)
+		{
+			while (!CanReceive())
+			{
+				if (!pfnPumpMessage())
+				{
+					free(lpBuffer);
+					return false;
+				}
+				::Sleep(0);
+			}
+			iRet = Recv(&b, 1, 0);
+		}
+		else
+		{
+			iRet = Recv(&b, 1, 0);
+		}
 		if (iRet < 0)
 		{
 			free(lpBuffer);
@@ -410,19 +426,19 @@ bool CTextSocket::ReceiveLine(CMyStringW& ret)
 	}
 	if (lpBuffer == lpPos)
 		return false;
-	nBufferSize = (size_t) (lpPos - lpBuffer);
+	nBufferSize = (size_t)(lpPos - lpBuffer);
 	switch (m_charset)
 	{
-		case scsUTF8:
-			ret.SetUTF8String(lpBuffer, (DWORD) nBufferSize);
-			break;
-		case scsEUC:
-			::EUCToShiftJISString((LPSTR) lpBuffer, (DWORD) nBufferSize);
-		case scsShiftJIS:
-			ret.SetString((LPCSTR) lpBuffer, (DWORD) nBufferSize);
-			break;
-		default:
-			break;
+	case scsUTF8:
+		ret.SetUTF8String(lpBuffer, (DWORD)nBufferSize);
+		break;
+	case scsEUC:
+		::EUCToShiftJISString((LPSTR)lpBuffer, (DWORD)nBufferSize);
+	case scsShiftJIS:
+		ret.SetString((LPCSTR)lpBuffer, (DWORD)nBufferSize);
+		break;
+	default:
+		break;
 	}
 	free(lpBuffer);
 	return true;
