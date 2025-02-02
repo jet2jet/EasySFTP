@@ -166,8 +166,6 @@ public:
 		const CMyPtrArrayT<CFTPFileItem>& aItems, CFTPDataObject** ppObject);
 	STDMETHOD(SetFTPItemNameOf)(HWND hWnd, CFTPDirectoryBase* pDirectory,
 		CFTPFileItem* pItem, LPCWSTR pszName, SHGDNF uFlags);
-	STDMETHOD(DoDeleteFTPItems)(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
-		const CMyPtrArrayT<CFTPFileItem>& aItems);
 	STDMETHOD(RenameFTPItem)(LPCWSTR lpszSrcFileName, LPCWSTR lpszNewFileName, CMyStringW* pstrMsg);
 	STDMETHOD(UpdateFTPItemAttributes)(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
 		CServerFilePropertyDialog* pDialog, const CMyPtrArrayT<CServerFileAttrData>& aAttrs, bool* pabResults);

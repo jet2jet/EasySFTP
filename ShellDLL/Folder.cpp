@@ -2956,6 +2956,44 @@ STDMETHODIMP CFTPDirectoryRootBase::QueryInterface(REFIID riid, void** ppv)
 	return CFTPDirectoryBase::QueryInterface(riid, ppv);
 }
 
+STDMETHODIMP CFTPDirectoryRootBase::DoDeleteFTPItems(HWND hWndOwner, CFTPDirectoryBase* pDirectory, const CMyPtrArrayT<CFTPFileItem>& aItems)
+{
+	HRESULT hr = S_OK;
+	CMyStringW strFile;
+	CMyStringArrayW astrMsgs;
+	CFTPFileItem* pItem;
+	for (int i = 0; i < aItems.GetCount(); i++)
+	{
+		pItem = aItems.GetItem(i);
+
+		strFile = pDirectory->m_strDirectory;
+		if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
+			strFile += L'/';
+		strFile += pItem->strFileName;
+
+		if (pItem->IsDirectory())
+		{
+			auto hr2 = DoDeleteDirectoryRecursive(hWndOwner, astrMsgs, pItem->strFileName, pDirectory);
+			if (FAILED(hr2))
+			{
+				if (SUCCEEDED(hr))
+				{
+					hr = hr2;
+				}
+				continue;
+			}
+		}
+		auto hr2 = DoDeleteFileOrDirectory(hWndOwner, astrMsgs, pItem->IsDirectory(), strFile, pDirectory);
+		if (SUCCEEDED(hr))
+		{
+			hr = hr2;
+		}
+	}
+	if (FAILED(hr))
+		theApp.MultipleErrorMsgBox(hWndOwner, astrMsgs);
+	return hr;
+}
+
 STDMETHODIMP CFTPDirectoryRootBase::MoveFTPItems(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszFromDir, LPCWSTR lpszFileNames)
 {
 	HRESULT hr = S_OK;
@@ -3140,9 +3178,9 @@ HRESULT CFTPDirectoryRootBase::DoDeleteDirectoryRecursive(HWND hWndOwner, CMyStr
 	{
 		return hr;
 	}
-	IEnumIDList* pIDList;
+	IEnumIDList* pIDList = NULL;
 	hr = pDir->EnumObjects(hWndOwner, SHCONTF_FOLDERS | SHCONTF_NONFOLDERS | SHCONTF_INCLUDEHIDDEN | SHCONTF_FASTITEMS, &pIDList);
-	if (FAILED(hr))
+	if (FAILED(hr) || !pIDList)
 	{
 		pDir->Release();
 		return hr;

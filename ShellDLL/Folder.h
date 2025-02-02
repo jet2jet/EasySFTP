@@ -429,7 +429,7 @@ public:
 	STDMETHOD(SetFTPItemNameOf)(HWND hWnd, CFTPDirectoryBase* pDirectory,
 		CFTPFileItem* pItem, LPCWSTR pszName, SHGDNF uFlags) = 0;
 	STDMETHOD(DoDeleteFTPItems)(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
-		const CMyPtrArrayT<CFTPFileItem>& aItems) = 0;
+		const CMyPtrArrayT<CFTPFileItem>& aItems);
 	// lpszFileNames ::= L"<file-name>\0<file-name>\0 ... <file-name>\0\0"
 	STDMETHOD(MoveFTPItems)(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszFromDir, LPCWSTR lpszFileNames);
 	STDMETHOD(RenameFTPItem)(LPCWSTR lpszSrcFileName, LPCWSTR lpszNewFileName, CMyStringW* pstrMsg = NULL) = 0;

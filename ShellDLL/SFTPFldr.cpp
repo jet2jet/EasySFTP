@@ -417,44 +417,6 @@ STDMETHODIMP CSFTPFolderSFTP::SetFTPItemNameOf(HWND hWnd, CFTPDirectoryBase* pDi
 	return hr;
 }
 
-STDMETHODIMP CSFTPFolderSFTP::DoDeleteFTPItems(HWND hWndOwner, CFTPDirectoryBase* pDirectory, const CMyPtrArrayT<CFTPFileItem>& aItems)
-{
-	HRESULT hr = S_OK;
-	CMyStringW strFile;
-	CMyStringArrayW astrMsgs;
-	CFTPFileItem* pItem;
-	for (int i = 0; i < aItems.GetCount(); i++)
-	{
-		pItem = aItems.GetItem(i);
-
-		strFile = pDirectory->m_strDirectory;
-		if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
-			strFile += L'/';
-		strFile += pItem->strFileName;
-
-		if (pItem->IsDirectory())
-		{
-			auto hr2 = DoDeleteDirectoryRecursive(hWndOwner, astrMsgs, pItem->strFileName, pDirectory);
-			if (FAILED(hr2))
-			{
-				if (SUCCEEDED(hr))
-				{
-					hr = hr2;
-				}
-				continue;
-			}
-		}
-		auto hr2 = DoDeleteFileOrDirectory(hWndOwner, astrMsgs, pItem->IsDirectory(), strFile, pDirectory);
-		if (SUCCEEDED(hr))
-		{
-			hr = hr2;
-		}
-	}
-	if (FAILED(hr))
-		theApp.MultipleErrorMsgBox(hWndOwner, astrMsgs);
-	return hr;
-}
-
 STDMETHODIMP CSFTPFolderSFTP::RenameFTPItem(LPCWSTR lpszSrcFileName, LPCWSTR lpszNewFileName, CMyStringW* pstrMsg)
 {
 	HRESULT hr = S_OK;
