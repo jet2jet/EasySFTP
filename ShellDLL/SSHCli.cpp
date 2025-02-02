@@ -120,3 +120,18 @@ LPSTR CSSH2Client::AvailableAuthTypes()
 		return NULL;
 	return static_cast<CNoneAuthentication*>(m_pAuth)->m_lpAuthList;
 }
+
+void CSSH2Client::SendKeepAlive()
+{
+	int seconds = 0;
+	auto r = libssh2_keepalive_send(m_pSession, &seconds);
+	(void)seconds;
+	(void)r;
+#ifdef _DEBUG
+	{
+		CMyStringW str;
+		str.Format(L"[ssh] Sending keep-alive result:%d, seconds:%d\n", r, seconds);
+		OutputDebugStringW(str);
+	}
+#endif
+}

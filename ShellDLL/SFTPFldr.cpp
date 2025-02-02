@@ -2205,6 +2205,7 @@ void CALLBACK CSFTPFolderSFTP::KeepConnectionTimerProc(UINT_PTR idEvent, LPARAM 
 {
 	CSFTPFolderSFTP* pThis = (CSFTPFolderSFTP*)lParam;
 
+	pThis->m_pClient->SendKeepAlive();
 	// send 'ignore'/no-op message to keep connection
 	// pThis->m_pClient->m_socket.SendPacket(SSH2_MSG_IGNORE, NULL, 0);
 }

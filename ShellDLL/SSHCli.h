@@ -39,6 +39,7 @@ public:
 	bool CanRetryAuthenticate();
 	void EndAuthenticate();
 	LPSTR AvailableAuthTypes();
+	void SendKeepAlive();
 
 public:
 	CMySocket m_socket;
