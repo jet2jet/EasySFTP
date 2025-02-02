@@ -381,12 +381,13 @@ HRESULT CFTPStream::InitDataSocket()
 	if (m_pDataSocket)
 		return S_OK;
 
+	CMyScopedCSLock lock(m_pRoot->m_csSocket);
 	CFTPFileRecvMessage* pMessage = new CFTPFileRecvMessage(m_strFileName, m_uliNowPos.QuadPart);
 	CFTPWaitEstablishPassive* pEstablishWait = m_pRoot->StartPassive(pMessage);
 	pMessage->Release();
 	if (!pEstablishWait)
 		return E_FAIL;
-	if (!m_pRoot->WaitForReceive(&pEstablishWait->bWaiting))
+	if (!m_pRoot->WaitForReceive(&pEstablishWait->bWaiting) || !pEstablishWait->pRet)
 	{
 		delete pEstablishWait;
 		return E_FAIL;
