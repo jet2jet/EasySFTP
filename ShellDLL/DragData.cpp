@@ -639,7 +639,7 @@ HRESULT CFTPDataObject::GetFileDescriptorCountAndInitFileList(
 				{
 					return E_FAIL;
 				}
-				CSFTPSyncMessenger* pSyncMsg2;
+				CSFTPSyncMessenger* pSyncMsg2 = NULL;
 				if (m_bSFTPMode)
 					pSyncMsg2 = new CSFTPSyncMessenger(m_pSFTPRoot, m_pChannel, pDir->m_strDirectory);
 				hr = GetFileDescriptorCountAndInitFileList(pData->strRelativeFileName,
