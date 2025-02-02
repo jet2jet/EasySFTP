@@ -2562,8 +2562,8 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 {
 	PIDLIST_RELATIVE pidlR1 = lpszFile1 ? ::CreateFullPathFileItem(m_pMallocData->pMalloc, lpszFile1) : NULL;
 	PIDLIST_RELATIVE pidlR2 = lpszFile2 ? ::CreateFullPathFileItem(m_pMallocData->pMalloc, lpszFile2) : NULL;
-	PIDLIST_ABSOLUTE pidl1 = pidlR1 ? ::AppendItemIDList(m_pidlMe, pidlR1) : NULL;
-	PIDLIST_ABSOLUTE pidl2 = pidlR2 ? ::AppendItemIDList(m_pidlMe, pidlR2) : NULL;
+	PIDLIST_ABSOLUTE pidl1 = pidlR1 ? ::AppendItemIDList(*lpszFile1 == L'/' ? m_pRoot->m_pidlMe : m_pidlMe, pidlR1) : NULL;
+	PIDLIST_ABSOLUTE pidl2 = pidlR2 ? ::AppendItemIDList(*lpszFile2 == L'/' ? m_pRoot->m_pidlMe : m_pidlMe, pidlR2) : NULL;
 	theApp.MyChangeNotify(wEventId, SHCNF_IDLIST | SHCNF_NOTIFYRECURSIVE | SHCNF_FLUSHNOWAIT, pidl1, pidl2);
 	if (pidl1)
 		::CoTaskMemFree(pidl1);
@@ -2575,7 +2575,7 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 	{
 		// pidlR1 and pidlR2 are not actual PITEMID_CHILDren, so
 		// we need to parse id-lists to pass real PITEMID_CHILDren to their parents
-		CFTPDirectoryBase* pParent = this;
+		CFTPDirectoryBase* pParent = lpszFile1 && *lpszFile1 == L'/' ? m_pRoot : this;
 		PCUIDLIST_RELATIVE pidlUR1 = pidlR1;
 		PCUIDLIST_RELATIVE pidlUR2 = pidlR2;
 		CMyStringW str;
@@ -2585,7 +2585,7 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 		{
 			// pick up the last same parent
 			while (pidlUR1 && pidlUR2 && pidlUR1->mkid.cb &&
-				pidlUR1->mkid.cb == pidlR2->mkid.cb &&
+				pidlUR1->mkid.cb == pidlUR2->mkid.cb &&
 				memcmp(pidlUR1, pidlUR2, (size_t) pidlUR1->mkid.cb) == 0)
 			{
 				PickupFileName((PCUITEMID_CHILD) pidlUR1, str);
@@ -2665,7 +2665,7 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 						}
 						pDir2->Release();
 						pDir2 = pDir3;
-						pidlUR2 = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR2) + pidlUR1->mkid.cb);
+						pidlUR2 = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR2) + pidlUR2->mkid.cb);
 					}
 					if (pDir2)
 					{
@@ -2747,6 +2747,21 @@ void CFTPDirectoryBase::UpdateMoveFile(LPCWSTR lpszFromDir, LPCWSTR lpszFileName
 			::EnterCriticalSection(&m_csFiles);
 			m_aFiles.Add(p);
 			::LeaveCriticalSection(&m_csFiles);
+		}
+		CFTPDirectoryBase* pDir;
+		if (SUCCEEDED(m_pRoot->OpenNewDirectory(lpszFromDir + 1, &pDir)))
+		{
+			for (auto i = 0; i < pDir->m_aFiles.GetCount(); ++i)
+			{
+				CFTPFileItem* p = pDir->m_aFiles.GetItem(i);
+				if (p->strFileName.Compare(lpszFileName) == 0)
+				{
+					pDir->m_aFiles.RemoveItem(i);
+					p->Release();
+					break;
+				}
+			}
+			pDir->Release();
 		}
 	}
 	else
