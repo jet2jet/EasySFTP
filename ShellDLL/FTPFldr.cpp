@@ -2520,9 +2520,9 @@ bool CSFTPFolderFTP::CFTPFileListingHandler::ReceiveFileListing(CTextSocket* pPa
 
 	if (!pItem)
 		return true;
-	else if (pItem->type == fitypeCurDir)
+	if (pItem->type == fitypeCurDir)
 		pItem->type = fitypeDir;
-	else if (/*pItem->type == fitypeCurDir || */pItem->type == fitypeParentDir ||
+	if (/*pItem->type == fitypeCurDir || */pItem->type == fitypeParentDir ||
 		pItem->strFileName.Compare(L".") == 0 || pItem->strFileName.Compare(L"..") == 0)
 	{
 		pItem->Release();
