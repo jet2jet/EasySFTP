@@ -1316,7 +1316,7 @@ bool CSFTPFolderFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirect
 	delete pEstablishWait;
 
 	pPassiveWait->bWaiting = true;
-	if (!WaitForReceive(&pPassiveWait->bWaiting, NULL))
+	if (!WaitForReceive(&pPassiveWait->bWaiting, NULL) || pPassiveWait->nWaitFlags == CFTPWaitPassive::flagError)
 	{
 		delete pPassiveWait;
 		delete pHandler;
