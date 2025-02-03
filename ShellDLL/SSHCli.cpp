@@ -36,6 +36,7 @@ bool CSSH2Client::OnFirstReceive()
 	if (!m_pSession)
 		return false;
 	libssh2_session_set_blocking(m_pSession, 0);
+	libssh2_keepalive_config(m_pSession, 0, 2);
 
 	if (!StartKeyExchange())
 		return false;
