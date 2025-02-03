@@ -907,11 +907,10 @@ bool CMainDLL::InitInstance()
 		m_aFTPDataFormats.Add(fmt);
 	}
 
-	//m_hWndTimer = ::CreateWindowEx(0, _T("Static"), _T("EasySFTP.dll"),
-	//	WS_DISABLED, 0, 0, 0, 0, NULL, NULL, m_hInstance, NULL);
-	//if (!m_hWndTimer)
-	//	return false;
-	m_hWndTimer = NULL;
+	// this window must be created in the main thread
+	m_hWndTimer = _MyCreateTimerWindow();
+	if (!m_hWndTimer)
+		return false;
 
 	CMyPtrArrayT<CHostSettings> aHostSettings;
 	LoadINISettings(NULL, NULL, &aHostSettings);
@@ -1637,23 +1636,12 @@ static void CALLBACK MyTimerProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD d
 
 UINT_PTR CMainDLL::RegisterTimer(DWORD dwSpan, PFNEASYSFTPTIMERPROC pfnTimerProc, LPARAM lParam)
 {
-	if (!m_hWndTimer)
-	{
-		m_hWndTimer = _MyCreateTimerWindow();
-		if (!m_hWndTimer)
-			return 0;
-	}
 	CMyTimerData* pData = (CMyTimerData*) malloc(sizeof(CMyTimerData));
 	pData->pfnTimerProc = pfnTimerProc;
 	pData->lParam = lParam;
 	if (!::SetTimer(m_hWndTimer, (UINT_PTR) pData, (UINT) dwSpan, (TIMERPROC) MyTimerProc))
 	{
 		free(pData);
-		if (!m_arrTimers.GetCount())
-		{
-			::DestroyWindow(m_hWndTimer);
-			m_hWndTimer = NULL;
-		}
 		return 0;
 	}
 	m_arrTimers.Add(pData);
@@ -1668,12 +1656,6 @@ void CMainDLL::UnregisterTimer(UINT_PTR idTimer)
 	if (i >= 0)
 		m_arrTimers.RemoveItem(i);
 	free(pData);
-
-	if (!m_arrTimers.GetCount())
-	{
-		::DestroyWindow(m_hWndTimer);
-		m_hWndTimer = NULL;
-	}
 }
 
 void CMainDLL::PlaceClipboardData(IDataObject* pObject)
