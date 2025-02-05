@@ -6,9 +6,17 @@
 
 #pragma once
 
- ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
- // note: CFolderBase::GetDisplayNameOf must be implemented in case the 'pidl' is NULL
+DECLARE_INTERFACE_IID_(IShellFolderPropertyInformation, IUnknown, "124bae2c-cb94-42cd-b5b8-4358789684ef")
+{
+	STDMETHOD(IsFastProperty)(THIS_ PCUITEMID_CHILD pidlChild, REFPROPERTYKEY pkey) PURE;
+	STDMETHOD(GetFastProperties)(THIS_ PCUITEMID_CHILD pidlChild, REFIID riid, void** ppv) PURE;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+// note: CFolderBase::GetDisplayNameOf must be implemented in case the 'pidl' is NULL
 class CFolderBase : public IShellFolder2,//public IShellFolder3,
 	public IPersistFolder2,
 	public IShellItem,
@@ -264,6 +272,7 @@ class CFTPDirectoryRootBase;
 class CFTPDirectoryBase : public CFolderBase,
 	public IStorage,
 	public IThumbnailHandlerFactory,
+	public IShellFolderPropertyInformation,
 	public IEasySFTPDirectory//,
 	//public IFTPDataObjectListener
 {
@@ -315,6 +324,11 @@ public:
 	// IThumbnailHandlerFactory
 public:
 	STDMETHOD(GetThumbnailHandler)(PCUITEMID_CHILD pidl, LPBC pbc, REFIID riid, void** ppv);
+
+	// IShellFolderPropertyInformation
+public:
+	STDMETHOD(IsFastProperty)(PCUITEMID_CHILD pidlChild, REFPROPERTYKEY pkey);
+	STDMETHOD(GetFastProperties)(PCUITEMID_CHILD pidlChild, REFIID riid, void** ppv);
 
 	// IEasySFTPDirectory
 public:
@@ -541,6 +555,38 @@ protected:
 	int m_iIconIndex;
 	int m_iOpenIconIndex;
 	//CFTPFileItem* m_pItem;
+};
+
+class CFTPFileItemPropertyStore : public CUnknownImplT<IPropertyStore>
+{
+public:
+	CFTPFileItemPropertyStore(CFTPDirectoryBase* pDirectory, CFTPFileItem* pItem);
+	virtual ~CFTPFileItemPropertyStore();
+
+	STDMETHOD(QueryInterface)(REFIID riid, void** ppv);
+	STDMETHOD(GetCount)(DWORD* cProps);
+	STDMETHOD(GetAt)(DWORD iProp, PROPERTYKEY* pkey);
+	STDMETHOD(GetValue)(REFPROPERTYKEY key, PROPVARIANT* pv);
+	STDMETHOD(SetValue)(REFPROPERTYKEY key, REFPROPVARIANT propvar);
+	STDMETHOD(Commit)(void);
+
+private:
+	CFTPDirectoryBase* m_pDirectory;
+	CFTPFileItem* m_pItem;
+};
+
+class CFTPFileItemDisplayName : public CUnknownImplT<IDisplayItem>
+{
+public:
+	CFTPFileItemDisplayName(PIDLIST_ABSOLUTE pidl);
+	virtual ~CFTPFileItemDisplayName();
+
+	STDMETHOD(QueryInterface)(REFIID riid, void** ppv);
+	STDMETHOD(GetItemIDList)(PIDLIST_ABSOLUTE* ppidl);
+	STDMETHOD(GetItem)(IShellItem** ppsi);
+
+private:
+	PIDLIST_ABSOLUTE m_pidlMe;
 };
 
 class CFTPFileStream : public CUnknownImplT<IStream>

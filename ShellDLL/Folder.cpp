@@ -26,7 +26,7 @@ static HMENU __stdcall GetSubMenuByID(HMENU hMenu, UINT uID)
 	nCount = ::GetMenuItemCount(hMenu);
 	for (int i = 0; i < nCount; i++)
 	{
-		::GetMenuItemInfo(hMenu, (UINT) i, TRUE, &mii);
+		::GetMenuItemInfo(hMenu, (UINT)i, TRUE, &mii);
 		if (mii.wID == uID)
 			return mii.hSubMenu;
 	}
@@ -78,9 +78,9 @@ STDMETHODIMP CEnumFTPItemIDList::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* p
 		return S_OK;
 	if (pceltFetched)
 		*pceltFetched = 0;
-	while (m_uPos < (ULONG) m_arrItems.GetCount())
+	while (m_uPos < (ULONG)m_arrItems.GetCount())
 	{
-		CFTPFileItem* pItem = m_arrItems.GetItem((int) (m_uPos++));
+		CFTPFileItem* pItem = m_arrItems.GetItem((int)(m_uPos++));
 		bool bFetch = false;
 		if (pItem->IsDirectory())
 			bFetch = ((m_grfFlags & SHCONTF_FOLDERS) != 0);
@@ -105,9 +105,9 @@ STDMETHODIMP CEnumFTPItemIDList::Skip(ULONG celt)
 {
 	if (!celt)
 		return S_OK;
-	if (m_uPos + celt > (ULONG) m_arrItems.GetCount())
+	if (m_uPos + celt > (ULONG)m_arrItems.GetCount())
 	{
-		m_uPos = (ULONG) m_arrItems.GetCount();
+		m_uPos = (ULONG)m_arrItems.GetCount();
 		return S_FALSE;
 	}
 	m_uPos += celt;
@@ -173,9 +173,9 @@ STDMETHODIMP CEnumFTPItemStatstg::Next(ULONG celt, STATSTG* rgelt, ULONG* pceltF
 		return S_OK;
 	if (pceltFetched)
 		*pceltFetched = 0;
-	while (m_uPos < (ULONG) m_arrItems.GetCount())
+	while (m_uPos < (ULONG)m_arrItems.GetCount())
 	{
-		CFTPFileItem* pItem = m_arrItems.GetItem((int) (m_uPos++));
+		CFTPFileItem* pItem = m_arrItems.GetItem((int)(m_uPos++));
 		bool bFetch = false;
 		rgelt->cbSize.QuadPart = pItem->uliSize.QuadPart;
 		rgelt->pwcsName = DuplicateCoMemString(pItem->strFileName);
@@ -203,9 +203,9 @@ STDMETHODIMP CEnumFTPItemStatstg::Skip(ULONG celt)
 {
 	if (!celt)
 		return S_OK;
-	if (m_uPos + celt > (ULONG) m_arrItems.GetCount())
+	if (m_uPos + celt > (ULONG)m_arrItems.GetCount())
 	{
-		m_uPos = (ULONG) m_arrItems.GetCount();
+		m_uPos = (ULONG)m_arrItems.GetCount();
 		return S_FALSE;
 	}
 	m_uPos += celt;
@@ -283,7 +283,7 @@ static DWORD __stdcall GetDummyFileAttribute(CFTPFileItem* pItem)
 				dwRet |= FILE_ATTRIBUTE_READONLY;
 		}
 	}
-	if (!pItem->strFileName.IsEmpty() && *((LPCWSTR) pItem->strFileName) == L'.')
+	if (!pItem->strFileName.IsEmpty() && *((LPCWSTR)pItem->strFileName) == L'.')
 		dwRet |= FILE_ATTRIBUTE_HIDDEN;
 	return dwRet ? dwRet : FILE_ATTRIBUTE_NORMAL;
 }
@@ -325,7 +325,7 @@ extern void __stdcall FileSizeToString(ULARGE_INTEGER uli, CMyStringW& ret)
 		uli.QuadPart >>= 10;
 		t++;
 	}
-	ret.Format(L"%u ", (UINT) uli.LowPart);
+	ret.Format(L"%u ", (UINT)uli.LowPart);
 	if (t > 0)
 		ret += s_szSizeType[t];
 	else
@@ -385,10 +385,10 @@ static void __stdcall GetDummyFileItemIcon(LPCWSTR lpszFileName, bool bIsDirecto
 	CMyStringW str(lpszFileName);
 	memset(&sfiA, 0, sizeof(sfiA));
 	dw = bIsDirectory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-		if (!::SHGetFileInfoA(str, dw, &sfiA, sizeof(sfiA),
-			SHGFI_USEFILEATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON))
-			return;
-		iIconIndex = sfiA.iIcon;
+	if (!::SHGetFileInfoA(str, dw, &sfiA, sizeof(sfiA),
+		SHGFI_USEFILEATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON))
+		return;
+	iIconIndex = sfiA.iIcon;
 	if (bIsDirectory)
 	{
 		memset(&sfiA, 0, sizeof(sfiA));
@@ -464,6 +464,164 @@ static void __stdcall FileAttributesToString(DWORD dwAttribute, CMyStringW& ret)
 	}
 }
 
+static HRESULT __stdcall _GetFileItemPropData(CFTPDirectoryBase* pDirectory, CFTPFileItem* p, const PROPERTYKEY& key, VARIANT* pv)
+{
+	switch (_MyPropertyKeyToStringID(key))
+	{
+	case IDS_HEAD_NAME:
+	case IDS_HEAD_FILE_NAME:
+		pv->vt = VT_BSTR;
+		pv->bstrVal = ::SysAllocStringLen(p->strFileName, (UINT)p->strFileName.GetLength());
+		if (!pv->bstrVal)
+			return E_OUTOFMEMORY;
+		break;
+	case IDS_HEAD_FILE_EXT:
+	{
+		LPCWSTR lpw = wcsrchr(p->strFileName, L'.');
+		if (!lpw)
+			pv->vt = VT_EMPTY;
+		else
+		{
+			pv->vt = VT_BSTR;
+			pv->bstrVal = ::SysAllocStringLen(lpw, (UINT)wcslen(lpw));
+			if (!pv->bstrVal)
+				return E_OUTOFMEMORY;
+		}
+	}
+	break;
+	case IDS_HEAD_SIZE:
+		pv->vt = VT_UI8;
+		pv->ullVal = p->uliSize.QuadPart;
+		break;
+	case IDS_HEAD_TYPE:
+		pv->vt = VT_BSTR;
+		pv->bstrVal = ::SysAllocStringLen(p->strType, (UINT)p->strType.GetLength());
+		if (!pv->bstrVal)
+			return E_OUTOFMEMORY;
+		break;
+	case IDS_HEAD_CREATE_TIME:
+	{
+		SYSTEMTIME st;
+		::FileTimeToSystemTime(&p->ftCreateTime, &st);
+		::SystemTimeToVariantTime(&st, &pv->date);
+		pv->vt = VT_DATE;
+	}
+	break;
+	case IDS_HEAD_MODIFY_TIME:
+	{
+		SYSTEMTIME st;
+		::FileTimeToSystemTime(&p->ftModifyTime, &st);
+		::SystemTimeToVariantTime(&st, &pv->date);
+		pv->vt = VT_DATE;
+	}
+	break;
+	case IDS_HEAD_PERMISSIONS:
+	{
+		CMyStringW str;
+		if (p->bWinAttr)
+			::FileAttributesToString(p->dwAttributes, str);
+		else
+			::FilePermissionsToString(p->nUnixMode, str);
+		pv->vt = VT_BSTR;
+		pv->bstrVal = ::SysAllocStringLen(str, (UINT)str.GetLength());
+		if (!pv->bstrVal)
+			return E_OUTOFMEMORY;
+	}
+	break;
+	case IDS_HEAD_TRANSFER_TYPE:
+	{
+		CMyStringW str;
+		if (p->IsDirectory())
+			str.LoadString(IDS_TYPE_DIRECTORY);
+		else if (pDirectory->IsTextFile(p->strFileName) == S_OK)
+			str.LoadString(IDS_TYPE_TEXT);
+		else
+			str.LoadString(IDS_TYPE_BINARY);
+		pv->vt = VT_BSTR;
+		pv->bstrVal = ::SysAllocStringLen(str, (UINT)str.GetLength());
+		if (!pv->bstrVal)
+			return E_OUTOFMEMORY;
+	}
+	break;
+	case IDS_HEAD_UID:
+	{
+		CMyStringW str;
+		if (!p->strOwner.IsEmpty())
+			str = p->strOwner;
+		else
+			str.Format(L"%u", p->uUID);
+		pv->vt = VT_BSTR;
+		pv->bstrVal = ::SysAllocStringLen(str, (UINT)str.GetLength());
+		if (!pv->bstrVal)
+			return E_OUTOFMEMORY;
+	}
+	break;
+	case IDS_HEAD_GID:
+	{
+		CMyStringW str;
+		if (!p->strGroup.IsEmpty())
+			str = p->strGroup;
+		else
+			str.Format(L"%u", p->uGID);
+		pv->vt = VT_BSTR;
+		pv->bstrVal = ::SysAllocStringLen(str, (UINT)str.GetLength());
+		if (!pv->bstrVal)
+			return E_OUTOFMEMORY;
+	}
+	break;
+	default:
+		if (IsEqualPropertyKey(key, PKEY_FindData))
+		{
+			SAFEARRAYBOUND sab;
+			sab.cElements = sizeof(WIN32_FIND_DATAW);
+			sab.lLbound = 0;
+			auto* arr = ::SafeArrayCreate(VT_UI1, 1, &sab);
+			if (!arr)
+			{
+				return E_OUTOFMEMORY;
+			}
+			WIN32_FIND_DATAW* buff;
+			::SafeArrayAccessData(arr, reinterpret_cast<void**>(&buff));
+
+			*buff = {};
+			wcsncpy_s(buff->cFileName, p->strFileName, MAX_PATH);
+			if (p->bWinAttr)
+				buff->dwFileAttributes = p->dwAttributes;
+			else
+			{
+				auto attr = p->nUnixMode;
+				buff->dwFileAttributes = (attr & S_IFDIR) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+				if (buff->cFileName[0] == L'.')
+					buff->dwFileAttributes |= FILE_ATTRIBUTE_HIDDEN;
+				if (attr & S_IFLNK)
+					buff->dwFileAttributes |= FILE_ATTRIBUTE_REPARSE_POINT;
+				if (attr & (S_IFBLK | S_IFSOCK | S_IFREG))
+					buff->dwFileAttributes |= FILE_ATTRIBUTE_DEVICE;
+			}
+			buff->nFileSizeLow = p->uliSize.LowPart;
+			buff->nFileSizeHigh = p->uliSize.HighPart;
+			buff->ftLastWriteTime = p->ftModifyTime;
+			buff->ftCreationTime = p->ftCreateTime;
+
+			::SafeArrayUnaccessData(arr);
+			pv->vt = VT_ARRAY | VT_UI1;
+			pv->parray = arr;
+			break;
+		}
+#ifdef _DEBUG
+		{
+			CMyStringW str, str2;
+			MyStringFromGUIDW(key.fmtid, str2);
+			str.Format(L"[IPropertyStore::GetValue] unknown scid: %s, %d for file '%s'\n", str2.operator LPCWSTR(),
+				key.pid, p->strFileName.operator LPCWSTR());
+			OutputDebugStringW(str);
+		}
+#endif
+		return E_INVALIDARG;
+	}
+	return S_OK;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 CFTPDirectoryBase::CFTPDirectoryBase(
@@ -515,7 +673,7 @@ void CFTPDirectoryBase::CommonConstruct()
 	::InitializeCriticalSection(&m_csFiles);
 	CMyStringW str;
 	str.Format(L"CFTPDirectoryBase::CommonConstruct() for (0x%p), count = 1\n",
-		(void*) this);
+		(void*)this);
 	OutputDebugString(str);
 }
 
@@ -528,10 +686,10 @@ CFTPDirectoryBase::~CFTPDirectoryBase()
 		m_pItemMe->pDirectory = NULL;
 		m_pItemMe->Release();
 	}
-//#ifdef _DEBUG
-//	m_pParent = NULL;
-//	m_pItemMe = NULL;
-//#endif
+	//#ifdef _DEBUG
+	//	m_pParent = NULL;
+	//	m_pItemMe = NULL;
+	//#endif
 	register int i = m_aDirectories.GetCount();
 	while (i--)
 	{
@@ -542,9 +700,9 @@ CFTPDirectoryBase::~CFTPDirectoryBase()
 		//delete p;
 		p->Release();
 	}
-//#ifdef _DEBUG
-//	m_aDirectories.RemoveAll();
-//#endif
+	//#ifdef _DEBUG
+	//	m_aDirectories.RemoveAll();
+	//#endif
 	::EnterCriticalSection(&m_csFiles);
 	i = m_aFiles.GetCount();
 	while (i--)
@@ -556,9 +714,9 @@ CFTPDirectoryBase::~CFTPDirectoryBase()
 	::LeaveCriticalSection(&m_csFiles);
 	if (!m_bIsRoot)
 		m_pRoot->Release();
-//#ifdef _DEBUG
-//	m_pRoot = NULL;
-//#endif
+	//#ifdef _DEBUG
+	//	m_pRoot = NULL;
+	//#endif
 
 	::DeleteCriticalSection(&m_csFiles);
 	::DeleteCriticalSection(&m_csRefs);
@@ -570,12 +728,12 @@ STDMETHODIMP_(ULONG) CFTPDirectoryBase::AddRef()
 	//ULONG ret = (ULONG) ::InterlockedIncrement((LONG*) &m_uRef);
 	ULONG ret = ++m_uRef;
 	::LeaveCriticalSection(&m_csRefs);
-//#ifdef _DEBUG
-//	CMyStringW str;
-//	str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p), count = %lu\n",
-//		(LPCWSTR) m_strDirectory, (void*) this, ret);
-//	OutputDebugString(str);
-//#endif
+	//#ifdef _DEBUG
+	//	CMyStringW str;
+	//	str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p), count = %lu\n",
+	//		(LPCWSTR) m_strDirectory, (void*) this, ret);
+	//	OutputDebugString(str);
+	//#endif
 	return ret;
 	//return (ULONG) ::InterlockedIncrement((LONG*) &m_uRef);
 }
@@ -594,12 +752,12 @@ STDMETHODIMP_(ULONG) CFTPDirectoryBase::Release()
 	}
 	::LeaveCriticalSection(&m_csRefs);
 
-//#ifdef _DEBUG
-//	CMyStringW str;
-//	str.Format(L"CFTPDirectoryBase::Release() for '%s' (0x%p), count = %lu\n",
-//		(LPCWSTR) m_strDirectory, (void*) this, ret);
-//	OutputDebugString(str);
-//#endif
+	//#ifdef _DEBUG
+	//	CMyStringW str;
+	//	str.Format(L"CFTPDirectoryBase::Release() for '%s' (0x%p), count = %lu\n",
+	//		(LPCWSTR) m_strDirectory, (void*) this, ret);
+	//	OutputDebugString(str);
+	//#endif
 	if (!ret)
 		delete this;
 	return ret;
@@ -614,19 +772,25 @@ STDMETHODIMP CFTPDirectoryBase::QueryInterface(REFIID riid, void** ppv)
 		return CreateViewObject(NULL, riid, ppv);
 	else if (IsEqualIID(riid, IID_IThumbnailHandlerFactory))
 	{
-		*ppv = (IThumbnailHandlerFactory*) this;
+		*ppv = (IThumbnailHandlerFactory*)this;
+		AddRef();
+		return S_OK;
+	}
+	else if (IsEqualIID(riid, __uuidof(IShellFolderPropertyInformation)))
+	{
+		*ppv = (IShellFolderPropertyInformation*)this;
 		AddRef();
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, IID_IEasySFTPDirectory))
 	{
-		*ppv = (IEasySFTPDirectory*) this;
+		*ppv = (IEasySFTPDirectory*)this;
 		AddRef();
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, IID_IStorage))
 	{
-		*ppv = (IStorage*) this;
+		*ppv = (IStorage*)this;
 		AddRef();
 		return S_OK;
 	}
@@ -648,7 +812,7 @@ STDMETHODIMP CFTPDirectoryBase::EnumObjects(HWND hWnd, SHCONTF grfFlags, IEnumID
 		}
 	}
 
-	*ppenumIDList = new CEnumFTPItemIDList(m_pMallocData, m_aFiles, grfFlags, (IShellFolder*) this);
+	*ppenumIDList = new CEnumFTPItemIDList(m_pMallocData, m_aFiles, grfFlags, (IShellFolder*)this);
 	return S_OK;
 }
 
@@ -660,6 +824,43 @@ STDMETHODIMP CFTPDirectoryBase::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc, 
 	//	return E_UNEXPECTED;
 	if (IsEqualIID(riid, IID_IExtractIconW) || IsEqualIID(riid, IID_IExtractIconA))
 		return E_NOINTERFACE;
+
+	if (IsEqualIID(riid, IID_IPropertyStore))
+	{
+		CFTPDirectoryBase* pDir;
+		CFTPFileItem* p = GetFileItem(pidl, &pDir);
+		if (!p)
+			return E_INVALIDARG;
+		auto* pStore = new CFTPFileItemPropertyStore(pDir, p);
+		pDir->Release();
+		if (!pStore)
+			return E_OUTOFMEMORY;
+		auto hr = pStore->QueryInterface(riid, ppv);
+		pStore->Release();
+		return hr;
+	}
+
+	if (IsEqualIID(riid, IID_IRelatedItem) || IsEqualIID(riid, IID_IDisplayItem))
+	{
+		CFTPDirectoryBase* pDir;
+		CFTPFileItem* p = GetFileItem(pidl, &pDir);
+		if (!p)
+			return E_INVALIDARG;
+		auto pidlAbsolute = ::AppendItemIDList(m_pidlMe, pidl);
+		pDir->Release();
+		if (!pidlAbsolute)
+			return E_OUTOFMEMORY;
+		auto* pItem = new CFTPFileItemDisplayName(pidlAbsolute);
+		if (!pItem)
+		{
+			::CoTaskMemFree(pidlAbsolute);
+			return E_OUTOFMEMORY;
+		}
+		auto hr = pItem->QueryInterface(riid, ppv);
+		pItem->Release();
+		return hr;
+	}
+
 	if (!IsEqualIID(riid, IID_IUnknown) &&
 		!IsEqualIID(riid, IID_IShellFolder) &&
 		!IsEqualIID(riid, IID_IShellFolder2) &&
@@ -783,12 +984,12 @@ STDMETHODIMP CFTPDirectoryBase::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pid
 
 	CMyStringW str1, str2;
 	if (!pidl1->mkid.cb)
-		return pidl2->mkid.cb ? MAKE_HRESULT(0, 0, (unsigned short)(short) -1) : MAKE_HRESULT(0, 0, 0);
+		return pidl2->mkid.cb ? MAKE_HRESULT(0, 0, (unsigned short)(short)-1) : MAKE_HRESULT(0, 0, 0);
 	else if (!pidl2->mkid.cb)
 		return MAKE_HRESULT(0, 0, 1);
-	if (!PickupFileName((PCUITEMID_CHILD) pidl1, str1))
+	if (!PickupFileName((PCUITEMID_CHILD)pidl1, str1))
 		return E_INVALIDARG;
-	if (!PickupFileName((PCUITEMID_CHILD) pidl2, str2))
+	if (!PickupFileName((PCUITEMID_CHILD)pidl2, str2))
 		return E_INVALIDARG;
 
 	CFTPFileItem* pItem1;
@@ -844,90 +1045,90 @@ STDMETHODIMP CFTPDirectoryBase::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pid
 		{
 			switch (uID)
 			{
-				case IDS_HEAD_NAME:
-				case IDS_HEAD_FILE_NAME:
-					if (pItem1 && pItem2)
-						r = pItem1->strFileName.Compare(pItem2->strFileName);
-					else
-						r = str1.Compare(str2);
-					break;
-				case IDS_HEAD_FILE_EXT:
-				{
-					LPCWSTR lpw1, lpw2;
-					if (pItem1 && pItem2)
-					{
-						lpw1 = pItem1->strFileName.IsEmpty() ? NULL : wcsrchr(pItem1->strFileName, L'.');
-						lpw2 = pItem2->strFileName.IsEmpty() ? NULL : wcsrchr(pItem2->strFileName, L'.');
-					}
-					else
-					{
-						lpw1 = str1.IsEmpty() ? NULL : wcsrchr(str1, L'.');
-						lpw2 = str2.IsEmpty() ? NULL : wcsrchr(str2, L'.');
-					}
-					if (!lpw1)
-						r = (lpw2 ? -1 : 0);
-					else if (!lpw2)
-						r = 1;
-					else
-						r = wcscmp(lpw1, lpw2);
-				}
+			case IDS_HEAD_NAME:
+			case IDS_HEAD_FILE_NAME:
+				if (pItem1 && pItem2)
+					r = pItem1->strFileName.Compare(pItem2->strFileName);
+				else
+					r = str1.Compare(str2);
 				break;
-				case IDS_HEAD_SIZE:
-					if (pItem1->uliSize.QuadPart < pItem2->uliSize.QuadPart)
-						r = -1;
-					else if (pItem1->uliSize.QuadPart > pItem2->uliSize.QuadPart)
-						r = 1;
-					else
-						r = 0;
-					break;
-				case IDS_HEAD_TYPE:
-					FillFileItemInfo(pItem1);
-					FillFileItemInfo(pItem2);
-					r = pItem1->strType.Compare(pItem2->strType);
-					break;
-				case IDS_HEAD_CREATE_TIME:
-					r = ::CompareFileTime(&pItem1->ftCreateTime, &pItem2->ftCreateTime);
-					break;
-				case IDS_HEAD_MODIFY_TIME:
-					r = ::CompareFileTime(&pItem1->ftModifyTime, &pItem2->ftModifyTime);
-					break;
-				case IDS_HEAD_PERMISSIONS:
+			case IDS_HEAD_FILE_EXT:
+			{
+				LPCWSTR lpw1, lpw2;
+				if (pItem1 && pItem2)
+				{
+					lpw1 = pItem1->strFileName.IsEmpty() ? NULL : wcsrchr(pItem1->strFileName, L'.');
+					lpw2 = pItem2->strFileName.IsEmpty() ? NULL : wcsrchr(pItem2->strFileName, L'.');
+				}
+				else
+				{
+					lpw1 = str1.IsEmpty() ? NULL : wcsrchr(str1, L'.');
+					lpw2 = str2.IsEmpty() ? NULL : wcsrchr(str2, L'.');
+				}
+				if (!lpw1)
+					r = (lpw2 ? -1 : 0);
+				else if (!lpw2)
+					r = 1;
+				else
+					r = wcscmp(lpw1, lpw2);
+			}
+			break;
+			case IDS_HEAD_SIZE:
+				if (pItem1->uliSize.QuadPart < pItem2->uliSize.QuadPart)
+					r = -1;
+				else if (pItem1->uliSize.QuadPart > pItem2->uliSize.QuadPart)
+					r = 1;
+				else
 					r = 0;
-					break;
-				case IDS_HEAD_UID:
-					if (pItem1->strOwner.IsEmpty() && pItem1->uUID)
-						str1.Format(L"%u", pItem1->uUID);
-					else
-						str1 = pItem1->strOwner;
-					if (pItem2->strOwner.IsEmpty() && pItem2->uUID)
-						str2.Format(L"%u", pItem2->uUID);
-					else
-						str2 = pItem2->strOwner;
-					r = str1.Compare(str2);
-					break;
-				case IDS_HEAD_GID:
-					if (pItem1->strGroup.IsEmpty() && pItem1->uGID)
-						str1.Format(L"%u", pItem1->uGID);
-					else
-						str1 = pItem1->strGroup;
-					if (pItem2->strGroup.IsEmpty() && pItem2->uGID)
-						str2.Format(L"%u", pItem2->uGID);
-					else
-						str2 = pItem2->strGroup;
-					r = str1.Compare(str2);
-					break;
-				case IDS_HEAD_TRANSFER_TYPE:
-					if (pItem1->IsDirectory())
-						r = (pItem2->IsDirectory() ? 0 : -1);
-					else if (pItem2->IsDirectory())
-						r = 1;
-					else if (IsTextFile(pItem1->strFileName))
-						r = (IsTextFile(pItem2->strFileName) ? 0 : -1);
-					else if (IsTextFile(pItem2->strFileName))
-						r = 1;
-					else
-						r = 0;
-					break;
+				break;
+			case IDS_HEAD_TYPE:
+				FillFileItemInfo(pItem1);
+				FillFileItemInfo(pItem2);
+				r = pItem1->strType.Compare(pItem2->strType);
+				break;
+			case IDS_HEAD_CREATE_TIME:
+				r = ::CompareFileTime(&pItem1->ftCreateTime, &pItem2->ftCreateTime);
+				break;
+			case IDS_HEAD_MODIFY_TIME:
+				r = ::CompareFileTime(&pItem1->ftModifyTime, &pItem2->ftModifyTime);
+				break;
+			case IDS_HEAD_PERMISSIONS:
+				r = 0;
+				break;
+			case IDS_HEAD_UID:
+				if (pItem1->strOwner.IsEmpty() && pItem1->uUID)
+					str1.Format(L"%u", pItem1->uUID);
+				else
+					str1 = pItem1->strOwner;
+				if (pItem2->strOwner.IsEmpty() && pItem2->uUID)
+					str2.Format(L"%u", pItem2->uUID);
+				else
+					str2 = pItem2->strOwner;
+				r = str1.Compare(str2);
+				break;
+			case IDS_HEAD_GID:
+				if (pItem1->strGroup.IsEmpty() && pItem1->uGID)
+					str1.Format(L"%u", pItem1->uGID);
+				else
+					str1 = pItem1->strGroup;
+				if (pItem2->strGroup.IsEmpty() && pItem2->uGID)
+					str2.Format(L"%u", pItem2->uGID);
+				else
+					str2 = pItem2->strGroup;
+				r = str1.Compare(str2);
+				break;
+			case IDS_HEAD_TRANSFER_TYPE:
+				if (pItem1->IsDirectory())
+					r = (pItem2->IsDirectory() ? 0 : -1);
+				else if (pItem2->IsDirectory())
+					r = 1;
+				else if (IsTextFile(pItem1->strFileName))
+					r = (IsTextFile(pItem2->strFileName) ? 0 : -1);
+				else if (IsTextFile(pItem2->strFileName))
+					r = 1;
+				else
+					r = 0;
+				break;
 			}
 			if (nColumn == -1)
 			{
@@ -950,23 +1151,23 @@ STDMETHODIMP CFTPDirectoryBase::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pid
 	{
 		r = (r > 0 ? 1 : -1);
 		// we must cast to 'unsigned short'
-		return MAKE_HRESULT(0, 0, (unsigned short)(short) r);
+		return MAKE_HRESULT(0, 0, (unsigned short)(short)r);
 	}
 
-	if (!((PCUIDLIST_RELATIVE) (((DWORD_PTR) pidl1) + pidl1->mkid.cb))->mkid.cb)
+	if (!((PCUIDLIST_RELATIVE)(((DWORD_PTR)pidl1) + pidl1->mkid.cb))->mkid.cb)
 	{
-		return (!((PCUIDLIST_RELATIVE) (((DWORD_PTR) pidl1) + pidl1->mkid.cb))->mkid.cb) ?
-			MAKE_HRESULT(0, 0, 0) : MAKE_HRESULT(0, 0, (unsigned short)(short) -1);
+		return (!((PCUIDLIST_RELATIVE)(((DWORD_PTR)pidl1) + pidl1->mkid.cb))->mkid.cb) ?
+			MAKE_HRESULT(0, 0, 0) : MAKE_HRESULT(0, 0, (unsigned short)(short)-1);
 	}
-	else if (!((PCUIDLIST_RELATIVE) (((DWORD_PTR) pidl1) + pidl1->mkid.cb))->mkid.cb)
+	else if (!((PCUIDLIST_RELATIVE)(((DWORD_PTR)pidl1) + pidl1->mkid.cb))->mkid.cb)
 		return MAKE_HRESULT(0, 0, 1);
 
 	IShellFolder* pChild;
-	hr = BindToObject(pidl1, NULL, IID_IShellFolder, (void**) &pChild);
+	hr = BindToObject(pidl1, NULL, IID_IShellFolder, (void**)&pChild);
 	if (FAILED(hr))
 		return hr;
-	pidl1 = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidl1) + pidl1->mkid.cb);
-	pidl2 = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidl2) + pidl2->mkid.cb);
+	pidl1 = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidl1) + pidl1->mkid.cb);
+	pidl2 = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidl2) + pidl2->mkid.cb);
 	hr = pChild->CompareIDs(lParam, pidl1, pidl2);
 	pChild->Release();
 	return hr;
@@ -990,7 +1191,7 @@ STDMETHODIMP CFTPDirectoryBase::CreateViewObject(HWND hWndOwner, REFIID riid, vo
 	else if (IsEqualIID(riid, IID_IDropTarget))
 	{
 		CFTPDropHandler* pDrop = new CFTPDropHandler(this, hWndOwner);
-		*ppv = (IDropTarget*) pDrop;
+		*ppv = (IDropTarget*)pDrop;
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, IID_IContextMenu))
@@ -999,7 +1200,7 @@ STDMETHODIMP CFTPDirectoryBase::CreateViewObject(HWND hWndOwner, REFIID riid, vo
 		CFTPFileDirectoryMenu* pMenu = new CFTPFileDirectoryMenu(this, m_pidlMe, pBrowser);
 		if (pBrowser)
 			pBrowser->Release();
-		*ppv = (IContextMenu*) pMenu;
+		*ppv = (IContextMenu*)pMenu;
 		return S_OK;
 	}
 	return CFolderBase::CreateViewObject(hWndOwner, riid, ppv);
@@ -1057,6 +1258,8 @@ STDMETHODIMP CFTPDirectoryBase::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY
 					return E_INVALIDARG;
 				if (p->IsDirectory())
 					f |= SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER;
+				else
+					f |= SFGAO_STREAM;
 				if (p->IsHidden())
 					f |= SFGAO_HIDDEN;
 				if (p->IsShortcut())
@@ -1097,13 +1300,13 @@ STDMETHODIMP CFTPDirectoryBase::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUITEM
 			!IsEqualIID(riid, IID_IThumbnailProvider))
 		{
 #ifdef _DEBUG
-			if (!IsEqualIID(riid, IID_IQueryInfo))
+			//if (!IsEqualIID(riid, IID_IQueryInfo))
 			{
 				CMyStringW str;
 				str.Format(L"CFTPDirectoryBase::GetUIObjectOf: unknown interface: {%08lX-%04hX-%04hX-%02X%02X-%02X%02X%02X%02X%02X%02X}\n",
-					riid.Data1, riid.Data2, riid.Data3, (UINT) riid.Data4[0], (UINT) riid.Data4[1],
-					(UINT) riid.Data4[2], (UINT) riid.Data4[3], (UINT) riid.Data4[4], (UINT) riid.Data4[5],
-					(UINT) riid.Data4[6], (UINT) riid.Data4[7]);
+					riid.Data1, riid.Data2, riid.Data3, (UINT)riid.Data4[0], (UINT)riid.Data4[1],
+					(UINT)riid.Data4[2], (UINT)riid.Data4[3], (UINT)riid.Data4[4], (UINT)riid.Data4[5],
+					(UINT)riid.Data4[6], (UINT)riid.Data4[7]);
 				OutputDebugString(str);
 			}
 #endif
@@ -1187,7 +1390,7 @@ STDMETHODIMP CFTPDirectoryBase::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUITEM
 		if (FAILED(hr))
 			return hr;
 		IInitializeWithStream* pInitStream;
-		hr = pProvider->QueryInterface(IID_IInitializeWithStream, (void**) &pInitStream);
+		hr = pProvider->QueryInterface(IID_IInitializeWithStream, (void**)&pInitStream);
 		if (SUCCEEDED(hr))
 		{
 			IStream* pStream;
@@ -1245,111 +1448,111 @@ STDMETHODIMP CFTPDirectoryBase::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uF
 	str.Empty();
 	switch (uFlags & 0x0FFF)
 	{
-		case SHGDN_NORMAL:
-			//if (pidl && !p)
-			//	return E_INVALIDARG;
-			if (uFlags & (SHGDN_FORPARSING | SHGDN_FORADDRESSBAR))
+	case SHGDN_NORMAL:
+		//if (pidl && !p)
+		//	return E_INVALIDARG;
+		if (uFlags & (SHGDN_FORPARSING | SHGDN_FORADDRESSBAR))
+		{
+			CMyStringW str2;
+			int nDefPort;
+			str = m_pRoot->GetProtocolName(nDefPort);
+			str += L"://";
+			str += m_pRoot->m_strHostName;
+			if (m_pRoot->m_nPort != nDefPort)
 			{
-				CMyStringW str2;
-				int nDefPort;
-				str = m_pRoot->GetProtocolName(nDefPort);
-				str += L"://";
-				str += m_pRoot->m_strHostName;
-				if (m_pRoot->m_nPort != nDefPort)
-				{
-					str2.Format(L"%d", m_pRoot->m_nPort);
-					str += L':';
-					str += str2;
-				}
-				//str2.Empty();
-				//CFTPDirectoryBase* pd = this;
-				//while (pd)
-				//{
-				//	if (pd == (CFTPDirectoryBase*) m_pRoot)
-				//		break;
-				//	str2.InsertString(pd->m_strDirectory, 0);
-				//	str2.InsertChar(L'/', 0);
-				//	pd = pd->m_pParent;
-				//}
-				//str += str2;
-				str += m_strDirectory;
-				if (((LPCWSTR) m_strDirectory)[m_strDirectory.GetLength() - 1] != L'/')
-					str += L'/';
-				bool bLastIsNotDelimiter = false;
-				if (p)
-				{
-					str += p->strFileName;
-					bLastIsNotDelimiter = true;
-				}
-				else if (pidl)
-				{
-					if (!::PickupFileName(pidl, str2))
-						return E_INVALIDARG;
-					str += str2;
-					bLastIsNotDelimiter = true;
-				}
-				else
-					break;
-				while (true)
-				{
-					pidl = (PCUITEMID_CHILD) (((DWORD_PTR) pidl) + pidl->mkid.cb);
-					if (!pidl->mkid.cb)
-						break;
-					if (!::PickupFileName(pidl, str2))
-						return E_INVALIDARG;
-					if (bLastIsNotDelimiter)
-						str += L'/';
-					else
-						bLastIsNotDelimiter = true;
-					str += str2;
-				}
-				break;
+				str2.Format(L"%d", m_pRoot->m_nPort);
+				str += L':';
+				str += str2;
 			}
-			//else
+			//str2.Empty();
+			//CFTPDirectoryBase* pd = this;
+			//while (pd)
 			//{
-			//	//CMyStringW str2;
-			//	//str2.Empty();
-			//	//CFTPDirectoryBase* pd = this;
-			//	//while (pd)
-			//	//{
-			//	//	if (pd == (CFTPDirectoryBase*) m_pRoot)
-			//	//		break;
-			//	//	str2.InsertString(pd->m_strDirectory, 0);
-			//	//	str2.InsertChar(L'/', 0);
-			//	//	pd = pd->m_pParent;
-			//	//}
-			//	//str += str2;
-			//	//str += L'/';
-			//	str = m_strDirectory;
-			//	if (p)
-			//	{
-			//		if (((LPCWSTR) m_strDirectory)[m_strDirectory.GetLength() - 1] != L'/')
-			//			str += L'/';
-			//		str += p->strFileName;
-			//	}
+			//	if (pd == (CFTPDirectoryBase*) m_pRoot)
+			//		break;
+			//	str2.InsertString(pd->m_strDirectory, 0);
+			//	str2.InsertChar(L'/', 0);
+			//	pd = pd->m_pParent;
 			//}
-			//break;
-		case SHGDN_INFOLDER:
-			if (!pidl)
+			//str += str2;
+			str += m_strDirectory;
+			if (((LPCWSTR)m_strDirectory)[m_strDirectory.GetLength() - 1] != L'/')
+				str += L'/';
+			bool bLastIsNotDelimiter = false;
+			if (p)
 			{
-				if (this == (CFTPDirectoryBase*) m_pRoot)
-					str = m_pRoot->m_strHostName;
-				else
-					str = m_strDirectory;
+				str += p->strFileName;
+				bLastIsNotDelimiter = true;
 			}
-			else if (p)
-				str = p->strFileName;
-			else if (!::PickupFileName(pidl, str))
-				return E_INVALIDARG;
+			else if (pidl)
+			{
+				if (!::PickupFileName(pidl, str2))
+					return E_INVALIDARG;
+				str += str2;
+				bLastIsNotDelimiter = true;
+			}
+			else
+				break;
+			while (true)
+			{
+				pidl = (PCUITEMID_CHILD)(((DWORD_PTR)pidl) + pidl->mkid.cb);
+				if (!pidl->mkid.cb)
+					break;
+				if (!::PickupFileName(pidl, str2))
+					return E_INVALIDARG;
+				if (bLastIsNotDelimiter)
+					str += L'/';
+				else
+					bLastIsNotDelimiter = true;
+				str += str2;
+			}
 			break;
-		default:
-			return E_NOTIMPL;
+		}
+		//else
+		//{
+		//	//CMyStringW str2;
+		//	//str2.Empty();
+		//	//CFTPDirectoryBase* pd = this;
+		//	//while (pd)
+		//	//{
+		//	//	if (pd == (CFTPDirectoryBase*) m_pRoot)
+		//	//		break;
+		//	//	str2.InsertString(pd->m_strDirectory, 0);
+		//	//	str2.InsertChar(L'/', 0);
+		//	//	pd = pd->m_pParent;
+		//	//}
+		//	//str += str2;
+		//	//str += L'/';
+		//	str = m_strDirectory;
+		//	if (p)
+		//	{
+		//		if (((LPCWSTR) m_strDirectory)[m_strDirectory.GetLength() - 1] != L'/')
+		//			str += L'/';
+		//		str += p->strFileName;
+		//	}
+		//}
+		//break;
+	case SHGDN_INFOLDER:
+		if (!pidl)
+		{
+			if (this == (CFTPDirectoryBase*)m_pRoot)
+				str = m_pRoot->m_strHostName;
+			else
+				str = m_strDirectory;
+		}
+		else if (p)
+			str = p->strFileName;
+		else if (!::PickupFileName(pidl, str))
+			return E_INVALIDARG;
+		break;
+	default:
+		return E_NOTIMPL;
 	}
 
 	SIZE_T nSize = sizeof(WCHAR) * (str.GetLength() + 1);
 	pName->uType = STRRET_WSTR;
 	pName->pOleStr = (LPWSTR) ::CoTaskMemAlloc(nSize);
-	memcpy(pName->pOleStr, (LPCWSTR) str, nSize);
+	memcpy(pName->pOleStr, (LPCWSTR)str, nSize);
 	return S_OK;
 }
 
@@ -1431,29 +1634,29 @@ STDMETHODIMP CFTPDirectoryBase::GetDefaultColumnState(UINT iColumn, SHCOLSTATEF*
 
 	switch (_MyPropertyKeyToStringID(scid))
 	{
-		case IDS_HEAD_NAME:
-		case IDS_HEAD_TYPE:
-		case IDS_HEAD_PERMISSIONS:
-		case IDS_HEAD_TRANSFER_TYPE:
-			*pcsFlags = SHCOLSTATE_TYPE_STR | SHCOLSTATE_ONBYDEFAULT;
-			break;
-		case IDS_HEAD_SIZE:
-			*pcsFlags = SHCOLSTATE_TYPE_INT | SHCOLSTATE_ONBYDEFAULT;
-			break;
-		case IDS_HEAD_MODIFY_TIME:
-			*pcsFlags = SHCOLSTATE_TYPE_DATE | SHCOLSTATE_ONBYDEFAULT;
-			break;
-		case IDS_HEAD_FILE_NAME:
-		case IDS_HEAD_FILE_EXT:
-		case IDS_HEAD_GID:
-		case IDS_HEAD_UID:
-			*pcsFlags = SHCOLSTATE_TYPE_STR;
-			break;
-		case IDS_HEAD_CREATE_TIME:
-			*pcsFlags = SHCOLSTATE_TYPE_DATE;
-			break;
-		default:
-			return E_INVALIDARG;
+	case IDS_HEAD_NAME:
+	case IDS_HEAD_TYPE:
+	case IDS_HEAD_PERMISSIONS:
+	case IDS_HEAD_TRANSFER_TYPE:
+		*pcsFlags = SHCOLSTATE_TYPE_STR | SHCOLSTATE_ONBYDEFAULT;
+		break;
+	case IDS_HEAD_SIZE:
+		*pcsFlags = SHCOLSTATE_TYPE_INT | SHCOLSTATE_ONBYDEFAULT;
+		break;
+	case IDS_HEAD_MODIFY_TIME:
+		*pcsFlags = SHCOLSTATE_TYPE_DATE | SHCOLSTATE_ONBYDEFAULT;
+		break;
+	case IDS_HEAD_FILE_NAME:
+	case IDS_HEAD_FILE_EXT:
+	case IDS_HEAD_GID:
+	case IDS_HEAD_UID:
+		*pcsFlags = SHCOLSTATE_TYPE_STR;
+		break;
+	case IDS_HEAD_CREATE_TIME:
+		*pcsFlags = SHCOLSTATE_TYPE_DATE;
+		break;
+	default:
+		return E_INVALIDARG;
 	}
 
 	return S_OK;
@@ -1471,105 +1674,7 @@ STDMETHODIMP CFTPDirectoryBase::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOLUM
 	if (!p)
 		return E_INVALIDARG;
 
-	if (p->iIconIndex == -1)
-		FillFileItemInfo(p);
-
-	switch (_MyPropertyKeyToStringID(*pscid))
-	{
-		case IDS_HEAD_NAME:
-		case IDS_HEAD_FILE_NAME:
-			pv->vt = VT_BSTR;
-			pv->bstrVal = ::SysAllocStringLen(p->strFileName, (UINT) p->strFileName.GetLength());
-			if (!pv->bstrVal)
-				return E_OUTOFMEMORY;
-			break;
-		case IDS_HEAD_FILE_EXT:
-		{
-			LPCWSTR lpw = wcsrchr(p->strFileName, L'.');
-			if (!lpw)
-				pv->vt = VT_EMPTY;
-			else
-			{
-				pv->vt = VT_BSTR;
-				pv->bstrVal = ::SysAllocStringLen(lpw, (UINT) wcslen(lpw));
-				if (!pv->bstrVal)
-					return E_OUTOFMEMORY;
-			}
-		}
-		break;
-		case IDS_HEAD_SIZE:
-			pv->vt = VT_UI8;
-			pv->ullVal = p->uliSize.QuadPart;
-			break;
-		case IDS_HEAD_TYPE:
-			pv->vt = VT_BSTR;
-			pv->bstrVal = ::SysAllocStringLen(p->strType, (UINT) p->strType.GetLength());
-			if (!pv->bstrVal)
-				return E_OUTOFMEMORY;
-			break;
-		case IDS_HEAD_CREATE_TIME:
-		{
-			SYSTEMTIME st;
-			::FileTimeToSystemTime(&p->ftCreateTime, &st);
-			::SystemTimeToVariantTime(&st, &pv->date);
-			pv->vt = VT_DATE;
-		}
-		break;
-		case IDS_HEAD_MODIFY_TIME:
-		{
-			SYSTEMTIME st;
-			::FileTimeToSystemTime(&p->ftModifyTime, &st);
-			::SystemTimeToVariantTime(&st, &pv->date);
-			pv->vt = VT_DATE;
-		}
-		break;
-		case IDS_HEAD_PERMISSIONS:
-			if (p->bWinAttr)
-				::FileAttributesToString(p->dwAttributes, str);
-			else
-				::FilePermissionsToString(p->nUnixMode, str);
-			pv->vt = VT_BSTR;
-			pv->bstrVal = ::SysAllocStringLen(str, (UINT) str.GetLength());
-			if (!pv->bstrVal)
-				return E_OUTOFMEMORY;
-			break;
-		case IDS_HEAD_TRANSFER_TYPE:
-			if (p->IsDirectory())
-				str.LoadString(IDS_TYPE_DIRECTORY);
-			else if (IsTextFile(str) == S_OK)
-				str.LoadString(IDS_TYPE_TEXT);
-			else
-				str.LoadString(IDS_TYPE_BINARY);
-			pv->vt = VT_BSTR;
-			pv->bstrVal = ::SysAllocStringLen(str, (UINT) str.GetLength());
-			if (!pv->bstrVal)
-				return E_OUTOFMEMORY;
-			break;
-		case IDS_HEAD_UID:
-			if (!p->strOwner.IsEmpty())
-				str = p->strOwner;
-			else
-				str.Format(L"%u", p->uUID);
-			pv->vt = VT_BSTR;
-			pv->bstrVal = ::SysAllocStringLen(str, (UINT) str.GetLength());
-			if (!pv->bstrVal)
-				return E_OUTOFMEMORY;
-			break;
-		case IDS_HEAD_GID:
-			if (!p->strGroup.IsEmpty())
-				str = p->strGroup;
-			else
-				str.Format(L"%u", p->uGID);
-			pv->vt = VT_BSTR;
-			pv->bstrVal = ::SysAllocStringLen(str, (UINT) str.GetLength());
-			if (!pv->bstrVal)
-				return E_OUTOFMEMORY;
-			break;
-		default:
-			return E_INVALIDARG;
-	}
-
-	return S_OK;
+	return _GetFileItemPropData(this, p, *pscid, pv);
 }
 
 STDMETHODIMP CFTPDirectoryBase::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn, SHELLDETAILS* psd)
@@ -1585,41 +1690,41 @@ STDMETHODIMP CFTPDirectoryBase::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn,
 	UINT uID = _MyPropertyKeyToStringID(scid);
 	switch (uID)
 	{
-		case IDS_HEAD_NAME:
-		case IDS_HEAD_FILE_NAME:
-			psd->fmt = LVCFMT_LEFT;
-			break;
-		case IDS_HEAD_FILE_EXT:
-			psd->fmt = LVCFMT_LEFT;
-			psd->cxChar = 10;
-			break;
-		case IDS_HEAD_SIZE:
-			psd->fmt = LVCFMT_RIGHT;
-			psd->cxChar = 10;
-			break;
-		case IDS_HEAD_TYPE:
-			psd->fmt = LVCFMT_LEFT;
-			break;
-		case IDS_HEAD_CREATE_TIME:
-		case IDS_HEAD_MODIFY_TIME:
-			psd->fmt = LVCFMT_LEFT;
-			psd->cxChar = 20;
-			break;
-		case IDS_HEAD_PERMISSIONS:
-			psd->fmt = LVCFMT_LEFT;
-			psd->cxChar = 10;
-			break;
-		case IDS_HEAD_TRANSFER_TYPE:
-			psd->fmt = LVCFMT_LEFT;
-			psd->cxChar = 12;
-			break;
-		case IDS_HEAD_UID:
-		case IDS_HEAD_GID:
-			psd->fmt = LVCFMT_LEFT;
-			psd->cxChar = 10;
-			break;
-		default:
-			return E_INVALIDARG;
+	case IDS_HEAD_NAME:
+	case IDS_HEAD_FILE_NAME:
+		psd->fmt = LVCFMT_LEFT;
+		break;
+	case IDS_HEAD_FILE_EXT:
+		psd->fmt = LVCFMT_LEFT;
+		psd->cxChar = 10;
+		break;
+	case IDS_HEAD_SIZE:
+		psd->fmt = LVCFMT_RIGHT;
+		psd->cxChar = 10;
+		break;
+	case IDS_HEAD_TYPE:
+		psd->fmt = LVCFMT_LEFT;
+		break;
+	case IDS_HEAD_CREATE_TIME:
+	case IDS_HEAD_MODIFY_TIME:
+		psd->fmt = LVCFMT_LEFT;
+		psd->cxChar = 20;
+		break;
+	case IDS_HEAD_PERMISSIONS:
+		psd->fmt = LVCFMT_LEFT;
+		psd->cxChar = 10;
+		break;
+	case IDS_HEAD_TRANSFER_TYPE:
+		psd->fmt = LVCFMT_LEFT;
+		psd->cxChar = 12;
+		break;
+	case IDS_HEAD_UID:
+	case IDS_HEAD_GID:
+		psd->fmt = LVCFMT_LEFT;
+		psd->cxChar = 10;
+		break;
+	default:
+		return E_INVALIDARG;
 	}
 
 	CMyStringW str;
@@ -1632,35 +1737,35 @@ STDMETHODIMP CFTPDirectoryBase::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColumn,
 		if (FAILED(hr))
 			return hr;
 		if (uID == IDS_HEAD_SIZE)
-			::FileSizeToString(*((ULARGE_INTEGER*) &v.ullVal), str);
+			::FileSizeToString(*((ULARGE_INTEGER*)&v.ullVal), str);
 		else
 		{
 			switch (v.vt)
 			{
-				case VT_EMPTY:
-					str.Empty();
-					break;
-				case VT_BSTR:
-					str = v.bstrVal;
-					break;
-				case VT_DATE:
-				{
-					SYSTEMTIME st;
-					::VariantTimeToSystemTime(v.date, &st);
-					str.Format(L"%04hu/%02hu/%02hu %02hu:%02hu:%02hu",
-						st.wYear, st.wMonth, st.wDay,
-						st.wHour, st.wMinute, st.wSecond);
-				}
+			case VT_EMPTY:
+				str.Empty();
 				break;
-				default:
+			case VT_BSTR:
+				str = v.bstrVal;
+				break;
+			case VT_DATE:
+			{
+				SYSTEMTIME st;
+				::VariantTimeToSystemTime(v.date, &st);
+				str.Format(L"%04hu/%02hu/%02hu %02hu:%02hu:%02hu",
+					st.wYear, st.wMonth, st.wDay,
+					st.wHour, st.wMinute, st.wSecond);
+			}
+			break;
+			default:
 #ifdef _DEBUG
-					{
-						str.Format(L"We must handle vt type = %d\n", (int) v.vt);
-						OutputDebugString(str);
-					}
+			{
+				str.Format(L"We must handle vt type = %d\n", (int)v.vt);
+				OutputDebugString(str);
+			}
 #endif
-					str.Empty();
-					break;
+			str.Empty();
+			break;
 			}
 		}
 		::VariantClear(&v);
@@ -1736,78 +1841,78 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 {
 	switch (uMsg)
 	{
-		case 17:   // SFVM_LISTREFRESHED
-			if (wParam)
-			{
-				::EnterCriticalSection(&m_csFiles);
-				int i;
-				i = m_aFiles.GetCount();
-				while (i--)
-					m_aFiles.GetItem(i)->Release();
-				m_aFiles.RemoveAll();
-				m_bDirReceived = false;
-				::LeaveCriticalSection(&m_csFiles);
-			}
-			return S_OK;
-		case SFVM_MERGEMENU:
+	case 17:   // SFVM_LISTREFRESHED
+		if (wParam)
 		{
-			LPQCMINFO lpqi = (LPQCMINFO) lParam;
-			HMENU hMenuToAdd = GetSubMenuByID(lpqi->hmenu, FCIDM_MENU_HELP);
-			if (hMenuToAdd)
-			{
-				int i, nCount;
-				UINT indexMenu;
-				MENUITEMINFO mii;
-				UINT uMaxID;
-				CMyStringW str;
+			::EnterCriticalSection(&m_csFiles);
+			int i;
+			i = m_aFiles.GetCount();
+			while (i--)
+				m_aFiles.GetItem(i)->Release();
+			m_aFiles.RemoveAll();
+			m_bDirReceived = false;
+			::LeaveCriticalSection(&m_csFiles);
+		}
+		return S_OK;
+	case SFVM_MERGEMENU:
+	{
+		LPQCMINFO lpqi = (LPQCMINFO)lParam;
+		HMENU hMenuToAdd = GetSubMenuByID(lpqi->hmenu, FCIDM_MENU_HELP);
+		if (hMenuToAdd)
+		{
+			int i, nCount;
+			UINT indexMenu;
+			MENUITEMINFO mii;
+			UINT uMaxID;
+			CMyStringW str;
 
 #ifdef _WIN64
-				mii.cbSize = sizeof(mii);
-				mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE;
+			mii.cbSize = sizeof(mii);
+			mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE;
 #else
-				mii.cbSize = MENUITEMINFO_SIZE_V1;
-				mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
+			mii.cbSize = MENUITEMINFO_SIZE_V1;
+			mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
 #endif
-				uMaxID = lpqi->idCmdFirst;
-				//indexMenu = lpqi->indexMenu;
-				indexMenu = 0;
+			uMaxID = lpqi->idCmdFirst;
+			//indexMenu = lpqi->indexMenu;
+			indexMenu = 0;
 
-				HMENU h = ::GetSubMenu(theApp.m_hMenuContext, CXMENU_POPUP_ROOTHELP);
-				nCount = ::GetMenuItemCount(h);
-				for (i = 0; i < nCount; i++)
-				{
-					mii.cch = MAX_PATH;
-#ifdef _UNICODE
-					mii.dwTypeData = str.GetBufferW(MAX_PATH);
-#else
-					mii.dwTypeData = str.GetBufferA(MAX_PATH);
-#endif
-					::GetMenuItemInfo(h, (UINT) i, TRUE, &mii);
-					mii.wID = (WORD)((UINT) mii.wID - ID_ROOT_IDBASE + lpqi->idCmdFirst);
-					if (uMaxID < (UINT) mii.wID)
-						uMaxID = (UINT) mii.wID;
-					::InsertMenuItem(hMenuToAdd, indexMenu++, TRUE, &mii);
-				}
-				//mii.fMask = MIIM_TYPE;
-				//mii.fType = MFT_SEPARATOR;
-				//::InsertMenuItem(hMenuToAdd, indexMenu++, TRUE, &mii);
-				lpqi->idCmdFirst = uMaxID - lpqi->idCmdFirst + 1;
-			}
-			return S_OK;
-		}
-		case SFVM_INVOKECOMMAND:
-		{
-			UINT uID = ((UINT) wParam) + ID_ROOT_IDBASE;
-			switch (uID)
+			HMENU h = ::GetSubMenu(theApp.m_hMenuContext, CXMENU_POPUP_ROOTHELP);
+			nCount = ::GetMenuItemCount(h);
+			for (i = 0; i < nCount; i++)
 			{
-				case ID_ROOT_SERVER_INFO:
-				{
-					m_pRoot->ShowServerInfoDialog(m_pRoot->m_hWndOwnerCache);
-				}
-				return S_OK;
+				mii.cch = MAX_PATH;
+#ifdef _UNICODE
+				mii.dwTypeData = str.GetBufferW(MAX_PATH);
+#else
+				mii.dwTypeData = str.GetBufferA(MAX_PATH);
+#endif
+				::GetMenuItemInfo(h, (UINT)i, TRUE, &mii);
+				mii.wID = (WORD)((UINT)mii.wID - ID_ROOT_IDBASE + lpqi->idCmdFirst);
+				if (uMaxID < (UINT)mii.wID)
+					uMaxID = (UINT)mii.wID;
+				::InsertMenuItem(hMenuToAdd, indexMenu++, TRUE, &mii);
 			}
+			//mii.fMask = MIIM_TYPE;
+			//mii.fType = MFT_SEPARATOR;
+			//::InsertMenuItem(hMenuToAdd, indexMenu++, TRUE, &mii);
+			lpqi->idCmdFirst = uMaxID - lpqi->idCmdFirst + 1;
 		}
-		break;
+		return S_OK;
+	}
+	case SFVM_INVOKECOMMAND:
+	{
+		UINT uID = ((UINT)wParam) + ID_ROOT_IDBASE;
+		switch (uID)
+		{
+		case ID_ROOT_SERVER_INFO:
+		{
+			m_pRoot->ShowServerInfoDialog(m_pRoot->m_hWndOwnerCache);
+		}
+		return S_OK;
+		}
+	}
+	break;
 	}
 	return CFolderBase::MessageSFVCB(uMsg, wParam, lParam);
 }
@@ -1817,6 +1922,45 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 STDMETHODIMP CFTPDirectoryBase::GetThumbnailHandler(PCUITEMID_CHILD pidl, LPBC pbc, REFIID riid, void** ppv)
 {
 	return GetUIObjectOf(NULL, 1, &pidl, riid, NULL, ppv);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+STDMETHODIMP CFTPDirectoryBase::IsFastProperty(PCUITEMID_CHILD pidlChild, REFPROPERTYKEY pkey)
+{
+	(void)pidlChild;
+	return _MyPropertyKeyToStringID(pkey) != 0 ? S_OK : S_FALSE;
+}
+
+// in propsys.dll
+typedef HRESULT(STDMETHODCALLTYPE* T_PSCreatePropertyKeyStore)(PROPERTYKEY*, int, REFIID riid, void** ppv);
+
+STDMETHODIMP CFTPDirectoryBase::GetFastProperties(PCUITEMID_CHILD pidlChild, REFIID riid, void** ppv)
+{
+	(void)pidlChild;
+	auto hModule = ::GetModuleHandleA("propsys.dll");
+	if (!hModule)
+		return E_NOTIMPL;
+	auto pfnPSCreatePropertyKeyStore = (T_PSCreatePropertyKeyStore) ::GetProcAddress(hModule, "PSCreatePropertyKeyStore");
+	if (!pfnPSCreatePropertyKeyStore)
+		return E_NOTIMPL;
+
+	IPropertyKeyStore* pStore;
+	auto hr = pfnPSCreatePropertyKeyStore(NULL, 0, __uuidof(IPropertyKeyStore), reinterpret_cast<void**>(&pStore));
+	if (FAILED(hr))
+		return hr;
+	for (int i = 0; i < sizeof(s_columnIDMap) / sizeof(s_columnIDMap[0]); i++)
+	{
+		hr = pStore->AppendKey(s_columnIDMap[i].key);
+		if (FAILED(hr))
+		{
+			pStore->Release();
+			return hr;
+		}
+	}
+	hr = pStore->QueryInterface(riid, ppv);
+	pStore->Release();
+	return hr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2122,7 +2266,7 @@ STDMETHODIMP CFTPDirectoryBase::Stat(STATSTG* pstatstg, DWORD grfStatFlag)
 
 STDMETHODIMP CFTPDirectoryBase::GetRootDirectory(IEasySFTPDirectory** ppRootDirectory)
 {
-	return m_pRoot->QueryInterface(IID_IEasySFTPDirectory, (void**) ppRootDirectory);
+	return m_pRoot->QueryInterface(IID_IEasySFTPDirectory, (void**)ppRootDirectory);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2212,14 +2356,14 @@ STDMETHODIMP CFTPDirectoryBase::ParseDisplayName2(PIDLIST_RELATIVE pidlParent,
 		{
 			if (lpw == pszDisplayName)
 				continue;
-			strName.SetString(pszDisplayName, (DWORD) ((DWORD_PTR) lpw - (DWORD_PTR) pszDisplayName) / sizeof(WCHAR));
+			strName.SetString(pszDisplayName, (DWORD)((DWORD_PTR)lpw - (DWORD_PTR)pszDisplayName) / sizeof(WCHAR));
 		}
 		else
 			strName = pszDisplayName;
 
 		{
 			pszDisplayName += strName.GetLength();
-			uEaten += (ULONG) strName.GetLength();
+			uEaten += (ULONG)strName.GetLength();
 
 			PITEMID_CHILD pidlChild;
 			CFTPFileItem* pItem = NULL;
@@ -2240,8 +2384,8 @@ STDMETHODIMP CFTPDirectoryBase::ParseDisplayName2(PIDLIST_RELATIVE pidlParent,
 			else
 			{
 				pidl2 = (PIDLIST_RELATIVE) ::AppendItemIDList(
-					(PCUIDLIST_ABSOLUTE) (pidlCurrent ? pidlCurrent : pidlParent),
-					(PCUIDLIST_RELATIVE) pidlChild);
+					(PCUIDLIST_ABSOLUTE)(pidlCurrent ? pidlCurrent : pidlParent),
+					(PCUIDLIST_RELATIVE)pidlChild);
 				::CoTaskMemFree(pidlChild);
 				if (pidlCurrent)
 					::CoTaskMemFree(pidlCurrent);
@@ -2283,7 +2427,7 @@ STDMETHODIMP CFTPDirectoryBase::ParseDisplayName2(PIDLIST_RELATIVE pidlParent,
 	if (pchEaten)
 		*pchEaten = uEaten;
 	if (!pidlCurrent)
-		pidlCurrent = (PIDLIST_RELATIVE) ::DuplicateItemIDList((PCUIDLIST_ABSOLUTE) pidlParent);
+		pidlCurrent = (PIDLIST_RELATIVE) ::DuplicateItemIDList((PCUIDLIST_ABSOLUTE)pidlParent);
 	*ppidl = pidlCurrent;
 	return S_OK;
 }
@@ -2313,24 +2457,24 @@ STDMETHODIMP_(void) CFTPDirectoryBase::UpdateItem(CFTPFileItem* pOldItem, LPCWST
 {
 	switch (lEvent)
 	{
-		case SHCNE_CREATE:
-		case SHCNE_MKDIR:
-			break;
-		case SHCNE_RENAMEITEM:
-		case SHCNE_RENAMEFOLDER:
-			pOldItem->strFileName = lpszNewItem;
-			break;
-		case SHCNE_UPDATEITEM:
-		case SHCNE_UPDATEDIR:
-			break;
-		case SHCNE_DELETE:
-		case SHCNE_RMDIR:
-		{
-			int i = m_aFiles.FindItem(pOldItem);
-			m_aFiles.RemoveItem(i);
-			pOldItem->Release();
-		}
+	case SHCNE_CREATE:
+	case SHCNE_MKDIR:
 		break;
+	case SHCNE_RENAMEITEM:
+	case SHCNE_RENAMEFOLDER:
+		pOldItem->strFileName = lpszNewItem;
+		break;
+	case SHCNE_UPDATEITEM:
+	case SHCNE_UPDATEDIR:
+		break;
+	case SHCNE_DELETE:
+	case SHCNE_RMDIR:
+	{
+		int i = m_aFiles.FindItem(pOldItem);
+		m_aFiles.RemoveItem(i);
+		pOldItem->Release();
+	}
+	break;
 	}
 }
 
@@ -2346,7 +2490,7 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 	}
 	else
 	{
-		str.SetString(lpszRelativePath, (DWORD) (((DWORD_PTR) lp - (DWORD_PTR) lpszRelativePath) / sizeof(WCHAR)));
+		str.SetString(lpszRelativePath, (DWORD)(((DWORD_PTR)lp - (DWORD_PTR)lpszRelativePath) / sizeof(WCHAR)));
 		lpszRelativePath = lp + 1;
 		if (!*lpszRelativePath)
 			lpszRelativePath = NULL;
@@ -2395,7 +2539,7 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 		}
 		//((CSFTPFileItem*) pidlItem)->bHasAttribute = true;
 		//((CSFTPFileItem*) pidlItem)->bIsDirectory = true;
-		if (m_strDirectory.GetLength() != 1 || *((LPCWSTR) m_strDirectory) != L'/')
+		if (m_strDirectory.GetLength() != 1 || *((LPCWSTR)m_strDirectory) != L'/')
 			str.InsertChar(L'/', 0);
 		str.InsertString(m_strDirectory, 0);
 		HRESULT hr = CreateInstance(pDirItem, this, m_pRoot, str, &pDirItem->pDirectory);
@@ -2455,9 +2599,9 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 CFTPDirectoryItem* CFTPDirectoryBase::GetAlreadyOpenedDirectory(PCUIDLIST_RELATIVE pidlChild)
 {
 	CMyStringW str;
-	if (!::PickupFileName((PCUITEMID_CHILD) pidlChild, str))
+	if (!::PickupFileName((PCUITEMID_CHILD)pidlChild, str))
 		return NULL;
-	pidlChild = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlChild) + pidlChild->mkid.cb);
+	pidlChild = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlChild) + pidlChild->mkid.cb);
 	for (int i = 0; i < m_aDirectories.GetCount(); i++)
 	{
 		CFTPDirectoryItem* pDirItem = m_aDirectories.GetItem(i);
@@ -2586,9 +2730,9 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 			// pick up the last same parent
 			while (pidlUR1 && pidlUR2 && pidlUR1->mkid.cb &&
 				pidlUR1->mkid.cb == pidlUR2->mkid.cb &&
-				memcmp(pidlUR1, pidlUR2, (size_t) pidlUR1->mkid.cb) == 0)
+				memcmp(pidlUR1, pidlUR2, (size_t)pidlUR1->mkid.cb) == 0)
 			{
-				PickupFileName((PCUITEMID_CHILD) pidlUR1, str);
+				PickupFileName((PCUITEMID_CHILD)pidlUR1, str);
 				CFTPDirectoryBase* pDir2;
 				if (FAILED(pParent->OpenNewDirectory(str, &pDir2)))
 				{
@@ -2598,8 +2742,8 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 				}
 				pParent->Release();
 				pParent = pDir2;
-				pidlUR1 = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR1) + pidlUR1->mkid.cb);
-				pidlUR2 = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR2) + pidlUR2->mkid.cb);
+				pidlUR1 = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlUR1) + pidlUR1->mkid.cb);
+				pidlUR2 = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlUR2) + pidlUR2->mkid.cb);
 			}
 		}
 		if (pParent)
@@ -2608,10 +2752,10 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 			// we can just pass them to pParent->DefViewNotifyUpdate
 			if ((wEventId == SHCNE_RENAMEFOLDER || wEventId == SHCNE_RENAMEITEM) &&
 				pidlUR1->mkid.cb && pidlUR2->mkid.cb &&
-				!(((PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR1) + pidlUR1->mkid.cb))->mkid.cb) &&
-				!(((PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR2) + pidlUR2->mkid.cb))->mkid.cb))
+				!(((PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlUR1) + pidlUR1->mkid.cb))->mkid.cb) &&
+				!(((PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlUR2) + pidlUR2->mkid.cb))->mkid.cb))
 			{
-				pParent->DefViewNotifyUpdate(wEventId, (PCUITEMID_CHILD) pidlUR1, (PCUITEMID_CHILD) pidlUR2);
+				pParent->DefViewNotifyUpdate(wEventId, (PCUITEMID_CHILD)pidlUR1, (PCUITEMID_CHILD)pidlUR2);
 			}
 			else
 			{
@@ -2620,9 +2764,9 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 				{
 					CFTPDirectoryBase* pDir2 = pParent;
 					pDir2->AddRef();
-					while (((PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR1) + pidlUR1->mkid.cb))->mkid.cb)
+					while (((PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlUR1) + pidlUR1->mkid.cb))->mkid.cb)
 					{
-						PickupFileName((PCUITEMID_CHILD) pidlUR1, str);
+						PickupFileName((PCUITEMID_CHILD)pidlUR1, str);
 						CFTPDirectoryBase* pDir3;
 						if (FAILED(pDir2->OpenNewDirectory(str, &pDir3)))
 						{
@@ -2632,7 +2776,7 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 						}
 						pDir2->Release();
 						pDir2 = pDir3;
-						pidlUR1 = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR1) + pidlUR1->mkid.cb);
+						pidlUR1 = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlUR1) + pidlUR1->mkid.cb);
 					}
 					if (pDir2)
 					{
@@ -2644,7 +2788,7 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 							l = SHCNE_RMDIR;
 						else if (l == SHCNE_RENAMEITEM)
 							l = SHCNE_DELETE;
-						pDir2->DefViewNotifyUpdate(l, (PCUITEMID_CHILD) pidlUR1, NULL);
+						pDir2->DefViewNotifyUpdate(l, (PCUITEMID_CHILD)pidlUR1, NULL);
 						pDir2->Release();
 					}
 				}
@@ -2653,9 +2797,9 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 				{
 					CFTPDirectoryBase* pDir2 = pParent;
 					pDir2->AddRef();
-					while (((PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR2) + pidlUR2->mkid.cb))->mkid.cb)
+					while (((PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlUR2) + pidlUR2->mkid.cb))->mkid.cb)
 					{
-						PickupFileName((PCUITEMID_CHILD) pidlUR2, str);
+						PickupFileName((PCUITEMID_CHILD)pidlUR2, str);
 						CFTPDirectoryBase* pDir3;
 						if (FAILED(pDir2->OpenNewDirectory(str, &pDir3)))
 						{
@@ -2665,7 +2809,7 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 						}
 						pDir2->Release();
 						pDir2 = pDir3;
-						pidlUR2 = (PCUIDLIST_RELATIVE) (((DWORD_PTR) pidlUR2) + pidlUR2->mkid.cb);
+						pidlUR2 = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidlUR2) + pidlUR2->mkid.cb);
 					}
 					if (pDir2)
 					{
@@ -2683,7 +2827,7 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 						}
 						else
 							pidlUR1 = NULL;
-						pDir2->DefViewNotifyUpdate(l, (PCUITEMID_CHILD) pidlUR1, (PCUITEMID_CHILD) pidlUR2);
+						pDir2->DefViewNotifyUpdate(l, (PCUITEMID_CHILD)pidlUR1, (PCUITEMID_CHILD)pidlUR2);
 						pDir2->Release();
 					}
 				}
@@ -2772,9 +2916,9 @@ void CFTPDirectoryBase::UpdateMoveFile(LPCWSTR lpszFromDir, LPCWSTR lpszFileName
 			p->strFileName = lpszNewFileName;
 		::LeaveCriticalSection(&m_csFiles);
 	}
-	if (strFP.IsEmpty() || ((LPCWSTR) strFP)[strFP.GetLength() - 1] != L'/')
+	if (strFP.IsEmpty() || ((LPCWSTR)strFP)[strFP.GetLength() - 1] != L'/')
 		strFP += L'/';
-	if (strTP.IsEmpty() || ((LPCWSTR) strTP)[strTP.GetLength() - 1] != L'/')
+	if (strTP.IsEmpty() || ((LPCWSTR)strTP)[strTP.GetLength() - 1] != L'/')
 		strTP += L'/';
 	strFP += lpszFileName;
 	strTP += lpszNewFileName;
@@ -3037,7 +3181,7 @@ STDMETHODIMP CFTPDirectoryRootBase::GetHostInfo(VARIANT_BOOL* pbIsSFTP, int* pnP
 		*pnPort = nPort;
 	if (pbstrHostName)
 	{
-		*pbstrHostName = ::SysAllocStringLen(m_strHostName, (UINT) m_strHostName.GetLength());
+		*pbstrHostName = ::SysAllocStringLen(m_strHostName, (UINT)m_strHostName.GetLength());
 		if (!*pbstrHostName)
 			return E_OUTOFMEMORY;
 	}
@@ -3048,7 +3192,7 @@ STDMETHODIMP CFTPDirectoryRootBase::GetTextMode(LONG* pnTextMode)
 {
 	if (!pnTextMode)
 		return E_POINTER;
-	*pnTextMode = (LONG) m_bTextMode;
+	*pnTextMode = (LONG)m_bTextMode;
 	return S_OK;
 }
 
@@ -3056,7 +3200,7 @@ STDMETHODIMP CFTPDirectoryRootBase::SetTextMode(LONG nTextMode)
 {
 	if (nTextMode >= 0x100 || nTextMode < 0)
 		return E_INVALIDARG;
-	m_bTextMode = (BYTE) nTextMode;
+	m_bTextMode = (BYTE)nTextMode;
 	return S_OK;
 }
 
@@ -3064,7 +3208,7 @@ STDMETHODIMP CFTPDirectoryRootBase::GetTransferMode(LONG* pnTransferMode)
 {
 	if (!pnTransferMode)
 		return E_POINTER;
-	*pnTransferMode = (LONG) m_nTransferMode;
+	*pnTransferMode = (LONG)m_nTransferMode;
 	return S_OK;
 }
 
@@ -3072,7 +3216,7 @@ STDMETHODIMP CFTPDirectoryRootBase::SetTransferMode(LONG nTransferMode)
 {
 	if (nTransferMode >= 0x80 || nTransferMode < 0)
 		return E_INVALIDARG;
-	m_nTransferMode = (BYTE) nTransferMode;
+	m_nTransferMode = (BYTE)nTransferMode;
 	return S_OK;
 }
 
@@ -3111,11 +3255,11 @@ STDMETHODIMP CFTPDirectoryRootBase::IsTextFile(LPCWSTR lpszFileName)
 				dw = MAX_PATH;
 				if (::RegQueryValueEx(hKey, _T("PerceivedType"), NULL, NULL,
 #ifdef _UNICODE
-					(LPBYTE) str.GetBuffer(MAX_PATH),
+				(LPBYTE) str.GetBuffer(MAX_PATH),
 #else
-					(LPBYTE) str.GetBufferA(MAX_PATH),
+					(LPBYTE)str.GetBufferA(MAX_PATH),
 #endif
-					&dw) == ERROR_SUCCESS)
+					& dw) == ERROR_SUCCESS)
 				{
 #ifdef _UNICODE
 					str.ReleaseBuffer();
@@ -3129,11 +3273,11 @@ STDMETHODIMP CFTPDirectoryRootBase::IsTextFile(LPCWSTR lpszFileName)
 				{
 					if (::RegQueryValueEx(hKey, _T("Content Type"), NULL, NULL,
 #ifdef _UNICODE
-						(LPBYTE) str.GetBuffer(MAX_PATH),
+					(LPBYTE) str.GetBuffer(MAX_PATH),
 #else
-						(LPBYTE) str.GetBufferA(MAX_PATH),
+						(LPBYTE)str.GetBufferA(MAX_PATH),
 #endif
-						&dw) == ERROR_SUCCESS)
+						& dw) == ERROR_SUCCESS)
 					{
 #ifdef _UNICODE
 						str.ReleaseBuffer();
@@ -3142,12 +3286,12 @@ STDMETHODIMP CFTPDirectoryRootBase::IsTextFile(LPCWSTR lpszFileName)
 #endif
 						lpszFileName = str;
 						lp = wcschr(lpszFileName, L'/');
-						if (lp && _wcsnicmp(lpszFileName, L"text", ((size_t)((DWORD_PTR) lp - (DWORD_PTR) lpszFileName)) / sizeof(WCHAR)) == 0)
+						if (lp && _wcsnicmp(lpszFileName, L"text", ((size_t)((DWORD_PTR)lp - (DWORD_PTR)lpszFileName)) / sizeof(WCHAR)) == 0)
 							bRet = true;
 					}
 				}
 				::RegCloseKey(hKey);
-			}
+				}
 			return bRet ? S_OK : S_FALSE;
 		}
 	}
@@ -3289,13 +3433,13 @@ STDMETHODIMP CFTPFileItemIcon::QueryInterface(REFIID riid, void** ppv)
 	if (IsEqualIID(riid, IID_IUnknown) ||
 		IsEqualIID(riid, IID_IExtractIconW))
 	{
-		*ppv = (IExtractIconW*) this;
+		*ppv = (IExtractIconW*)this;
 		AddRef();
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, IID_IExtractIconA))
 	{
-		*ppv = (IExtractIconA*) this;
+		*ppv = (IExtractIconA*)this;
 		AddRef();
 		return S_OK;
 	}
@@ -3304,18 +3448,18 @@ STDMETHODIMP CFTPFileItemIcon::QueryInterface(REFIID riid, void** ppv)
 
 STDMETHODIMP_(ULONG) CFTPFileItemIcon::AddRef()
 {
-	return (ULONG) ::InterlockedIncrement((LONG*) &m_uRef);
+	return (ULONG) ::InterlockedIncrement((LONG*)&m_uRef);
 }
 
 STDMETHODIMP_(ULONG) CFTPFileItemIcon::Release()
 {
-	ULONG u = (ULONG) ::InterlockedDecrement((LONG*) &m_uRef);
+	ULONG u = (ULONG) ::InterlockedDecrement((LONG*)&m_uRef);
 	if (!u)
 		delete this;
 	return u;
 }
 
-STDMETHODIMP CFTPFileItemIcon::GetIconLocation(UINT uFlags, LPWSTR pszIconFile, UINT cchMax, int* piIndex, UINT *pwFlags)
+STDMETHODIMP CFTPFileItemIcon::GetIconLocation(UINT uFlags, LPWSTR pszIconFile, UINT cchMax, int* piIndex, UINT* pwFlags)
 {
 	if (!piIndex)
 		return E_POINTER;
@@ -3323,10 +3467,10 @@ STDMETHODIMP CFTPFileItemIcon::GetIconLocation(UINT uFlags, LPWSTR pszIconFile, 
 	{
 		if (!pszIconFile)
 			return E_POINTER;
-		UINT dw = (UINT) m_strFileName.GetLength();
+		UINT dw = (UINT)m_strFileName.GetLength();
 		if (cchMax >= dw + 1)
 			cchMax = dw + 1;
-		memcpy(pszIconFile, (LPCWSTR) m_strFileName, sizeof(WCHAR) * (cchMax - 1));
+		memcpy(pszIconFile, (LPCWSTR)m_strFileName, sizeof(WCHAR) * (cchMax - 1));
 		pszIconFile[cchMax - 1] = 0;
 	}
 	if ((uFlags & GIL_OPENICON) && m_bIsDirectory)
@@ -3411,7 +3555,7 @@ STDMETHODIMP CFTPFileItemIcon::Extract(LPCWSTR pszFile, UINT nIconIndex, HICON* 
 	return DoExtract(nIconIndex == 1, phIconLarge, phIconSmall, nIconSize);
 }
 
-STDMETHODIMP CFTPFileItemIcon::GetIconLocation(UINT uFlags, LPSTR pszIconFile, UINT cchMax, int* piIndex, UINT *pwFlags)
+STDMETHODIMP CFTPFileItemIcon::GetIconLocation(UINT uFlags, LPSTR pszIconFile, UINT cchMax, int* piIndex, UINT* pwFlags)
 {
 	if (!piIndex)
 		return E_POINTER;
@@ -3419,10 +3563,10 @@ STDMETHODIMP CFTPFileItemIcon::GetIconLocation(UINT uFlags, LPSTR pszIconFile, U
 	{
 		if (!pszIconFile)
 			return E_POINTER;
-		UINT dw = (UINT) m_strFileName.GetLengthA();
+		UINT dw = (UINT)m_strFileName.GetLengthA();
 		if (cchMax >= dw + 1)
 			cchMax = dw + 1;
-		memcpy(pszIconFile, (LPCSTR) m_strFileName, sizeof(CHAR) * (cchMax - 1));
+		memcpy(pszIconFile, (LPCSTR)m_strFileName, sizeof(CHAR) * (cchMax - 1));
 		pszIconFile[cchMax - 1] = 0;
 	}
 	if ((uFlags & GIL_OPENICON) && m_bIsDirectory)
@@ -3441,6 +3585,130 @@ STDMETHODIMP CFTPFileItemIcon::Extract(LPCSTR pszFile, UINT nIconIndex, HICON* p
 	if (m_strFileName.Compare(pszFile) != 0)
 		return E_INVALIDARG;
 	return DoExtract(nIconIndex == 1, phIconLarge, phIconSmall, nIconSize);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+CFTPFileItemPropertyStore::CFTPFileItemPropertyStore(CFTPDirectoryBase* pDirectory, CFTPFileItem* pItem)
+	: m_pDirectory(pDirectory), m_pItem(pItem)
+{
+	pDirectory->AddRef();
+	pItem->AddRef();
+}
+
+CFTPFileItemPropertyStore::~CFTPFileItemPropertyStore()
+{
+	m_pItem->Release();
+	m_pDirectory->Release();
+}
+
+STDMETHODIMP CFTPFileItemPropertyStore::QueryInterface(REFIID riid, void** ppv)
+{
+	if (!ppv)
+		return E_POINTER;
+	if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_IPropertyStore))
+	{
+		*ppv = static_cast<IPropertyStore*>(this);
+		AddRef();
+		return S_OK;
+	}
+	*ppv = NULL;
+	return E_NOINTERFACE;
+}
+
+STDMETHODIMP CFTPFileItemPropertyStore::GetCount(DWORD* cProps)
+{
+	if (!cProps)
+		return E_POINTER;
+	*cProps = sizeof(s_columnIDMap) / sizeof(s_columnIDMap[0]);
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItemPropertyStore::GetAt(DWORD iProp, PROPERTYKEY* pkey)
+{
+	if (!pkey)
+		return E_POINTER;
+	if (iProp >= sizeof(s_columnIDMap) / sizeof(s_columnIDMap[0]))
+		return E_INVALIDARG;
+	*pkey = s_columnIDMap[iProp].key;
+	return S_OK;
+}
+
+typedef HRESULT(STDMETHODCALLTYPE* T_VariantToPropVariant)(_In_ const VARIANT* pVar, _Out_ PROPVARIANT* pPropVar);
+static T_VariantToPropVariant s_VariantToPropVariant = NULL;
+
+STDMETHODIMP CFTPFileItemPropertyStore::GetValue(REFPROPERTYKEY key, PROPVARIANT* pv)
+{
+	if (!s_VariantToPropVariant)
+	{
+		auto hModule = ::GetModuleHandleA("propsys.dll");
+		if (!hModule)
+			return E_NOTIMPL;
+		s_VariantToPropVariant = reinterpret_cast<T_VariantToPropVariant>(::GetProcAddress(hModule, "VariantToPropVariant"));
+		if (!s_VariantToPropVariant)
+			return E_NOTIMPL;
+	}
+
+	VARIANT v;
+	auto hr = _GetFileItemPropData(m_pDirectory, m_pItem, key, &v);
+	if (FAILED(hr))
+		return hr;
+	hr = s_VariantToPropVariant(&v, pv);
+	::VariantClear(&v);
+	return hr;
+}
+
+STDMETHODIMP CFTPFileItemPropertyStore::SetValue(REFPROPERTYKEY key, REFPROPVARIANT propvar)
+{
+	(void)key;
+	(void)propvar;
+	return STG_E_ACCESSDENIED;
+}
+
+STDMETHODIMP CFTPFileItemPropertyStore::Commit()
+{
+	return STG_E_ACCESSDENIED;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+CFTPFileItemDisplayName::CFTPFileItemDisplayName(PIDLIST_ABSOLUTE pidl)
+	: m_pidlMe(pidl)
+{
+}
+
+CFTPFileItemDisplayName::~CFTPFileItemDisplayName()
+{
+	::CoTaskMemFree(m_pidlMe);
+}
+
+STDMETHODIMP CFTPFileItemDisplayName::QueryInterface(REFIID riid, void** ppv)
+{
+	if (!ppv)
+		return E_POINTER;
+	if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_IRelatedItem) || IsEqualIID(riid, IID_IDisplayItem))
+	{
+		*ppv = static_cast<IDisplayItem*>(this);
+		AddRef();
+		return S_OK;
+	}
+	*ppv = NULL;
+	return E_NOINTERFACE;
+}
+
+STDMETHODIMP CFTPFileItemDisplayName::GetItemIDList(PIDLIST_ABSOLUTE* ppidl)
+{
+	if (!ppidl)
+		return E_POINTER;
+	*ppidl = reinterpret_cast<PIDLIST_ABSOLUTE>(::DuplicateItemIDList(m_pidlMe));
+	return *ppidl ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPFileItemDisplayName::GetItem(IShellItem** ppsi)
+{
+	if (!ppsi)
+		return E_POINTER;
+	return ::MyCreateShellItem(m_pidlMe, ppsi);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
