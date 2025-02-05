@@ -372,7 +372,7 @@ void CAddressComboBox::ChangeCurrentFolder(PCIDLIST_ABSOLUTE lpidl)
 				strret.uType = STRRET_WSTR;
 				lp = (PIDLIST_ABSOLUTE) GetChildItemIDList(lpidl);
 				hr = pParent->GetDisplayNameOf((PCITEMID_CHILD) lp,
-					SHGDN_FORPARSING | SHGDN_FORADDRESSBAR, &strret);
+					SHGDN_NORMAL | SHGDN_FORADDRESSBAR, &strret);
 				if (SUCCEEDED(hr))
 				{
 					switch (strret.uType)
