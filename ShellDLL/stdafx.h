@@ -49,14 +49,14 @@ typedef IDataObjectAsyncCapability IAsyncOperation;
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <type_traits>
+
 #ifdef _DEBUG
 #define _CRTDBG_MAP_ALLOC
 #endif
 #include <crtdbg.h>
 #ifdef _DEBUG
 #define DEBUG_NEW   new(_CLIENT_BLOCK, __FILE__, __LINE__)
-
-#include <type_traits>
 
 //#define malloc(size) _malloc_dbg((size), _NORMAL_BLOCK, __FILE__, __LINE__)
 //#define realloc(memory, size) _realloc_dbg((memory), (size), _NORMAL_BLOCK, __FILE__, __LINE__)

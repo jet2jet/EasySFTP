@@ -410,7 +410,8 @@ HRESULT __stdcall _GetFileItemPropData(CFTPDirectoryBase* pDirectory, CFTPFileIt
 		{
 			constexpr WCHAR strPropList[] = L"prop:System.ItemTypeText;System.Size;System.DateModified;";
 			pv->vt = VT_BSTR;
-			pv->bstrVal = ::SysAllocStringLen(strPropList, std::extent<decltype(strPropList)>::value);
+			// std::extent<...>::value includes null char, so ignore from the length
+			pv->bstrVal = ::SysAllocStringLen(strPropList, std::extent<decltype(strPropList)>::value - 1);
 			if (!pv->bstrVal)
 				return E_OUTOFMEMORY;
 			break;
