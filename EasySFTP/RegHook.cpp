@@ -796,6 +796,12 @@ static const CMyHookRegEntry s_arrDummyKeys[] = {
 	{ HKEY_CLASSES_ROOT, L"CLSID\\%CLSID%", true, REG_SZ, L"ShellFolder", NULL },
 	{ HKEY_CLASSES_ROOT, L"CLSID\\%CLSID%", true, REG_SZ, L"DefaultIcon", L"%MODULE%,0" },
 	{ HKEY_CLASSES_ROOT, L"CLSID\\%CLSID%\\ShellFolder", false, REG_DWORD, L"Attributes", &s_dwAttributes },
+	{ HKEY_CLASSES_ROOT, NULL, true, REG_SZ, L"ftp", NULL },
+	{ HKEY_CLASSES_ROOT, L"ftp", false, REG_SZ, L"ShellFolder", "%CLSID%" },
+	{ HKEY_CLASSES_ROOT, L"ftp", false, REG_SZ, L"URL Protocol", NULL },
+	{ HKEY_CLASSES_ROOT, NULL, true, REG_SZ, L"sftp", NULL },
+	{ HKEY_CLASSES_ROOT, L"sftp", false, REG_SZ, L"ShellFolder", "%CLSID%" },
+	{ HKEY_CLASSES_ROOT, L"sftp", false, REG_SZ, L"URL Protocol", NULL },
 	{ HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace", true, REG_SZ, L"%CLSID%", NULL },
 	{ HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Cached", false, REG_DWORD, L"%CLSID% {000214E6-0000-0000-C000-000000000046} 0x401", &s_dwCachedValue },
 	{ NULL, NULL, false, REG_NONE, NULL, NULL }
