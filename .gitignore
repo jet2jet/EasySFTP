@@ -6,6 +6,8 @@
 *.aps
 *.VC.db
 *.VC.opendb
+.work
+.vs
 .svn
 bin
 Common.user.props
