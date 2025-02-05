@@ -1,5 +1,15 @@
 # ChangeLog
 
+## v0.11.0.1
+
+- Add features for directory operations (upload/download directories and 'Upload all' 'Download all')
+- Enable 'cut' operation (`Ctrl+X`)
+- Fix to work sorting with File Type properly
+- Remove `.` directory from the list in FTP mode
+- Fix keep-alive requests (fix for not working timer)
+- Add keep-alive calls for SFTP
+- Add implementations for some extra Shell interfaces
+
 ## v0.10.3.1
 
 - Fix for app crash on referencing child items on EasySFTP root

@@ -122,5 +122,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
+    <None Include="..\.gitignore" />
   </ItemGroup>
 </Project>
