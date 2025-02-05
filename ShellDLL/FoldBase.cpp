@@ -6,7 +6,7 @@
 
 #include "StdAfx.h"
 #include "ShellDLL.h"
-#include "Folder.h"
+#include "FoldBase.h"
 
 #include "FoldItem.h"
 

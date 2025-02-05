@@ -6,6 +6,7 @@
 #include "SFTPStrm.h"
 
 #include "RFolder.h"
+#include "FoldRoot.h"
 
 #include "MsgData.h"
 

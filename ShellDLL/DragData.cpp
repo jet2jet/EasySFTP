@@ -9,7 +9,7 @@
 #include "FTPMsg.h"
 #include "DragData.h"
 
-#include "Folder.h"
+#include "FileIcon.h"
 #include "FTPFldr.h"
 //#include "Transfer.h"
 #include "SFTPFldr.h"

@@ -6,9 +6,10 @@
 
 #include "StdAfx.h"
 #include "ShellDLL.h"
-#include "Folder.h"
 #include "FoldDrop.h"
 
+#include "Folder.h"
+#include "FoldRoot.h"
 #include "FileStrm.h"
 
 static ULONGLONG __stdcall GetFileSizeByName(LPCWSTR lpszFile)

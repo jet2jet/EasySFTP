@@ -1,8 +1,10 @@
 
 #include "stdafx.h"
 #include "ShellDLL.h"
-#include "Folder.h"
 #include "FldrMenu.h"
+
+#include "Folder.h"
+#include "FoldRoot.h"
 
 #include "FNameDlg.h"
 #include "LinkDlg.h"

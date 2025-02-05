@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Transfer.h"
+#include "TferStat.h"
 
 class CFTPDirectoryBase;
 

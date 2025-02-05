@@ -3,6 +3,7 @@
 
 #include "RFolder.h"
 #include "FTPConn.h"
+#include "FoldRoot.h"
 
 #define SVT_UNKNOWN           0
 #define SVT_UNIX              1
