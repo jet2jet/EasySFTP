@@ -404,6 +404,17 @@ HRESULT __stdcall _GetFileItemPropData(CFTPDirectoryBase* pDirectory, CFTPFileIt
 			pv->parray = arr;
 			break;
 		}
+		else if (IsEqualPropertyKey(key, PKEY_PropList_InfoTip) ||
+			IsEqualPropertyKey(key, PKEY_PropList_TileInfo) ||
+			IsEqualPropertyKey(key, PKEY_PropList_FileOperationPrompt))
+		{
+			constexpr WCHAR strPropList[] = L"prop:System.ItemTypeText;System.Size;System.DateModified;";
+			pv->vt = VT_BSTR;
+			pv->bstrVal = ::SysAllocStringLen(strPropList, std::extent<decltype(strPropList)>::value);
+			if (!pv->bstrVal)
+				return E_OUTOFMEMORY;
+			break;
+		}
 #ifdef _DEBUG
 		{
 			CMyStringW str, str2;
@@ -1693,7 +1704,7 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 			//mii.fType = MFT_SEPARATOR;
 			//::InsertMenuItem(hMenuToAdd, indexMenu++, TRUE, &mii);
 			lpqi->idCmdFirst = uMaxID - lpqi->idCmdFirst + 1;
-		}
+	}
 		return S_OK;
 	}
 	case SFVM_INVOKECOMMAND:
@@ -1709,7 +1720,7 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 		}
 	}
 	break;
-	}
+}
 	return CFolderBase::MessageSFVCB(uMsg, wParam, lParam);
 }
 

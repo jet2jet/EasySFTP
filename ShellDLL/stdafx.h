@@ -56,6 +56,8 @@ typedef IDataObjectAsyncCapability IAsyncOperation;
 #ifdef _DEBUG
 #define DEBUG_NEW   new(_CLIENT_BLOCK, __FILE__, __LINE__)
 
+#include <type_traits>
+
 //#define malloc(size) _malloc_dbg((size), _NORMAL_BLOCK, __FILE__, __LINE__)
 //#define realloc(memory, size) _realloc_dbg((memory), (size), _NORMAL_BLOCK, __FILE__, __LINE__)
 //#define free(memory) _free_dbg((memory), _NORMAL_BLOCK)
