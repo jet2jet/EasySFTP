@@ -3482,66 +3482,58 @@ STDMETHODIMP CFTPFileItemIcon::GetIconLocation(UINT uFlags, LPWSTR pszIconFile, 
 	return S_OK;
 }
 
+static HRESULT __stdcall _ExtractIconImpl(int iIndex, WORD iconSize, HICON* phIcon)
+{
+	if (iconSize <= 16)
+		*phIcon = ::ImageList_GetIcon(theApp.m_himlSysIconSmall, iIndex, ILD_TRANSPARENT);
+	else if (iconSize <= 32)
+		*phIcon = ::ImageList_GetIcon(theApp.m_himlSysIconLarge, iIndex, ILD_TRANSPARENT);
+	else if (iconSize <= 48)
+	{
+		if (!theApp.m_pimlSysIconExtraLarge)
+		{
+			*phIcon = NULL;
+			return E_NOTIMPL;
+		}
+		HRESULT hr = theApp.m_pimlSysIconExtraLarge->GetIcon(iIndex, ILD_TRANSPARENT, phIcon);
+		if (FAILED(hr))
+			return hr;
+	}
+	else if (iconSize <= 256)
+	{
+		if (!theApp.m_pimlSysIconJumbo)
+		{
+			*phIcon = NULL;
+			return E_NOTIMPL;
+		}
+		HRESULT hr = theApp.m_pimlSysIconJumbo->GetIcon(iIndex, ILD_TRANSPARENT, phIcon);
+		if (FAILED(hr))
+			return hr;
+	}
+	else
+	{
+		*phIcon = NULL;
+		return E_NOTIMPL;
+	}
+	if (!*phIcon)
+		return E_OUTOFMEMORY;
+	return S_OK;
+}
+
 HRESULT CFTPFileItemIcon::DoExtract(bool bOpenIcon, HICON* phIconLarge, HICON* phIconSmall, UINT nIconSize)
 {
 	int iIndex = bOpenIcon ? m_iOpenIconIndex : m_iIconIndex;
 	if (phIconLarge)
 	{
-		if (LOWORD(nIconSize) == 256)
-		{
-			if (!theApp.m_pimlSysIconJumbo)
-			{
-				*phIconLarge = NULL;
-				return E_NOTIMPL;
-			}
-			HRESULT hr = theApp.m_pimlSysIconJumbo->GetIcon(iIndex, ILD_TRANSPARENT, phIconLarge);
-			if (FAILED(hr))
-				return hr;
-		}
-		if (LOWORD(nIconSize) == 48)
-		{
-			if (!theApp.m_pimlSysIconExtraLarge)
-			{
-				*phIconLarge = NULL;
-				return E_NOTIMPL;
-			}
-			HRESULT hr = theApp.m_pimlSysIconExtraLarge->GetIcon(iIndex, ILD_TRANSPARENT, phIconLarge);
-			if (FAILED(hr))
-				return hr;
-		}
-		else if (LOWORD(nIconSize) == 32)
-			*phIconLarge = ::ImageList_GetIcon(theApp.m_himlSysIconLarge, iIndex, ILD_TRANSPARENT);
-		else
-		{
-			*phIconLarge = NULL;
-			return E_NOTIMPL;
-		}
-		if (!*phIconLarge)
-			return E_OUTOFMEMORY;
+		auto hr = _ExtractIconImpl(iIndex, LOWORD(nIconSize), phIconLarge);
+		if (FAILED(hr))
+			return hr;
 	}
 	if (phIconSmall)
 	{
-		if (HIWORD(nIconSize) == 16)
-			*phIconSmall = ::ImageList_GetIcon(theApp.m_himlSysIconSmall, iIndex, ILD_TRANSPARENT);
-		else
-		{
-			if (phIconLarge)
-			{
-				::DestroyIcon(*phIconLarge);
-				*phIconLarge = NULL;
-			}
-			*phIconSmall = NULL;
-			return E_NOTIMPL;
-		}
-		if (!*phIconSmall)
-		{
-			if (phIconLarge)
-			{
-				::DestroyIcon(*phIconLarge);
-				*phIconLarge = NULL;
-			}
-			return E_OUTOFMEMORY;
-		}
+		auto hr = _ExtractIconImpl(iIndex, HIWORD(nIconSize), phIconSmall);
+		if (FAILED(hr))
+			return hr;
 	}
 	return S_OK;
 }
