@@ -19,6 +19,28 @@ EXTERN_C BOOL APIENTRY DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpRes
 	return MyDllMain(hInstance, dwReason, lpReserved);
 }
 
+void LogWin32LastError(const WCHAR* pszFuncName)
+{
+#ifdef _DEBUG
+	auto lastError = ::GetLastError();
+	CMyStringW strBuf;
+	LPVOID lpMsgBuf;
+	::FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM,
+		NULL,
+		lastError,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPTSTR)&lpMsgBuf,
+		0,
+		NULL);
+	strBuf = (LPCTSTR)lpMsgBuf;
+	::LocalFree(lpMsgBuf);
+	CMyStringW strMsg;
+	strMsg.Format(L"[EasySFTP] %s failed with %lu: %s\n", pszFuncName, lastError, strMsg.operator LPCWSTR());
+	OutputDebugString(strMsg);
+#endif
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #if !defined(NTDDI_WIN7) || (NTDDI_VERSION < NTDDI_WIN7)

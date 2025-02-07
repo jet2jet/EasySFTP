@@ -120,6 +120,8 @@ struct CSFTPFileItem
 
 #include "FileList.h"
 
+void LogWin32LastError(const WCHAR* pszFuncName);
+
 LPWSTR __stdcall DuplicateCoMemString(const CMyStringW& string);
 
 STDAPI MyCreateShellItem(PCIDLIST_ABSOLUTE pidl, IShellItem** ppItem);
