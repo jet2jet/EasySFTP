@@ -35,6 +35,17 @@ bool CSSH2Client::OnFirstReceive()
 	m_pSession = libssh2_session_init();
 	if (!m_pSession)
 		return false;
+#ifdef _DEBUG
+	libssh2_trace(m_pSession, LIBSSH2_TRACE_KEX | LIBSSH2_TRACE_AUTH | LIBSSH2_TRACE_CONN);
+	libssh2_trace_sethandler(m_pSession, NULL, [](LIBSSH2_SESSION* session,
+		void* context,
+		const char* data,
+		size_t length) {
+			OutputDebugStringA(data);
+			if (length > 0 && data[length - 1] != '\n')
+				OutputDebugStringA("\r\n");
+		});
+#endif
 	libssh2_session_set_blocking(m_pSession, 0);
 	libssh2_keepalive_config(m_pSession, 0, 2);
 
@@ -78,23 +89,23 @@ AuthReturnType CSSH2Client::Authenticate(char nAuthType, CUserInfo* pUserInfo)
 		m_nAuthType = nAuthType;
 		switch (nAuthType)
 		{
-			case AUTHTYPE_PASSWORD:
-				m_pAuth = new CPasswordAuthentication();
-				break;
-			case AUTHTYPE_PUBLICKEY:
-				m_pAuth = new CPublicKeyAuthentication();
-				break;
-			case AUTHTYPE_PAGEANT:
-				m_pAuth = new CPageantAuthentication();
-				break;
-			case AUTHTYPE_WINSSHAGENT:
-				m_pAuth = new CWinOpenSSHAgentAuthentication();
-				break;
-			default:
-			case AUTHTYPE_NONE:
-				m_pAuth = new CNoneAuthentication();
-				m_nAuthType = AUTHTYPE_NONE;
-				break;
+		case AUTHTYPE_PASSWORD:
+			m_pAuth = new CPasswordAuthentication();
+			break;
+		case AUTHTYPE_PUBLICKEY:
+			m_pAuth = new CPublicKeyAuthentication();
+			break;
+		case AUTHTYPE_PAGEANT:
+			m_pAuth = new CPageantAuthentication();
+			break;
+		case AUTHTYPE_WINSSHAGENT:
+			m_pAuth = new CWinOpenSSHAgentAuthentication();
+			break;
+		default:
+		case AUTHTYPE_NONE:
+			m_pAuth = new CNoneAuthentication();
+			m_nAuthType = AUTHTYPE_NONE;
+			break;
 		}
 	}
 	return m_pAuth->Authenticate(m_pSession, pUserInfo, "ssh-connection");
