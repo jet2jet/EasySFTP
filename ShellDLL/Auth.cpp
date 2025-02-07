@@ -202,6 +202,19 @@ AuthReturnType CSSHAgentAuthentication::Authenticate(LIBSSH2_SESSION* pSession, 
 	pBlob = (p + 4);
 	p += nBlobLen + 4;
 
+#ifdef _DEBUG
+	// get the comment of key
+	{
+		DWORD dwCommentLen = ConvertEndian(*((DWORD*)p));
+		CMyStringW str;
+		str.SetUTF8String((LPCBYTE)(p + 4), static_cast<size_t>(dwCommentLen));
+		p += dwCommentLen + 4;
+		CMyStringW strType(lpszKeyType), strDebug;
+		strDebug.Format(L"[EasySFTP] trying key '%s' (type: %s)\n", str.operator LPCWSTR(), strType.operator LPCWSTR());
+		OutputDebugStringW(strDebug);
+	}
+#endif
+
 	void* abstract = this;
 	auto ret = libssh2_userauth_publickey(pSession, m_lpszUser, pBlob, nBlobLen,
 		[](LIBSSH2_SESSION*, LPBYTE* sig, size_t* sig_len, LPCBYTE data, size_t data_len, void** abstract) -> int
