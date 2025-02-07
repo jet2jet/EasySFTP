@@ -288,6 +288,7 @@ protected:
 	CRITICAL_SECTION m_csSocket;
 	CRITICAL_SECTION m_csReceive;
 	bool m_bNextLoop;
+	bool m_bReconnect;
 	static void CALLBACK KeepConnectionTimerProc(UINT_PTR idEvent, LPARAM lParam);
 	void OnSFTPSocketReceive(bool isSocketReceived);
 	// return 0 for success, non-zero for failure (if its value is not (UINT) -1, it means message id)

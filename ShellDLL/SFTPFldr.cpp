@@ -1119,7 +1119,6 @@ STDMETHODIMP CSFTPFolderSFTP::CreateInstance(CFTPDirectoryItem* pItemMe, CFTPDir
 
 bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserInfo* pUser)
 {
-	m_hWndOwner = hWnd;
 	if (pUser)
 	{
 		//const CUserInfo* pBase = (const CUserInfo*) pUser;
@@ -1155,64 +1154,85 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserI
 	}
 	m_nPort = nPort;
 
-	m_pClient = new CSSH2Client();
-
-	const addrinfo* pai = m_pClient->m_socket.TryConnect(nPort, m_strHostName);
-	if (!pai)
+	while (true)
 	{
-		m_pClient->Release();
-		m_pClient = NULL;
-		if (m_pUser)
+		m_bReconnect = false;
+		m_hWndOwner = hWnd;
+
+		m_pClient = new CSSH2Client();
+
+		const addrinfo* pai = m_pClient->m_socket.TryConnect(nPort, m_strHostName);
+		if (!pai)
 		{
-			m_pUser->Release();
-			m_pUser = NULL;
-		}
+			m_pClient->Release();
+			m_pClient = NULL;
+			if (m_pUser)
+			{
+				m_pUser->Release();
+				m_pUser = NULL;
+			}
 
-		if (hWnd)
-		{
-			CMyStringW str;
-			str.Format(IDS_UNKNOWN_HOST, lpszHostName);
-			::MyMessageBoxW(hWnd, str, NULL, MB_ICONEXCLAMATION);
-		}
-		return false;
-	}
-	//SetStatusText(MAKEINTRESOURCEW(IDS_CONNECTING));
-	if (!m_pClient->m_socket.CMySocket::Connect(pai))
-	{
-		m_pClient->Release();
-		m_pClient = NULL;
-		if (m_pUser)
-		{
-			m_pUser->Release();
-			m_pUser = NULL;
-		}
-
-		if (hWnd)
-			::MyMessageBoxW(hWnd, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
-		return false;
-	}
-
-	//pSocket->AsyncSelect(m_hWnd, MY_WM_SOCKETMESSAGE, FD_READ | FD_CLOSE);
-	m_phase = Phase::First;
-	//m_bFirstAuthenticate = false;
-
-	m_idTimer = theApp.RegisterTimer(KEEP_CONNECTION_TIME_SPAN,
-		(PFNEASYSFTPTIMERPROC)KeepConnectionTimerProc, (LPARAM)this);
-
-	while (m_phase < Phase::LoggedIn)
-	{
-		auto hr = PumpSocketAndMessage();
-		if (FAILED(hr))
-		{
-			Disconnect();
+			if (hWnd)
+			{
+				CMyStringW str;
+				str.Format(IDS_UNKNOWN_HOST, lpszHostName);
+				::MyMessageBoxW(hWnd, str, NULL, MB_ICONEXCLAMATION);
+			}
 			return false;
 		}
-		if (hr == S_FALSE)
+		//SetStatusText(MAKEINTRESOURCEW(IDS_CONNECTING));
+		if (!m_pClient->m_socket.CMySocket::Connect(pai))
 		{
-			Disconnect();
+			m_pClient->Release();
+			m_pClient = NULL;
+			if (m_pUser)
+			{
+				m_pUser->Release();
+				m_pUser = NULL;
+			}
+
+			if (hWnd)
+				::MyMessageBoxW(hWnd, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
 			return false;
 		}
+
+		//pSocket->AsyncSelect(m_hWnd, MY_WM_SOCKETMESSAGE, FD_READ | FD_CLOSE);
+		m_phase = Phase::First;
+		//m_bFirstAuthenticate = false;
+
+		m_idTimer = theApp.RegisterTimer(KEEP_CONNECTION_TIME_SPAN,
+			(PFNEASYSFTPTIMERPROC)KeepConnectionTimerProc, (LPARAM)this);
+
+		while (m_phase < Phase::LoggedIn)
+		{
+			auto hr = PumpSocketAndMessage();
+			if (FAILED(hr))
+			{
+				Disconnect();
+				return false;
+			}
+			if (hr == S_FALSE)
+			{
+				Disconnect();
+				return false;
+			}
+			if (m_bReconnect)
+			{
+				// Disconnect will release m_pUser so keep temporally
+				auto* pUserTemp = m_pUser;
+				pUserTemp->AddRef();
+				Disconnect();
+				m_pUser = pUserTemp;
+				break;
+			}
+		}
+		if (m_bReconnect)
+		{
+			continue;
+		}
+		break;
 	}
+
 	return true;
 }
 
@@ -2178,10 +2198,6 @@ HRESULT CSFTPFolderSFTP::PumpSocketAndMessage(DWORD dwWaitTime)
 		dwWaitTime = WAIT_RECEIVE_TIME;
 	if (m_bNextLoop || m_pClient->m_socket.CanReceive(dwWaitTime))
 	{
-		if (m_bNextLoop)
-		{
-			OutputDebugStringW(L"Pump cached receive\n");
-		}
 		DoReceiveSocket();
 		if (!m_pClient || !theApp.MyPumpMessage())
 		{
@@ -2402,7 +2418,14 @@ UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 		{
 			char* msg;
 			libssh2_session_last_error(m_pClient->GetSession(), &msg, NULL, 0);
-			OutputDebugStringA(msg);
+#ifdef _DEBUG
+			{
+				CMyStringW strMsg = msg;
+				CMyStringW str;
+				str.Format(L"[libssh2] error %d: %s\n", libssh2_session_last_errno(m_pClient->GetSession()), strMsg.operator LPCWSTR());
+				OutputDebugString(str);
+			}
+#endif
 			if (m_pClient->CanRetryAuthenticate())
 			{
 				m_bFirstAuthenticate = false;
@@ -2418,7 +2441,10 @@ UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 					m_pClient->EndAuthenticate();
 					m_bFirstAuthenticate = false;
 					m_bNextLoop = true;
+					// need to reconnect to avoid 'change of username or service not allowed' error
+					m_bReconnect = true;
 					m_pUser->bSecondary = false;
+					OutputDebugStringW(L"[EasySFTP] reconnecting for authentication\n");
 					return 0;
 				}
 				m_pClient->EndAuthenticate();
