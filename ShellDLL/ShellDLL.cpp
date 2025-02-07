@@ -295,6 +295,22 @@ static HWND __stdcall _MyCreateTimerWindow()
 	return h;
 }
 
+static bool __stdcall _IsElevated()
+{
+	auto hProcess = ::GetCurrentProcess();
+	HANDLE hToken;
+	if (!::OpenProcessToken(hProcess, TOKEN_QUERY, &hToken))
+		return false;
+	DWORD dw = 0, dwLen = 0;
+	if (!::GetTokenInformation(hToken, TokenElevation, &dw, sizeof(dw), &dwLen) || dwLen != sizeof(dw))
+	{
+		::CloseHandle(hToken);
+		return false;
+	}
+	::CloseHandle(hToken);
+	return dw != 0;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 static HRESULT STDMETHODCALLTYPE EasySFTPClassCreateFunc(CClassFactory*, IUnknown* pUnkOuter, REFIID riid, void** ppv)
@@ -358,12 +374,19 @@ STDAPI DllRegisterServer()
 
 STDAPI EasySFTPRegisterServer()
 {
-	HKEY hKeyCLSID, hKeyCLSIDMe, hKeySFTP, hKeyExplorer, hKey2;
+	HKEY hKeyClasses, hKeyCLSID, hKeyCLSIDMe, hKeySFTP, hKeyExplorer, hKeyInstance, hKey2;
 	bool bMySFTPProcotol;
 	LSTATUS lError;
+	auto bIsElevated = _IsElevated();
 
-	if ((lError = ::RegOpenKeyEx(HKEY_CLASSES_ROOT, _T("CLSID"), 0, KEY_WRITE, &hKeyCLSID)) != ERROR_SUCCESS)
+	if ((lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
+		_T("Software\\Classes"), 0, KEY_WRITE, &hKeyClasses)) != ERROR_SUCCESS)
 		return HRESULT_FROM_WIN32(lError);
+	if ((lError = ::RegOpenKeyEx(hKeyClasses, _T("CLSID"), 0, KEY_WRITE, &hKeyCLSID)) != ERROR_SUCCESS)
+	{
+		::RegCloseKey(hKeyClasses);
+		return HRESULT_FROM_WIN32(lError);
+	}
 
 	CMyStringW strCLSID, strModule;
 	strCLSID.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
@@ -377,16 +400,22 @@ STDAPI EasySFTPRegisterServer()
 		KEY_WRITE, NULL, &hKeyCLSIDMe, NULL);
 	::RegCloseKey(hKeyCLSID);
 	if (lError != ERROR_SUCCESS)
+	{
+		::RegCloseKey(hKeyClasses);
 		return HRESULT_FROM_WIN32(lError);
+	}
 	// CLSID_EasySFTP
 		::RegSetStringValue(hKeyCLSIDMe, NULL, theApp.m_strTitle);
+		::RegSetDWordValue(hKeyCLSIDMe, _T("System.IsPinnedToNameSpaceTree"), 1);
+		::RegSetDWordValue(hKeyCLSIDMe, _T("SortOrderIndex"), 0x42);
 
 		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("InprocServer32"), 0, NULL, REG_OPTION_NON_VOLATILE,
 			KEY_WRITE, NULL, &hKey2, NULL);
 		if (lError != ERROR_SUCCESS)
 		{
 			::RegCloseKey(hKeyCLSIDMe);
-			::RegDeleteKey(HKEY_CLASSES_ROOT, strCLSID);
+			::RegDeleteKey(hKeyClasses, strCLSID);
+			::RegCloseKey(hKeyClasses);
 			return HRESULT_FROM_WIN32(lError);
 		}
 		// InprocServer32
@@ -394,13 +423,45 @@ STDAPI EasySFTPRegisterServer()
 			::RegSetStringValue(hKey2, _T("ThreadingModel"), _T("Apartment"));
 			::RegCloseKey(hKey2);
 
-		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("DefaultIcon"), 0, NULL, REG_OPTION_NON_VOLATILE,
-			KEY_WRITE, NULL, &hKey2, NULL);
+		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("Instance"), 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_WRITE, NULL, &hKeyInstance, NULL);
 		if (lError != ERROR_SUCCESS)
 		{
 			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
 			::RegCloseKey(hKeyCLSIDMe);
-			::RegDeleteKey(HKEY_CLASSES_ROOT, strCLSID);
+			::RegDeleteKey(hKeyClasses, strCLSID);
+			::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
+		// Instance
+			::RegSetStringValue(hKeyInstance, _T("CLSID"), strCLSID);
+			lError = ::RegCreateKeyEx(hKeyInstance, _T("InitPropertyBag"), 0, NULL, REG_OPTION_NON_VOLATILE,
+				KEY_WRITE, NULL, &hKey2, NULL);
+			if (lError != ERROR_SUCCESS)
+			{
+				::RegCloseKey(hKeyInstance);
+				::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
+				::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
+				::RegCloseKey(hKeyCLSIDMe);
+				::RegDeleteKey(hKeyClasses, strCLSID);
+				::RegCloseKey(hKeyClasses);
+				return HRESULT_FROM_WIN32(lError);
+			}
+			// InitPropertyBag
+				::RegSetDWordValue(hKey2, _T("Attributes"), FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_DIRECTORY);
+				::RegCloseKey(hKey2);
+
+		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("DefaultIcon"), 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_WRITE, NULL, &hKey2, NULL);
+		if (lError != ERROR_SUCCESS)
+		{
+			::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
+			::RegCloseKey(hKeyInstance);
+			::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
+			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
+			::RegCloseKey(hKeyCLSIDMe);
+			::RegDeleteKey(hKeyClasses, strCLSID);
+			::RegCloseKey(hKeyClasses);
 			return HRESULT_FROM_WIN32(lError);
 		}
 		// DefaultIcon
@@ -416,17 +477,22 @@ STDAPI EasySFTPRegisterServer()
 			KEY_WRITE, NULL, &hKey2, NULL);
 		if (lError != ERROR_SUCCESS)
 		{
+			::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
+			::RegCloseKey(hKeyInstance);
 			::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
+			::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
 			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
 			::RegCloseKey(hKeyCLSIDMe);
-			::RegDeleteKey(HKEY_CLASSES_ROOT, strCLSID);
+			::RegDeleteKey(hKeyClasses, strCLSID);
+			::RegCloseKey(hKeyClasses);
 			return HRESULT_FROM_WIN32(lError);
 		}
 		// ShellFolder
-			::RegSetDWordValue(hKey2, _T("Attributes"), SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_HASSUBFOLDER);
+			::RegSetDWordValue(hKey2, _T("Attributes"), SFGAO_FOLDER | SFGAO_HASSUBFOLDER | SFGAO_STORAGEANCESTOR | SFGAO_STORAGE | SFGAO_ISSLOW);
+			::RegSetDWordValue(hKey2, _T("FolderValueFlags"), 0x28);
 			::RegCloseKey(hKey2);
 
-	lError = ::RegOpenKeyEx(HKEY_CLASSES_ROOT, _T("sftp"), 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hKeySFTP);
+	lError = ::RegOpenKeyEx(hKeyClasses, _T("sftp"), 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hKeySFTP);
 	if (lError == ERROR_SUCCESS)
 	{
 		CMyStringW str;
@@ -450,15 +516,19 @@ STDAPI EasySFTPRegisterServer()
 	}
 	else
 	{
-		lError = ::RegCreateKeyEx(HKEY_CLASSES_ROOT, _T("sftp"), 0, NULL,
+		lError = ::RegCreateKeyEx(hKeyClasses, _T("sftp"), 0, NULL,
 			REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKeySFTP, NULL);
 		if (lError != ERROR_SUCCESS)
 		{
+			::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
+			::RegCloseKey(hKeyInstance);
 			::RegDeleteKey(hKeyCLSIDMe, _T("ShellFolder"));
 			::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
+			::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
 			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
 			::RegCloseKey(hKeyCLSIDMe);
-			::RegDeleteKey(HKEY_CLASSES_ROOT, strCLSID);
+			::RegDeleteKey(hKeyClasses, strCLSID);
+			::RegCloseKey(hKeyClasses);
 			return HRESULT_FROM_WIN32(lError);
 		}
 		bMySFTPProcotol = true;
@@ -470,18 +540,23 @@ STDAPI EasySFTPRegisterServer()
 		::RegSetDWordValue(hKeySFTP, _T("EditFlags"), 0x00000002); // FTA_Show
 	}
 
-	lError = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace"),
+	lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
+		_T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace"),
 		0, KEY_WRITE, &hKeyExplorer);
 	if (lError != ERROR_SUCCESS)
 	{
+		::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
+		::RegCloseKey(hKeyInstance);
 		::RegDeleteKey(hKeyCLSIDMe, _T("ShellFolder"));
 		::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
+		::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
 		::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
 		::RegCloseKey(hKeyCLSIDMe);
-		::RegDeleteKey(HKEY_CLASSES_ROOT, strCLSID);
+		::RegDeleteKey(hKeyClasses, strCLSID);
 		::RegCloseKey(hKeySFTP);
 		if (bMySFTPProcotol)
-			::RegDeleteKey(HKEY_CLASSES_ROOT, _T("sftp"));
+			::RegDeleteKey(hKeyClasses, _T("sftp"));
+		::RegCloseKey(hKeyClasses);
 		return HRESULT_FROM_WIN32(lError);
 	}
 	lError = ::RegCreateKeyEx(hKeyExplorer, strCLSID, 0, NULL,
@@ -489,19 +564,26 @@ STDAPI EasySFTPRegisterServer()
 	::RegCloseKey(hKeyExplorer);
 	if (lError != ERROR_SUCCESS)
 	{
+		::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
+		::RegCloseKey(hKeyInstance);
 		::RegDeleteKey(hKeyCLSIDMe, _T("ShellFolder"));
 		::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
+		::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
 		::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
 		::RegCloseKey(hKeyCLSIDMe);
-		::RegDeleteKey(HKEY_CLASSES_ROOT, strCLSID);
+		::RegDeleteKey(hKeyClasses, strCLSID);
 		::RegCloseKey(hKeySFTP);
 		if (bMySFTPProcotol)
-			::RegDeleteKey(HKEY_CLASSES_ROOT, _T("sftp"));
+			::RegDeleteKey(hKeyClasses, _T("sftp"));
+		::RegCloseKey(hKeyClasses);
 		return HRESULT_FROM_WIN32(lError);
 	}
+	::RegSetStringValue(hKey2, NULL, theApp.m_strTitle);
 	::RegCloseKey(hKey2);
+	::RegCloseKey(hKeyInstance);
 	::RegCloseKey(hKeySFTP);
 	::RegCloseKey(hKeyCLSIDMe);
+	::RegCloseKey(hKeyClasses);
 	return S_OK;
 }
 
@@ -514,8 +596,9 @@ STDAPI DllUnregisterServer()
 
 STDAPI EasySFTPUnregisterServer()
 {
-	HKEY hKeyCLSID, hKeyCLSIDMe, hKey;
+	HKEY hKeyClasses, hKeyCLSID, hKeyCLSIDMe, hKey, hKeyInstance;
 	LSTATUS lError;
+	auto bIsElevated = _IsElevated();
 
 	CMyStringW strCLSID;
 	strCLSID.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
@@ -524,7 +607,12 @@ STDAPI EasySFTPUnregisterServer()
 		(int) CLSID_EasySFTP.Data4[3], (int) CLSID_EasySFTP.Data4[4], (int) CLSID_EasySFTP.Data4[5],
 		(int) CLSID_EasySFTP.Data4[6], (int) CLSID_EasySFTP.Data4[7]);
 
-	if (::RegOpenKeyEx(HKEY_CLASSES_ROOT, _T("CLSID"), 0, KEY_WRITE, &hKeyCLSID) == ERROR_SUCCESS)
+	if ((lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, _T("Software\\Classes"), 0, KEY_WRITE | DELETE, &hKeyClasses)) != ERROR_SUCCESS)
+	{
+		return HRESULT_FROM_WIN32(lError);
+	}
+
+	if (::RegOpenKeyEx(hKeyClasses, _T("CLSID"), 0, KEY_WRITE, &hKeyCLSID) == ERROR_SUCCESS)
 	{
 		lError = ::RegOpenKeyEx(hKeyCLSID, strCLSID, 0, KEY_WRITE | DELETE, &hKeyCLSIDMe);
 		if (lError == ERROR_SUCCESS)
@@ -533,13 +621,20 @@ STDAPI EasySFTPUnregisterServer()
 			::RegDeleteKey(hKeyCLSIDMe, _T("ShellFolder"));
 			::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
 			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
+			lError = ::RegOpenKeyEx(hKeyCLSIDMe, _T("Instance"), 0, KEY_WRITE | DELETE, &hKeyInstance);
+			if (lError == ERROR_SUCCESS)
+			{
+				::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
+				::RegCloseKey(hKeyInstance);
+			}
+			::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
 			::RegCloseKey(hKeyCLSIDMe);
 		}
 		::RegDeleteKey(hKeyCLSID, strCLSID);
 		::RegCloseKey(hKeyCLSID);
 	}
 
-	lError = ::RegOpenKeyEx(HKEY_CLASSES_ROOT, _T("sftp"), 0, KEY_QUERY_VALUE, &hKey);
+	lError = ::RegOpenKeyEx(hKeyClasses, _T("sftp"), 0, KEY_QUERY_VALUE, &hKey);
 	if (lError == ERROR_SUCCESS)
 	{
 		CMyStringW str;
@@ -570,13 +665,15 @@ STDAPI EasySFTPUnregisterServer()
 		}
 	}
 
-	lError = ::RegOpenKeyEx(HKEY_LOCAL_MACHINE, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace"),
+	lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace"),
 		0, DELETE, &hKey);
 	if (lError == ERROR_SUCCESS)
 	{
 		::RegDeleteKey(hKey, strCLSID);
 		::RegCloseKey(hKey);
 	}
+
+	::RegCloseKey(hKeyClasses);
 	return S_OK;
 }
 
