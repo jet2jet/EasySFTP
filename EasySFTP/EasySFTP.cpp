@@ -204,9 +204,11 @@ CMainApplication::~CMainApplication()
 
 bool CMainApplication::InitInstance()
 {
-	if (!InitSystemLibraries())
+	if (!InitRegistryHook())
 	{
-		::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_LOAD_SYSLIBS), NULL, MB_ICONEXCLAMATION);
+		if (::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK), NULL,
+			MB_ICONEXCLAMATION | MB_YESNO) == IDYES)
+			m_bExitWithRegister = true;
 		return false;
 	}
 
@@ -220,6 +222,12 @@ bool CMainApplication::InitInstance()
 	}
 #endif
 
+	if (!InitSystemLibraries())
+	{
+		::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_LOAD_SYSLIBS), NULL, MB_ICONEXCLAMATION);
+		return false;
+	}
+
 	int nParam = ParseCommandLine();
 	if (nParam & (paramRegister | paramUnregister))
 	{
@@ -229,11 +237,9 @@ bool CMainApplication::InitInstance()
 		return false;
 	}
 
-	bool bFailOnRegHook;
-	bFailOnRegHook = false;
-	if (!InitEasySFTP(&bFailOnRegHook))
+	if (!InitEasySFTP())
 	{
-		if (bFailOnRegHook || m_bEmulatingRegistry)
+		if (m_bEmulatingRegistry)
 		{
 			if (::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK), NULL,
 				MB_ICONEXCLAMATION | MB_YESNO) == IDYES)
@@ -342,6 +348,38 @@ bool CMainApplication::OnIdle(long lCount)
 	return pWnd ? pWnd->OnIdle(lCount) : false;
 }
 
+bool CMainApplication::InitRegistryHook()
+{
+	m_bNeedEmulationMode = false;
+	{
+		HKEY hKey, hKey2;
+		if (::RegOpenKeyEx(HKEY_CLASSES_ROOT, _T("CLSID"), 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
+		{
+			CMyStringW str;
+			str.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+				CLSID_EasySFTP.Data1, (int)CLSID_EasySFTP.Data2, (int)CLSID_EasySFTP.Data3,
+				(int)CLSID_EasySFTP.Data4[0], (int)CLSID_EasySFTP.Data4[1], (int)CLSID_EasySFTP.Data4[2],
+				(int)CLSID_EasySFTP.Data4[3], (int)CLSID_EasySFTP.Data4[4], (int)CLSID_EasySFTP.Data4[5],
+				(int)CLSID_EasySFTP.Data4[6], (int)CLSID_EasySFTP.Data4[7]);
+			bool bHasCLSID = (::RegOpenKeyEx(hKey, str, 0, KEY_QUERY_VALUE, &hKey2) == ERROR_SUCCESS);
+			if (bHasCLSID)
+				::RegCloseKey(hKey2);
+			::RegCloseKey(hKey);
+			m_bNeedEmulationMode = !bHasCLSID;
+		}
+	}
+
+	if (m_bNeedEmulationMode)
+	{
+		if (!InitRegHook())
+		{
+			return false;
+		}
+		m_bEmulatingRegistry = true;
+	}
+	return true;
+}
+
 bool CMainApplication::InitSystemLibraries()
 {
 #ifdef _DEBUG
@@ -430,23 +468,6 @@ bool CMainApplication::InitSystemLibraries()
 			m_bIsWin9x = !m_bUseOFNUnicode;
 #endif
 		}
-	}
-
-	{
-		HKEY hKey, hKey2;
-		if (::RegOpenKeyEx(HKEY_CLASSES_ROOT, _T("CLSID"), 0, KEY_QUERY_VALUE, &hKey) != ERROR_SUCCESS)
-			return false;
-		CMyStringW str;
-		str.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-			CLSID_EasySFTP.Data1, (int) CLSID_EasySFTP.Data2, (int) CLSID_EasySFTP.Data3,
-			(int) CLSID_EasySFTP.Data4[0], (int) CLSID_EasySFTP.Data4[1], (int) CLSID_EasySFTP.Data4[2],
-			(int) CLSID_EasySFTP.Data4[3], (int) CLSID_EasySFTP.Data4[4], (int) CLSID_EasySFTP.Data4[5],
-			(int) CLSID_EasySFTP.Data4[6], (int) CLSID_EasySFTP.Data4[7]);
-		bool bHasCLSID = (::RegOpenKeyEx(hKey, str, 0, KEY_QUERY_VALUE, &hKey2) == ERROR_SUCCESS);
-		if (bHasCLSID)
-			::RegCloseKey(hKey2);
-		::RegCloseKey(hKey);
-		m_bNeedEmulationMode = !bHasCLSID;
 	}
 
 	return true;
@@ -570,66 +591,54 @@ void CMainApplication::CheckCommandParameter(LPCWSTR lpszParam, int& nCurrentSta
 	}
 }
 
-bool CMainApplication::InitEasySFTP(bool* pbFailOnRegHook)
+bool CMainApplication::InitEasySFTP()
 {
-	if (m_bNeedEmulationMode)
+	HRESULT hr;
+	IShellFolder* pDesktop, * pFolder;
+	if (FAILED(::SHGetDesktopFolder(&pDesktop)))
+		return false;
+	hr = pDesktop->ParseDisplayName(NULL, NULL, (LPWSTR) L"::{AD29C042-B9E3-462c-9DF6-D7DA5B8D0199}",
+		NULL, (PIDLIST_RELATIVE*) &m_pidlEasySFTP, NULL);
+	if (FAILED(hr))
+		m_pidlEasySFTP = NULL;
+
+	if (!m_pidlEasySFTP)
 	{
-		if (!InitRegHook())
-		{
-			*pbFailOnRegHook = true;
-			return false;
-		}
-		m_bEmulatingRegistry = true;
+		pDesktop->Release();
+		::MessageBeep(MB_ICONHAND);
+		return false;
+	}
+	hr = pDesktop->BindToObject(m_pidlEasySFTP, NULL, IID_IShellFolder, (void**) &pFolder);
+	pDesktop->Release();
+	if (FAILED(hr))
+		return false;
+	hr = pFolder->QueryInterface(IID_IEasySFTPRoot, (void**) &m_pEasySFTPRoot);
+	pFolder->Release();
+	if (FAILED(hr))
+		return false;
+
+	IEasySFTPInternal* pInternal;
+	hr = m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPInternal, (void**) &pInternal);
+	if (SUCCEEDED(hr))
+	{
+		pInternal->SetEmulateRegMode(m_bEmulatingRegistry);
+		pInternal->Release();
 	}
 
+	// check where to register
 	{
-		HRESULT hr;
-		IShellFolder* pDesktop, * pFolder;
-		if (FAILED(::SHGetDesktopFolder(&pDesktop)))
-			return false;
-		hr = pDesktop->ParseDisplayName(NULL, NULL, (LPWSTR) L"::{AD29C042-B9E3-462c-9DF6-D7DA5B8D0199}",
-			NULL, (PIDLIST_RELATIVE*) &m_pidlEasySFTP, NULL);
-		if (FAILED(hr))
-			m_pidlEasySFTP = NULL;
-
-		if (!m_pidlEasySFTP)
+		CMyStringW str;
+		::MyStringFromGUIDW(CLSID_EasySFTP, str);
+		str.InsertString(L"Software\\Classes\\CLSID\\", 0);
+		HKEY hKey;
+		if (::RegOpenKeyEx(HKEY_CURRENT_USER, str, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
 		{
-			pDesktop->Release();
-			::MessageBeep(MB_ICONHAND);
-			return false;
+			m_bIsRegisteredAsUserClass = true;
+			::RegCloseKey(hKey);
 		}
-		hr = pDesktop->BindToObject(m_pidlEasySFTP, NULL, IID_IShellFolder, (void**) &pFolder);
-		pDesktop->Release();
-		if (FAILED(hr))
-			return false;
-		hr = pFolder->QueryInterface(IID_IEasySFTPRoot, (void**) &m_pEasySFTPRoot);
-		pFolder->Release();
-		if (FAILED(hr))
-			return false;
-
-		IEasySFTPInternal* pInternal;
-		hr = m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPInternal, (void**) &pInternal);
-		if (SUCCEEDED(hr))
+		else
 		{
-			pInternal->SetEmulateRegMode(m_bEmulatingRegistry);
-			pInternal->Release();
-		}
-
-		// check where to register
-		{
-			CMyStringW str;
-			::MyStringFromGUIDW(CLSID_EasySFTP, str);
-			str.InsertString(L"Software\\Classes\\CLSID\\", 0);
-			HKEY hKey;
-			if (::RegOpenKeyEx(HKEY_CURRENT_USER, str, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
-			{
-				m_bIsRegisteredAsUserClass = true;
-				::RegCloseKey(hKey);
-			}
-			else
-			{
-				m_bIsRegisteredAsUserClass = false;
-			}
+			m_bIsRegisteredAsUserClass = false;
 		}
 	}
 

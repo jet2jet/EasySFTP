@@ -197,8 +197,9 @@ public:
 	virtual bool OnIdle(long lCount);
 
 public:
+	bool InitRegistryHook();
 	bool InitSystemLibraries();
-	bool InitEasySFTP(bool* pbFailOnRegHook);
+	bool InitEasySFTP();
 	bool InitGraphics();
 	bool InitWindowClasses();
 	bool InitAppData();
