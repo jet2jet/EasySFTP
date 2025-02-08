@@ -1282,11 +1282,12 @@ STDMETHODIMP CFTPDirectoryBase::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uF
 		//	return E_INVALIDARG;
 		if (uFlags & (SHGDN_FORPARSING | SHGDN_FORADDRESSBAR))
 		{
+			CMyStringW strHost(m_pRoot->m_strHostName); // avoid multithreaded-free for LPCSTR
 			CMyStringW str2;
 			int nDefPort;
 			str = m_pRoot->GetProtocolName(nDefPort);
 			str += L"://";
-			GetHostNameForUrl(m_pRoot->m_strHostName, str2);
+			GetHostNameForUrl(strHost, str2);
 			str += str2;
 			if (m_pRoot->m_nPort != nDefPort)
 			{
