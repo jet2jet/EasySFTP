@@ -892,7 +892,8 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF 
 					CMyStringW str2;
 					str = pItem->bSFTP ? L"sftp" : L"ftp";
 					str += L"://";
-					str += strHost;
+					GetHostNameForUrl(strHost, str2);
+					str += str2;
 					if (pItem->nPort != (pItem->bSFTP ? 22 : 21))
 					{
 						str2.Format(L"%d", (int)pItem->nPort);

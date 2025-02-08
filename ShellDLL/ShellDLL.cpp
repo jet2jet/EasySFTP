@@ -429,7 +429,7 @@ STDAPI EasySFTPRegisterServer()
 	// CLSID_EasySFTP
 		::RegSetStringValue(hKeyCLSIDMe, NULL, theApp.m_strTitle);
 		::RegSetDWordValue(hKeyCLSIDMe, _T("System.IsPinnedToNameSpaceTree"), 1);
-		::RegSetDWordValue(hKeyCLSIDMe, _T("SortOrderIndex"), 0x42);
+		//::RegSetDWordValue(hKeyCLSIDMe, _T("SortOrderIndex"), 0x50);
 
 		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("InprocServer32"), 0, NULL, REG_OPTION_NON_VOLATILE,
 			KEY_WRITE, NULL, &hKey2, NULL);
@@ -511,7 +511,7 @@ STDAPI EasySFTPRegisterServer()
 		}
 		// ShellFolder
 			::RegSetDWordValue(hKey2, _T("Attributes"), SFGAO_FOLDER | SFGAO_HASSUBFOLDER | SFGAO_STORAGEANCESTOR | SFGAO_STORAGE | SFGAO_ISSLOW);
-			::RegSetDWordValue(hKey2, _T("FolderValueFlags"), 0x28);
+			//::RegSetDWordValue(hKey2, _T("FolderValueFlags"), 0x28);
 			::RegCloseKey(hKey2);
 
 	lError = ::RegOpenKeyEx(hKeyClasses, _T("sftp"), 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hKeySFTP);
@@ -2077,4 +2077,47 @@ extern "C++" bool __stdcall PickupFileName(PCUITEMID_CHILD pidlFileItem, CMyStri
 	rstrFileName.SetString(pItem->wchFileName,
 		(pItem->cbInner - (sizeof(CSFTPFileItem) - (sizeof(DELEGATEITEMID) - sizeof(BYTE))) + sizeof(WCHAR)) / sizeof(WCHAR));
 	return true;
+}
+
+typedef int (WINAPI* T_inet_pton)(int family, PCSTR pszAddrString, PVOID pAddrBuf);
+static T_inet_pton s_inet_pton = NULL;
+static bool s_bInetPtonChecked = false;
+
+extern "C++" bool __stdcall GetHostNameForUrl(CMyStringW& strHostName, CMyStringW& rstrName)
+{
+	if (!s_bInetPtonChecked)
+	{
+		s_bInetPtonChecked = true;
+		s_inet_pton = (T_inet_pton)::GetProcAddress(::GetModuleHandle(_T("ws2_32.dll")), "inet_pton");
+	}
+	if (s_inet_pton)
+	{
+		{
+			in_addr6 addr{};
+			if (s_inet_pton(AF_INET6, strHostName, &addr) > 0)
+			{
+				rstrName.Format(L"[%s]", strHostName.operator LPCWSTR());
+				return true;
+			}
+		}
+		{
+			in_addr addr{};
+			if (s_inet_pton(AF_INET, strHostName, &addr) > 0)
+			{
+				rstrName = strHostName;
+				return true;
+			}
+		}
+	}
+	else
+	{
+		auto addr = inet_addr(strHostName);
+		if (addr != INADDR_NONE)
+		{
+			rstrName = strHostName;
+			return true;
+		}
+	}
+	rstrName = strHostName;
+	return false;
 }

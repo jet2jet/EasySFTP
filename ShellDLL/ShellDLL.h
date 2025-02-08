@@ -134,6 +134,8 @@ EXTERN_C PIDLIST_RELATIVE __stdcall CreateFullPathFileItem(IMalloc* pMalloc, LPC
 extern "C++" bool __stdcall PickupRootCommandItemID(PCUITEMID_CHILD pidlHostItem, WORD& rwID);
 extern "C++" bool __stdcall PickupHostName(PCUITEMID_CHILD pidlHostItem, CMyStringW& rstrHostName);
 extern "C++" bool __stdcall PickupFileName(PCUITEMID_CHILD pidlFileItem, CMyStringW& rstrFileName);
+// return true if strHostName is an address (IPv4/IPv6)
+extern "C++" bool __stdcall GetHostNameForUrl(CMyStringW& strHostName, CMyStringW & rstrName);
 
 STDAPI MyCreateThumbnailProviderFromFileName(LPCWSTR lpszFileName, IThumbnailProvider** ppProvider);
 

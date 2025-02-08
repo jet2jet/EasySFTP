@@ -1286,7 +1286,8 @@ STDMETHODIMP CFTPDirectoryBase::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uF
 			int nDefPort;
 			str = m_pRoot->GetProtocolName(nDefPort);
 			str += L"://";
-			str += m_pRoot->m_strHostName;
+			GetHostNameForUrl(m_pRoot->m_strHostName, str2);
+			str += str2;
 			if (m_pRoot->m_nPort != nDefPort)
 			{
 				str2.Format(L"%d", m_pRoot->m_nPort);
