@@ -1959,15 +1959,15 @@ EXTERN_C PITEMID_CHILD __stdcall CreateFileItem(IMalloc* pMalloc, CFTPFileItem* 
 	pItem->uSignature = SFTP_FILE_ITEM_SIGNATURE;
 #ifdef _DEBUG
 	pItem->_padding = 0xCCCC;
-	pItem->_padding2 = 0xDDDD;
+	pItem->_padding2 = 0xAAAA;
 #else
 	pItem->_padding = 0;
 	pItem->_padding2 = 0;
 #endif
-	//pItem->bHasAttribute = true;
-	//pItem->bIsDirectory = pFTPItem->IsDirectory();
-	//pItem->bIsHidden = pFTPItem->IsHidden();
-	//pItem->bIsShortcut = pFTPItem->IsShortcut();
+	pItem->bHasAttribute = true;
+	pItem->bIsDirectory = pFTPItem->IsDirectory();
+	pItem->bIsHidden = pFTPItem->IsHidden();
+	pItem->bIsShortcut = pFTPItem->IsShortcut();
 	memcpy(pItem->wchFileName, (LPCWSTR) pFTPItem->strFileName,
 		(nSize - (sizeof(CSFTPFileItem) - (sizeof(DELEGATEITEMID) - sizeof(BYTE)) - sizeof(WCHAR))));
 	((ITEMIDLIST UNALIGNED*) (((LPBYTE) pItem) + pItem->cbSize))->mkid.cb = 0;

@@ -2203,7 +2203,18 @@ STDMETHODIMP CFTPDirectoryBase::ParseDisplayName2(PIDLIST_RELATIVE pidlParent,
 			if (pItem)
 				pidlChild = ::CreateFileItem(m_pMallocData->pMalloc, pItem);
 			else
-				pidlChild = ::CreateDummyFileItem(m_pMallocData->pMalloc, strName, *pszDisplayName == L'/');
+			{
+				bool bIsDirectory = false;
+				for (int i = 0; i < m_aDirectories.GetCount(); ++i)
+				{
+					if (m_aDirectories[i]->strName.Compare(strName) == 0)
+					{
+						bIsDirectory = true;
+						break;
+					}
+				}
+				pidlChild = ::CreateDummyFileItem(m_pMallocData->pMalloc, strName, bIsDirectory || *pszDisplayName == L'/');
+			}
 			if (!pidlChild)
 			{
 				::CoTaskMemFree(pidlCurrent);
