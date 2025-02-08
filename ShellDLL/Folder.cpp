@@ -93,18 +93,20 @@ static DWORD __stdcall GetDummyFileAttribute(CFTPFileItem* pItem)
 	DWORD dwRet = 0;
 	{
 		register CFTPFileItem* p = pItem;
-		while (p->pTargetFile)
-			p = p->pTargetFile;
-		if (p->type == fitypeDir)
-			dwRet |= FILE_ATTRIBUTE_DIRECTORY;
-		else
-		{
-			if (p->permissions.readable || !p->permissions.writable)
-				dwRet |= FILE_ATTRIBUTE_READONLY;
-		}
+		//while (p->pTargetFile)
+		//	p = p->pTargetFile;
+
+		auto attr = p->nUnixMode;
+		dwRet = p->type == fitypeDir || (attr & S_IFDIR) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+		if (!pItem->strFileName.IsEmpty() && *((LPCWSTR)pItem->strFileName) == L'.')
+			dwRet |= FILE_ATTRIBUTE_HIDDEN;
+		if (attr & S_IFLNK)
+			dwRet |= FILE_ATTRIBUTE_REPARSE_POINT;
+		if (attr & (S_IFBLK | S_IFSOCK | S_IFREG))
+			dwRet |= FILE_ATTRIBUTE_DEVICE;
+		if (p->permissions.readable || !p->permissions.writable)
+			dwRet |= FILE_ATTRIBUTE_READONLY;
 	}
-	if (!pItem->strFileName.IsEmpty() && *((LPCWSTR)pItem->strFileName) == L'.')
-		dwRet |= FILE_ATTRIBUTE_HIDDEN;
 	return dwRet ? dwRet : FILE_ATTRIBUTE_NORMAL;
 }
 
@@ -381,19 +383,7 @@ HRESULT __stdcall _GetFileItemPropData(CFTPDirectoryBase* pDirectory, CFTPFileIt
 
 			*buff = {};
 			wcsncpy_s(buff->cFileName, p->strFileName, MAX_PATH);
-			if (p->bWinAttr)
-				buff->dwFileAttributes = p->dwAttributes;
-			else
-			{
-				auto attr = p->nUnixMode;
-				buff->dwFileAttributes = (attr & S_IFDIR) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-				if (buff->cFileName[0] == L'.')
-					buff->dwFileAttributes |= FILE_ATTRIBUTE_HIDDEN;
-				if (attr & S_IFLNK)
-					buff->dwFileAttributes |= FILE_ATTRIBUTE_REPARSE_POINT;
-				if (attr & (S_IFBLK | S_IFSOCK | S_IFREG))
-					buff->dwFileAttributes |= FILE_ATTRIBUTE_DEVICE;
-			}
+			buff->dwFileAttributes = GetDummyFileAttribute(p);
 			buff->nFileSizeLow = p->uliSize.LowPart;
 			buff->nFileSizeHigh = p->uliSize.HighPart;
 			buff->ftLastWriteTime = p->ftModifyTime;
