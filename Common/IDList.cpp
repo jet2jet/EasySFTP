@@ -103,6 +103,15 @@ extern "C" PIDLIST_ABSOLUTE __stdcall RemoveOneChild(PCUIDLIST_ABSOLUTE lpidl)
 	return ret;
 }
 
+extern "C" PIDLIST_RELATIVE __stdcall MakeNullIDList()
+{
+	auto ret = (PIDLIST_RELATIVE) ::CoTaskMemAlloc(sizeof(USHORT));
+	if (!ret)
+		return ret;
+	ret->mkid.cb = 0;
+	return ret;
+}
+
 extern "C" PITEMID_CHILD __stdcall GetChildItemIDList(PCUIDLIST_ABSOLUTE lpidl)
 {
 	PCUIDLIST_RELATIVE lpidlNow;

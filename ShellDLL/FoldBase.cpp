@@ -284,9 +284,9 @@ STDMETHODIMP CFolderBase::ParseDisplayName2(PIDLIST_RELATIVE pidlParent,
 		if (pchEaten)
 			*pchEaten = uEaten;
 		if (!pidlCurrent)
-			pidlCurrent = (PIDLIST_RELATIVE) ::DuplicateItemIDList((PCUIDLIST_ABSOLUTE) pidlParent);
+			pidlCurrent = pidlParent ? (PIDLIST_RELATIVE) ::DuplicateItemIDList((PCUIDLIST_ABSOLUTE) pidlParent) : ::MakeNullIDList();
 		*ppidl = pidlCurrent;
-		return S_OK;
+		return *ppidl ? S_OK : E_OUTOFMEMORY;
 	//}
 	//else
 	//	return E_INVALIDARG;
