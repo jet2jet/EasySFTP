@@ -611,12 +611,15 @@ STDMETHODIMP CFTPDirectoryBase::EnumObjects(HWND hWnd, SHCONTF grfFlags, IEnumID
 		return E_POINTER;
 	if (!m_bDirReceived)
 	{
-		m_hWndOwnerCache = hWnd;
-		m_pRoot->m_hWndOwnerCache = hWnd;
-		if (!m_pRoot->ReceiveDirectory(hWnd, this, m_strDirectory, &m_bDirReceived))
+		if (!(grfFlags & SHCONTF_FASTITEMS))
 		{
-			*ppenumIDList = NULL;
-			return S_FALSE;
+			m_hWndOwnerCache = hWnd;
+			m_pRoot->m_hWndOwnerCache = hWnd;
+			if (!m_pRoot->ReceiveDirectory(hWnd, this, m_strDirectory, &m_bDirReceived))
+			{
+				*ppenumIDList = NULL;
+				return S_FALSE;
+			}
 		}
 	}
 
@@ -1039,7 +1042,7 @@ STDMETHODIMP CFTPDirectoryBase::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY
 		if (!::PickupFileName(apidl[u], str))
 			return E_INVALIDARG;
 		f = SFGAO_CANCOPY | SFGAO_CANMOVE | SFGAO_CANDELETE | SFGAO_CANRENAME | SFGAO_HASPROPSHEET;
-		if ((req & (SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER | SFGAO_HIDDEN | SFGAO_LINK)) != 0)
+		if ((req & (SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER | SFGAO_HIDDEN | SFGAO_LINK | SFGAO_HASSTORAGE | SFGAO_STREAM)) != 0)
 		{
 			CFTPFileItem* p;
 			//CSFTPFileItem UNALIGNED* pData = (CSFTPFileItem UNALIGNED*) apidl[u];
@@ -1053,6 +1056,24 @@ STDMETHODIMP CFTPDirectoryBase::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY
 			//		f |= SFGAO_LINK;
 			//}
 			//else
+
+			CSFTPFileItem UNALIGNED* pFItem = (CSFTPFileItem UNALIGNED*) apidl[u];
+			if ((req & ~(SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER | SFGAO_HASSTORAGE | SFGAO_STREAM | (pFItem->bHasAttribute ? (SFGAO_HIDDEN | SFGAO_LINK) : 0))) == 0)
+			{
+				// fast retrieve
+				if (pFItem->bIsDirectory)
+					f |= SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER | SFGAO_HASSTORAGE;
+				else
+					f |= SFGAO_STREAM;
+				if (pFItem->bHasAttribute)
+				{
+					if (pFItem->bIsHidden)
+						f |= SFGAO_HIDDEN;
+					if (pFItem->bIsShortcut)
+						f |= SFGAO_LINK;
+				}
+			}
+			else
 			{
 				if (!m_bDirReceived)
 				{
@@ -1065,7 +1086,7 @@ STDMETHODIMP CFTPDirectoryBase::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY
 				if (!p)
 					return E_INVALIDARG;
 				if (p->IsDirectory())
-					f |= SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER;
+					f |= SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER | SFGAO_HASSTORAGE;
 				else
 					f |= SFGAO_STREAM;
 				if (p->IsHidden())
@@ -2180,7 +2201,7 @@ STDMETHODIMP CFTPDirectoryBase::ParseDisplayName2(PIDLIST_RELATIVE pidlParent,
 			if (pItem)
 				pidlChild = ::CreateFileItem(m_pMallocData->pMalloc, pItem);
 			else
-				pidlChild = ::CreateDummyFileItem(m_pMallocData->pMalloc, strName);
+				pidlChild = ::CreateDummyFileItem(m_pMallocData->pMalloc, strName, *pszDisplayName == L'/');
 			if (!pidlChild)
 			{
 				::CoTaskMemFree(pidlCurrent);
@@ -2337,7 +2358,7 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 		if (pItem)
 			pidlItem = ::CreateFileItem(m_pRoot->m_pMallocData->pMalloc, pItem);
 		else
-			pidlItem = ::CreateDummyFileItem(m_pRoot->m_pMallocData->pMalloc, str);
+			pidlItem = ::CreateDummyFileItem(m_pRoot->m_pMallocData->pMalloc, str, true);
 		if (!pidlItem)
 		{
 			pDirItem->pDirectory = NULL;
@@ -2814,7 +2835,7 @@ void CFTPDirectoryBase::RemoveAllFiles()
 		}
 		if (!pItem->strName.IsEmpty())
 		{
-			PITEMID_CHILD pidlChild = ::CreateDummyFileItem(m_pMallocData->pMalloc, pItem->strName);
+			PITEMID_CHILD pidlChild = ::CreateDummyFileItem(m_pMallocData->pMalloc, pItem->strName, pItem->pDirectory != NULL);
 			if (pidlChild)
 			{
 				NotifyUpdate(SHCNE_RMDIR, pidlChild, NULL);

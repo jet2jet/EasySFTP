@@ -1974,7 +1974,7 @@ EXTERN_C PITEMID_CHILD __stdcall CreateFileItem(IMalloc* pMalloc, CFTPFileItem* 
 	return (PITEMID_CHILD) pItem;
 }
 
-EXTERN_C PITEMID_CHILD __stdcall CreateDummyFileItem(IMalloc* pMalloc, LPCWSTR lpszFileName)
+EXTERN_C PITEMID_CHILD __stdcall CreateDummyFileItem(IMalloc* pMalloc, LPCWSTR lpszFileName, bool bIsDirectory)
 {
 	CSFTPFileItem* pItem;
 	SIZE_T nSize;
@@ -1995,6 +1995,7 @@ EXTERN_C PITEMID_CHILD __stdcall CreateDummyFileItem(IMalloc* pMalloc, LPCWSTR l
 	pItem->_padding = 0;
 	pItem->_padding2 = 0;
 #endif
+	pItem->bIsDirectory = bIsDirectory;
 	//pItem->bHasAttribute = false;
 	//pItem->bIsDirectory = pItem->bIsHidden = pItem->bIsShortcut = false;
 	memcpy(pItem->wchFileName, lpszFileName,
@@ -2020,7 +2021,7 @@ EXTERN_C PIDLIST_RELATIVE __stdcall CreateFullPathFileItem(IMalloc* pMalloc, LPC
 			str.SetString(lpszFileName, (DWORD) (((DWORD_PTR) lpw) - ((DWORD_PTR) lpszFileName)) / sizeof(WCHAR));
 		else
 			str = lpszFileName;
-		pidlChild = CreateDummyFileItem(pMalloc, str);
+		pidlChild = CreateDummyFileItem(pMalloc, str, lpw != NULL);
 		if (!pidlChild)
 		{
 			if (pidl)

@@ -259,7 +259,7 @@ STDMETHODIMP CFolderBase::ParseDisplayName2(PIDLIST_RELATIVE pidlParent,
 				uEaten += (ULONG) strName.GetLength();
 
 				PITEMID_CHILD pidlChild;
-				pidlChild = ::CreateDummyFileItem(m_pMallocData->pMalloc, strName);
+				pidlChild = ::CreateDummyFileItem(m_pMallocData->pMalloc, strName, *pszDisplayName == L'/');
 				if (!pidlChild)
 				{
 					::CoTaskMemFree(pidlCurrent);
