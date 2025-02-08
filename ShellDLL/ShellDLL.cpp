@@ -618,9 +618,11 @@ STDAPI DllUnregisterServer()
 
 STDAPI EasySFTPUnregisterServer()
 {
-	HKEY hKeyClasses, hKeyCLSID, hKeyCLSIDMe, hKey, hKeyInstance;
+	HKEY hKeyClasses, hKeyCLSID, hKey;
 	LSTATUS lError;
 	auto bIsElevated = _IsElevated();
+	LPTSTR lpBuffer = NULL;
+	DWORD dwBufferLen = 0;
 
 	CMyStringW strCLSID;
 	strCLSID.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
@@ -636,23 +638,7 @@ STDAPI EasySFTPUnregisterServer()
 
 	if (::RegOpenKeyEx(hKeyClasses, _T("CLSID"), 0, KEY_WRITE, &hKeyCLSID) == ERROR_SUCCESS)
 	{
-		lError = ::RegOpenKeyEx(hKeyCLSID, strCLSID, 0, KEY_WRITE | DELETE, &hKeyCLSIDMe);
-		if (lError == ERROR_SUCCESS)
-		{
-		// CLSID_EasySFTP
-			::RegDeleteKey(hKeyCLSIDMe, _T("ShellFolder"));
-			::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
-			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
-			lError = ::RegOpenKeyEx(hKeyCLSIDMe, _T("Instance"), 0, KEY_WRITE | DELETE, &hKeyInstance);
-			if (lError == ERROR_SUCCESS)
-			{
-				::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
-				::RegCloseKey(hKeyInstance);
-			}
-			::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
-			::RegCloseKey(hKeyCLSIDMe);
-		}
-		::RegDeleteKey(hKeyCLSID, strCLSID);
+		::MyRegDeleteKey2(hKeyCLSID, strCLSID, lpBuffer, dwBufferLen);
 		::RegCloseKey(hKeyCLSID);
 	}
 
@@ -679,11 +665,7 @@ STDAPI EasySFTPUnregisterServer()
 		::RegCloseKey(hKey);
 		if (str.Compare(strCLSID, true) == 0)
 		{
-			LPTSTR lpBuffer = NULL;
-			DWORD dwBufferLen = 0;
 			::MyRegDeleteKey2(HKEY_CLASSES_ROOT, _T("sftp"), lpBuffer, dwBufferLen);
-			if (lpBuffer)
-				free(lpBuffer);
 		}
 	}
 
@@ -691,11 +673,22 @@ STDAPI EasySFTPUnregisterServer()
 		0, DELETE, &hKey);
 	if (lError == ERROR_SUCCESS)
 	{
-		::RegDeleteKey(hKey, strCLSID);
+		::MyRegDeleteKey2(hKey, strCLSID, lpBuffer, dwBufferLen);
+		::RegCloseKey(hKey);
+	}
+
+	// Windows Explorer may add CLSID key
+	lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CLSID"),
+		0, DELETE, &hKey);
+	if (lError == ERROR_SUCCESS)
+	{
+		::MyRegDeleteKey2(hKey, strCLSID, lpBuffer, dwBufferLen);
 		::RegCloseKey(hKey);
 	}
 
 	::RegCloseKey(hKeyClasses);
+	if (lpBuffer)
+		free(lpBuffer);
 	return S_OK;
 }
 
@@ -2111,7 +2104,10 @@ extern "C++" bool __stdcall GetHostNameForUrl(CMyStringW& strHostName, CMyString
 	}
 	else
 	{
+#pragma warning(push)
+#pragma warning(disable: 4996)
 		auto addr = inet_addr(strHostName);
+#pragma warning(pop)
 		if (addr != INADDR_NONE)
 		{
 			rstrName = strHostName;
