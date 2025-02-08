@@ -107,6 +107,16 @@ STDMETHODIMP CFTPFileItemMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UIN
 #endif
 	uMaxID = idCmdFirst;
 
+	UINT uIDDefault;
+	if (m_nFileTypes == FFIM_FILETYPE_FILEITEM || m_nFileTypes == FFIM_FILETYPE_COMPLEX)
+	{
+		uIDDefault = ID_ITEM_OPEN;
+	}
+	else
+	{
+		uIDDefault = (uFlags & CMF_EXPLORE) ? ID_ITEM_EXPLORE : ID_ITEM_OPEN;
+	}
+
 	HMENU h = ::GetSubMenu(theApp.m_hMenuContext, CXMENU_POPUP_FILEITEM);
 	nCount = ::GetMenuItemCount(h);
 	for (i = 0; i < nCount; i++)
@@ -120,8 +130,7 @@ STDMETHODIMP CFTPFileItemMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UIN
 		::GetMenuItemInfo(h, (UINT) i, TRUE, &mii);
 		if (uFlags & CMF_DEFAULTONLY)
 		{
-			if ((!(uFlags & CMF_EXPLORE) && mii.wID != ID_ITEM_OPEN) ||
-				((uFlags & CMF_EXPLORE) && mii.wID != ID_ITEM_EXPLORE))
+			if (mii.wID != uIDDefault)
 				continue;
 		}
 		switch (m_nFileTypes)
@@ -151,8 +160,7 @@ STDMETHODIMP CFTPFileItemMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UIN
 		}
 		if (!(uFlags & CMF_NODEFAULT))
 		{
-			if ((!(uFlags & CMF_EXPLORE) && mii.wID == ID_ITEM_OPEN) ||
-				((uFlags & CMF_EXPLORE) && mii.wID == ID_ITEM_EXPLORE))
+			if (mii.wID == uIDDefault)
 				mii.fState |= MFS_DEFAULT;
 		}
 		mii.wID = (WORD)((UINT) mii.wID - ID_ITEM_BASE + idCmdFirst);
@@ -225,6 +233,15 @@ STDMETHODIMP CFTPFileItemMenu::InvokeCommand(CMINVOKECOMMANDINFO* pici)
 		HWND hWnd = piciex->hwnd;
 		if (!hWnd && m_pBrowser)
 			m_pBrowser->GetWindow(&hWnd);
+		if (!hWnd && m_pUnkSite)
+		{
+			IOleWindow* pWindow;
+			if (SUCCEEDED(m_pUnkSite->QueryInterface(&pWindow)))
+			{
+				pWindow->GetWindow(&hWnd);
+				pWindow->Release();
+			}
+		}
 		switch (uID)
 		{
 			case ID_ITEM_OPEN:
@@ -327,14 +344,29 @@ STDMETHODIMP CFTPFileItemMenu::SetSite(IUnknown* pUnkSite)
 	{
 		pUnkSite->AddRef();
 
-		IShellBrowser* pBrowser;
+		IShellBrowser* pBrowser = NULL;
 		HRESULT hr = pUnkSite->QueryInterface(IID_IShellBrowser, (void**) &pBrowser);
-		if (SUCCEEDED(hr))
+		if (FAILED(hr))
 		{
-			if (m_pBrowser)
-				m_pBrowser->Release();
-			m_pBrowser = pBrowser;
+			IServiceProvider* pService = NULL;
+			if (SUCCEEDED(pUnkSite->QueryInterface(IID_IServiceProvider, (void**)&pService)))
+			{
+				if (FAILED(pService->QueryService(SID_SInPlaceBrowser, IID_IShellBrowser, (void**)&pBrowser)))
+				{
+					if (FAILED(pService->QueryService(SID_SShellBrowser, IID_IShellBrowser, (void**)&pBrowser)))
+					{
+						if (FAILED(pService->QueryService(SID_STopLevelBrowser, IID_IShellBrowser, (void**)&pBrowser)))
+						{
+							pBrowser = NULL;
+						}
+					}
+				}
+				pService->Release();
+			}
 		}
+		if (m_pBrowser)
+			m_pBrowser->Release();
+		m_pBrowser = pBrowser;
 	}
 	return S_OK;
 }
@@ -384,8 +416,9 @@ void CFTPFileItemMenu::DoOpen(HWND hWndOwner, bool bExtend, DWORD dwHotKey)
 	SHELLEXECUTEINFO sei;
 	memset(&sei, 0, sizeof(sei));
 	sei.cbSize = sizeof(sei);
-	sei.fMask = SEE_MASK_IDLIST;
+	sei.fMask = SEE_MASK_IDLIST | SEE_MASK_CLASSNAME;
 	sei.lpVerb = (!bExtend ? _T("open") : _T("explore"));
+	sei.lpClass = _T("Folder");
 	if (!pBrowser)
 	{
 		for (int i = 0; i < m_aItems.GetCount(); i++)
