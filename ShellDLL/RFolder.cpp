@@ -207,6 +207,12 @@ STDMETHODIMP CEasySFTPFolderRoot::QueryInterface(REFIID riid, void** ppv)
 		AddRef();
 		return S_OK;
 	}
+	if (IsEqualIID(riid, IID_IPersistPropertyBag))
+	{
+		*ppv = (IPersistPropertyBag*) this;
+		AddRef();
+		return S_OK;
+	}
 	if (IsEqualIID(riid, IID_IEasySFTPRoot) || IsEqualIID(riid, IID_IEasySFTPRoot2))
 	{
 		*ppv = (IEasySFTPRoot2*) this;
@@ -1293,6 +1299,24 @@ STDMETHODIMP CEasySFTPFolderRoot::GetClassID(CLSID* pClassID)
 //	*ppidl = ::DuplicateItemIDList(m_pidlMe);
 //	return m_pidlMe ? S_OK : S_FALSE;
 //}
+
+
+STDMETHODIMP CEasySFTPFolderRoot::InitNew()
+{
+	return S_OK;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::Load(IPropertyBag*, IErrorLog*)
+{
+	// do nothing
+	return S_OK;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::Save(IPropertyBag*, BOOL, BOOL)
+{
+	// do nothing
+	return S_OK;
+}
 
 
 STDMETHODIMP CEasySFTPFolderRoot::GetIconOf(PCUITEMID_CHILD pidl, UINT flags, int* pIconIndex)

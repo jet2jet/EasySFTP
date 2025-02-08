@@ -9,6 +9,7 @@
 
 class CEasySFTPFolderRoot : public CFolderBase,
 	public IDelegateFolder,
+	public IPersistPropertyBag,
 	public IEasySFTPRoot2,
 	public IEasySFTPInternal
 	//public IParentAndItem
@@ -54,6 +55,12 @@ public:
 //	// IPersistFolder2
 //public:
 //	STDMETHOD(GetCurFolder)(PIDLIST_ABSOLUTE FAR* ppidl);
+
+	// IPersistPropertyBag
+public:
+	STDMETHOD(InitNew)();
+	STDMETHOD(Load)(IPropertyBag* pPropBag, IErrorLog* pErrorLog);
+	STDMETHOD(Save)(IPropertyBag* pPropBag, BOOL fClearDirty, BOOL fSaveAllProperties);
 
 	// IShellIcon
 public:
