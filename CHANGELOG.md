@@ -1,5 +1,14 @@
 # ChangeLog
 
+## v0.11.1.1
+
+- Fix for reauthenticating process on SFTP
+- Add registration feature for per-user mode (register to HKEY_CURRENT_USER, not HKEY_CLASSES_ROOT)
+- Fix for using Windows OpenSSH ssh-agent from Shell Extension
+- Fix some bugs for Shell Extension, including
+  fix for unable to launch app when registered
+- Fix registry emulation (after fix, this works on Windows 7)
+
 ## v0.11.0.1
 
 - Add features for directory operations (upload/download directories and 'Upload all' 'Download all')
