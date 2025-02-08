@@ -110,7 +110,6 @@
       <OptimizeReferences>false</OptimizeReferences>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -133,7 +132,6 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.10</Version>
-      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>$(TargetFileName).manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
@@ -153,7 +151,6 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.10</Version>
-      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -177,7 +174,6 @@
       <Version>0.1</Version>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.10</Version>
-      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <Manifest>
       <AdditionalManifestFiles>$(TargetFileName).manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>

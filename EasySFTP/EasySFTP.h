@@ -220,6 +220,7 @@ public:
 	CMyStringW m_strFirstLocalPath;
 	CMyStringW m_strFirstServerPath;
 	bool m_bExitWithRegister;
+	bool m_bIsRegisterForSystem;
 	bool m_bUnregisterOperation;
 	bool m_bNoRestart;
 	bool m_bNeedEmulationMode;
@@ -337,6 +338,7 @@ public:
 	IEasySFTPRoot* m_pEasySFTPRoot;
 	PIDLIST_ABSOLUTE m_pidlEasySFTP;
 	bool m_bEmulatingRegistry;
+	bool m_bIsRegisteredAsUserClass;
 	LONG m_uRefThread;
 	IUnknown* m_pUnkThreadRef;
 

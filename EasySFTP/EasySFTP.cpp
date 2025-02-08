@@ -177,6 +177,8 @@ CMainApplication::CMainApplication()
 	m_hImageListFileIcon = NULL;
 	m_hImageListToolBar = NULL;
 	m_hImageListToolBarL = NULL;
+	m_hImageListAddrButtons = NULL;
+	m_hImageListAddrButtonsL = NULL;
 	m_bUseOFNUnicode = true;
 	memset(&m_ofnW, 0, sizeof(m_ofnW));
 	m_ofnW.lStructSize = OPENFILENAME_SIZE_VERSION_400W;
@@ -188,8 +190,10 @@ CMainApplication::CMainApplication()
 	//m_pStreamViewStateLocal = NULL;
 	//m_pStreamViewStateServer = NULL;
 	m_bEmulatingRegistry = false;
+	m_bIsRegisteredAsUserClass = false;
 
 	m_bExitWithRegister = false;
+	m_bIsRegisterForSystem = false;
 	m_bUnregisterOperation = false;
 	m_bNoRestart = false;
 }
@@ -314,23 +318,6 @@ int CMainApplication::ExitInstance()
 			str.SetString(m_strTempPath, dw - 1);
 		::MyRemoveDirectoryRecursiveW(str);
 	}
-	//{
-	//	register int i = m_aKnownFingerPrints.GetCount();
-	//	while (i--)
-	//	{
-	//		register CKnownFingerPrint* pPrint = m_aKnownFingerPrints.GetItem(i);
-	//		free(pPrint->pFingerPrint);
-	//		delete pPrint;
-	//	}
-	//}
-	//{
-	//	register int i = m_aHostSettings.GetCount();
-	//	while (i--)
-	//	{
-	//		register CHostSettings* pHostSettings = m_aHostSettings.GetItem(i);
-	//		delete pHostSettings;
-	//	}
-	//}
 
 	if (m_bEmulatingRegistry)
 		TermRegHook();
@@ -597,104 +584,52 @@ bool CMainApplication::InitEasySFTP(bool* pbFailOnRegHook)
 
 	{
 		HRESULT hr;
-		////hr = ::CoCreateInstance(CLSID_EasySFTP, NULL, CLSCTX_INPROC, IID_IEasySFTPRoot, (void**) &m_pEasySFTPRoot);
-		////hr = ::EasySFTPCreateRoot(&m_pEasySFTPRoot);
-		//IClassFactory* pFactory;
-		//hr = ::CoGetClassObject(CLSID_EasySFTP, CLSCTX_INPROC, NULL, IID_IClassFactory, (void**) &pFactory);
-		//if (SUCCEEDED(hr))
-		//{
-		//	hr = pFactory->CreateInstance(NULL, IID_IEasySFTPRoot, (void**) &m_pEasySFTPRoot);
-		//	pFactory->Release();
-		//}
-		//if (FAILED(hr))
-		//	return false;
-		//m_pEasySFTPRoot->Release();
-		//m_pEasySFTPRoot = NULL;
-		//HRESULT (STDMETHODCALLTYPE* pfnDllRegisterServer)() = (HRESULT (STDMETHODCALLTYPE*)())
-		//	::GetProcAddress(::GetModuleHandle(_T("EasySFTP.dll")), "DllRegisterServer");
-		//if (!pfnDllRegisterServer)
-		//	return false;
-		//hr = pfnDllRegisterServer();
-		//if (FAILED(hr))
-		//	return false;
+		IShellFolder* pDesktop, * pFolder;
+		if (FAILED(::SHGetDesktopFolder(&pDesktop)))
+			return false;
+		hr = pDesktop->ParseDisplayName(NULL, NULL, (LPWSTR) L"::{AD29C042-B9E3-462c-9DF6-D7DA5B8D0199}",
+			NULL, (PIDLIST_RELATIVE*) &m_pidlEasySFTP, NULL);
+		if (FAILED(hr))
+			m_pidlEasySFTP = NULL;
 
-		//{
-		//	ITEMIDLIST_ABSOLUTE idl;
-		//	idl.mkid.cb = 0;
-		//	m_pidlEasySFTP = (PIDLIST_ABSOLUTE) ::DuplicateItemIDList(&idl);
-		//}
+		if (!m_pidlEasySFTP)
 		{
-			//char szBuffer[50];
-			//PIDLIST_RELATIVE pidlTemp = (PIDLIST_RELATIVE) szBuffer;
-			//////pidlTemp->mkid.cb = 0;
-			////pidlTemp->mkid.cb = sizeof(USHORT) + 0;
-			//////*((DWORD UNALIGNED*) pidlTemp->mkid.abID) = 0x12345678;
-			////((PUIDLIST_RELATIVE) ((DWORD_PTR) pidlTemp + (DWORD) sizeof(USHORT) + 0))->mkid.cb = 0;
-			////pidlTemp->mkid.cb = sizeof(USHORT) + sizeof(USHORT) + sizeof(GUID);
-			////*((WORD UNALIGNED*) pidlTemp->mkid.abID) = 0x1f68;
-			////memcpy(&pidlTemp->mkid.abID[2], &CLSID_EasySFTP, sizeof(GUID));
-			////((PUIDLIST_RELATIVE) ((DWORD_PTR) pidlTemp + (DWORD) sizeof(USHORT) + sizeof(USHORT) + sizeof(GUID)))->mkid.cb = 0;
-			////m_pidlEasySFTP = (PIDLIST_ABSOLUTE) ::DuplicateItemIDList((PIDLIST_ABSOLUTE) pidlTemp);
-
-			IShellFolder* pDesktop, * pFolder;
-			if (FAILED(::SHGetDesktopFolder(&pDesktop)))
-				return false;
-			hr = pDesktop->ParseDisplayName(NULL, NULL, (LPWSTR) L"::{AD29C042-B9E3-462c-9DF6-D7DA5B8D0199}",
-				NULL, (PIDLIST_RELATIVE*) &m_pidlEasySFTP, NULL);
-			if (FAILED(hr))
-				m_pidlEasySFTP = NULL;
-
-			if (!m_pidlEasySFTP)
-			{
-				pDesktop->Release();
-				::MessageBeep(MB_ICONHAND);
-				return false;
-			}
-			hr = pDesktop->BindToObject(m_pidlEasySFTP, NULL, IID_IShellFolder, (void**) &pFolder);
 			pDesktop->Release();
-			if (FAILED(hr))
-				return false;
-			hr = pFolder->QueryInterface(IID_IEasySFTPRoot, (void**) &m_pEasySFTPRoot);
-			pFolder->Release();
-			if (FAILED(hr))
-				return false;
+			::MessageBeep(MB_ICONHAND);
+			return false;
+		}
+		hr = pDesktop->BindToObject(m_pidlEasySFTP, NULL, IID_IShellFolder, (void**) &pFolder);
+		pDesktop->Release();
+		if (FAILED(hr))
+			return false;
+		hr = pFolder->QueryInterface(IID_IEasySFTPRoot, (void**) &m_pEasySFTPRoot);
+		pFolder->Release();
+		if (FAILED(hr))
+			return false;
 
-			IEasySFTPInternal* pInternal;
-			hr = m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPInternal, (void**) &pInternal);
-			if (SUCCEEDED(hr))
+		IEasySFTPInternal* pInternal;
+		hr = m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPInternal, (void**) &pInternal);
+		if (SUCCEEDED(hr))
+		{
+			pInternal->SetEmulateRegMode(m_bEmulatingRegistry);
+			pInternal->Release();
+		}
+
+		// check where to register
+		{
+			CMyStringW str;
+			::MyStringFromGUIDW(CLSID_EasySFTP, str);
+			str.InsertString(L"Software\\Classes\\CLSID\\", 0);
+			HKEY hKey;
+			if (::RegOpenKeyEx(HKEY_CURRENT_USER, str, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
 			{
-				pInternal->SetEmulateRegMode(m_bEmulatingRegistry);
-				pInternal->Release();
+				m_bIsRegisteredAsUserClass = true;
+				::RegCloseKey(hKey);
 			}
-
-			//hr = ::EasySFTPCreateRoot(&m_pEasySFTPRoot);
-			//if (FAILED(hr))
-			//	return false;
-			////hr = ::CoRegisterClassObject(CLSID_EasySFTP, m_pEasySFTPRoot, CLSCTX_INPROC, REGCLS_SINGLEUSE, &m_dwRegCls);
-
-			//IPersistFolder* pPersist;
-			//hr = m_pEasySFTPRoot->QueryInterface(IID_IPersistFolder, (void**) &pPersist);
-			//if (FAILED(hr))
-			//	return false;
-			//hr = pPersist->Initialize(m_pidlEasySFTP);
-			//pPersist->Release();
-			//if (FAILED(hr))
-			//	return false;
-
-			//IParentAndItem* pItem;
-			//hr = m_pEasySFTPRoot->QueryInterface(IID_IParentAndItem, (void**) &pItem);
-			//if (SUCCEEDED(hr))
-			//{
-			//	IShellFolder* pDesktop;
-			//	hr = ::SHGetDesktopFolder(&pDesktop);
-			//	//hr = pItem->SetParentAndItem((PIDLIST_ABSOLUTE) ((DWORD_PTR) pidlTemp + (DWORD) sizeof(USHORT) + 0),
-			//	//	pDesktop, (PITEMID_CHILD) pidlTemp);
-			//	hr = pItem->SetParentAndItem((PIDLIST_ABSOLUTE) ((DWORD_PTR) pidlTemp + (DWORD) pidlTemp->mkid.cb),
-			//		pDesktop, (PITEMID_CHILD) pidlTemp);
-			//	//hr = pItem->SetParentAndItem((PIDLIST_ABSOLUTE) pidlTemp,
-			//	//	pDesktop, (PITEMID_CHILD) pidlTemp);
-			//	pItem->Release();
-			//}
+			else
+			{
+				m_bIsRegisteredAsUserClass = false;
+			}
 		}
 	}
 
@@ -1711,6 +1646,7 @@ void CMainApplication::DoRegister()
 	sei.fMask = SEE_MASK_NOCLOSEPROCESS;
 	sei.lpFile = strExe;
 	sei.lpParameters = m_bUnregisterOperation ? _T("/unregister") : NULL;
+	sei.lpVerb = m_bIsRegisterForSystem ? _T("runas") : NULL;
 	sei.nShow = SW_SHOWNORMAL;
 
 	if (::ShellExecuteEx(&sei))
@@ -1724,10 +1660,13 @@ void CMainApplication::DoRegister()
 	{
 		strExe = s_szMainWndClass;
 		::UnregisterClassA(strExe, m_hInstance);
+		strExe = s_szViewParentWndClass;
+		::UnregisterClassA(strExe, m_hInstance);
 		::UnregisterClassA(SPLITTER_CLASSA, m_hInstance);
 	}
 	else
 	{
+		::UnregisterClassW(s_szViewParentWndClass, m_hInstance);
 		::UnregisterClassW(SPLITTER_CLASSW, m_hInstance);
 	}
 	if (!m_bNoRestart)

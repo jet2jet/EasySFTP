@@ -12,17 +12,21 @@ LRESULT COptionDialog::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
 	HANDLE_COMMAND(IDOK, OnOK);
 	HANDLE_COMMAND(IDC_REGISTER, OnRegister);
+	HANDLE_COMMAND(IDC_REGISTER_SYSTEM, OnRegister);
 	return CMyDialog::WindowProc(message, wParam, lParam);
 }
 
 bool COptionDialog::OnInitDialog(HWND hWndFocus)
 {
 	CMyStringW strRegister;
-	strRegister.LoadString(theApp.m_bEmulatingRegistry
-		? IDS_REGISTER_BUTTON : IDS_UNREGISTER_BUTTON);
-	MySetDlgItemTextW(m_hWnd, IDC_REGISTER, strRegister);
+	if (!theApp.m_bEmulatingRegistry)
+	{
+		strRegister.LoadString(IDS_UNREGISTER_BUTTON);
+		MySetDlgItemTextW(m_hWnd, theApp.m_bIsRegisteredAsUserClass ? IDC_REGISTER : IDC_REGISTER_SYSTEM, strRegister);
+		EnableDlgItem(m_hWnd, !theApp.m_bIsRegisteredAsUserClass ? IDC_REGISTER : IDC_REGISTER_SYSTEM, FALSE);
+	}
 
-	SendDlgItemMessage(m_hWnd, IDC_REGISTER, BCM_SETSHIELD, 0, (LPARAM) TRUE);
+	SendDlgItemMessage(m_hWnd, IDC_REGISTER_SYSTEM, BCM_SETSHIELD, 0, (LPARAM) TRUE);
 
 	return false;
 }
@@ -33,7 +37,7 @@ LRESULT COptionDialog::OnRegister(WPARAM wParam, LPARAM lParam)
 		MB_ICONINFORMATION | MB_OKCANCEL) != IDOK)
 		return 0;
 
-	::EndDialog(m_hWnd, IDC_REGISTER);
+	::EndDialog(m_hWnd, (INT_PTR) LOWORD(wParam));
 	return 0;
 }
 

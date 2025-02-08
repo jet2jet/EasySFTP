@@ -763,9 +763,11 @@ void CMainWindow::DeleteSelection()
 void CMainWindow::ShowOption()
 {
 	COptionDialog dlg;
-	if (dlg.ModalDialogW(m_hWnd) == IDC_REGISTER)
+	auto ret = dlg.ModalDialogW(m_hWnd);
+	if (ret == IDC_REGISTER || ret == IDC_REGISTER_SYSTEM)
 	{
 		theApp.m_bExitWithRegister = true;
+		theApp.m_bIsRegisterForSystem = ret == IDC_REGISTER_SYSTEM;
 		theApp.m_bUnregisterOperation = !theApp.m_bEmulatingRegistry;
 		DestroyWindow();
 	}
@@ -1102,6 +1104,39 @@ LRESULT CMainWindow::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	//	str.Format(L"CanReceive: %s\n", m_pConnection->CanReceive() ? L"true" : L"false");
 	//	::OutputDebugString(str);
 	//}
+	if (message == WM_SYSCOMMAND && LOWORD(wParam) == SC_MAXIMIZE)
+	{
+		HRESULT hr;
+		IEnumIDList* pEnum;
+		hr = m_wndListViewServer.m_pFolder->EnumObjects(m_hWnd, SHCONTF_NONFOLDERS, &pEnum);
+		if (SUCCEEDED(hr))
+		{
+			PITEMID_CHILD idChild;
+			hr = pEnum->Next(1, &idChild, NULL);
+			pEnum->Release();
+			if (hr == S_OK)
+			{
+				auto idAbsolute = AppendItemIDList(m_wndListViewServer.m_lpidlAbsoluteMe, idChild);
+				::CoTaskMemFree(idChild);
+				IShellItem* pItem;
+				hr = ::SHCreateItemFromIDList(idAbsolute, IID_IShellItem, (void**)&pItem);
+				::CoTaskMemFree(idAbsolute);
+				if (SUCCEEDED(hr))
+				{
+					IFileOperation* pOperation;
+					hr = ::CoCreateInstance(__uuidof(FileOperation), NULL, CLSCTX_INPROC_SERVER, IID_IFileOperation, (void**)&pOperation);
+					if (SUCCEEDED(hr))
+					{
+						pOperation->SetOwnerWindow(m_hWnd);
+						hr = pOperation->DeleteItem(pItem, NULL);
+						hr = pOperation->PerformOperations();
+						pOperation->Release();
+					}
+					pItem->Release();
+				}
+			}
+		}
+	}
 #endif
 	//if (message == WM_INITMENU)
 	//{
