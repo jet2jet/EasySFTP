@@ -580,9 +580,9 @@ STDMETHODIMP CFTPDirectoryBase::QueryInterface(REFIID riid, void** ppv)
 		AddRef();
 		return S_OK;
 	}
-	else if (IsEqualIID(riid, IID_IEasySFTPDirectory))
+	else if (IsEqualIID(riid, IID_IEasySFTPOldDirectory))
 	{
-		*ppv = (IEasySFTPDirectory*)this;
+		*ppv = (IEasySFTPOldDirectory*)this;
 		AddRef();
 		return S_OK;
 	}
@@ -670,7 +670,7 @@ STDMETHODIMP CFTPDirectoryBase::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc, 
 		!IsEqualIID(riid, IID_IPersistFolder2) &&
 		!IsEqualIID(riid, IID_IPersistIDList) &&
 		!IsEqualIID(riid, IID_IObjectWithSite) &&
-		!IsEqualIID(riid, IID_IEasySFTPDirectory) &&
+		!IsEqualIID(riid, IID_IEasySFTPOldDirectory) &&
 		!IsEqualIID(riid, IID_IStorage))
 		return E_NOINTERFACE;
 
@@ -1925,7 +1925,7 @@ STDMETHODIMP CFTPDirectoryBase::CopyTo(DWORD ciidExclude, const IID* rgiidExclud
 
 STDMETHODIMP CFTPDirectoryBase::MoveElementTo(const OLECHAR* pwcsName, IStorage* pstgDest, const OLECHAR* pwcsNewName, DWORD grfFlags)
 {
-	IEasySFTPDirectory* pFTPDir;
+	IEasySFTPOldDirectory* pFTPDir;
 	if (SUCCEEDED(pstgDest->QueryInterface(&pFTPDir)))
 	{
 		VARIANT_BOOL bIsSFTP = VARIANT_FALSE;
@@ -2085,9 +2085,9 @@ STDMETHODIMP CFTPDirectoryBase::Stat(STATSTG* pstatstg, DWORD grfStatFlag)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-STDMETHODIMP CFTPDirectoryBase::GetRootDirectory(IEasySFTPDirectory** ppRootDirectory)
+STDMETHODIMP CFTPDirectoryBase::GetRootDirectory(IEasySFTPOldDirectory** ppRootDirectory)
 {
-	return m_pRoot->QueryInterface(IID_IEasySFTPDirectory, (void**)ppRootDirectory);
+	return m_pRoot->QueryInterface(IID_IEasySFTPOldDirectory, (void**)ppRootDirectory);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

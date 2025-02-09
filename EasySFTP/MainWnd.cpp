@@ -399,7 +399,7 @@ void CMainWindow::UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl)
 
 void CMainWindow::UpdateServerFolderAbsolute(LPCWSTR lpszPath)
 {
-	IEasySFTPDirectory* pDirectory, * pRoot;
+	IEasySFTPOldDirectory* pDirectory, * pRoot;
 	IPersistFolder2* pPersist;
 	IShellFolder* pFolder, * pFolder2;
 	HRESULT hr;
@@ -407,7 +407,7 @@ void CMainWindow::UpdateServerFolderAbsolute(LPCWSTR lpszPath)
 
 	if (*lpszPath != L'/')
 		return;
-	if (FAILED(m_wndListViewServer.m_pFolder->QueryInterface(IID_IEasySFTPDirectory, (void**) &pDirectory)))
+	if (FAILED(m_wndListViewServer.m_pFolder->QueryInterface(IID_IEasySFTPOldDirectory, (void**) &pDirectory)))
 		return;
 	hr = pDirectory->GetRootDirectory(&pRoot);
 	pDirectory->Release();
@@ -527,7 +527,7 @@ void CMainWindow::NavigateServerParentFolder()
 
 void CMainWindow::CheckFileTypes(CShellFolderFileView* pViewCur, CShellFolderFileView* pViewOther, PIDLIST_ABSOLUTE* ppidlItems, int nCount, int& nTextCount, int& nDirCount)
 {
-	IEasySFTPDirectory* pDir;
+	IEasySFTPOldDirectory* pDir;
 	//PITEMID_CHILD pidlChild;
 	PIDLIST_RELATIVE pidlChild;
 	if (!nCount)
@@ -953,7 +953,7 @@ static bool __stdcall IsHostItemSelected(HWND hWnd, CShellFolderFileView* pView)
 
 bool CMainWindow::CanConnect(bool bServer)
 {
-	IEasySFTPDirectory* pDir = bServer ? m_wndListViewServer.m_pDirectory : m_wndListViewLocal.m_pDirectory;
+	IEasySFTPOldDirectory* pDir = bServer ? m_wndListViewServer.m_pDirectory : m_wndListViewLocal.m_pDirectory;
 	if (pDir)
 		return (pDir->IsConnected() != S_OK);
 	if (IsHostItemSelected(m_hWnd, bServer ? &m_wndListViewServer : &m_wndListViewLocal))
@@ -980,7 +980,7 @@ bool CMainWindow::CanDisconnect(bool bServer)
 {
 	//if (!theApp.CheckExternalApplications())
 	//	return false;
-	IEasySFTPDirectory* pDir = bServer ? m_wndListViewServer.m_pDirectory : m_wndListViewLocal.m_pDirectory;
+	IEasySFTPOldDirectory* pDir = bServer ? m_wndListViewServer.m_pDirectory : m_wndListViewLocal.m_pDirectory;
 	if (pDir)
 	{
 		if (pDir->IsTransferring() == S_OK)
@@ -1847,8 +1847,8 @@ static INT_PTR CALLBACK _AboutDlgProc(HWND hDlg, UINT message, WPARAM wParam, LP
 	{
 		case WM_INITDIALOG:
 		{
-			IEasySFTPRoot2* pRoot2 = NULL;
-			auto hr = theApp.m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPRoot2, reinterpret_cast<void**>(&pRoot2));
+			IEasySFTPOldRoot2* pRoot2 = NULL;
+			auto hr = theApp.m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPOldRoot2, reinterpret_cast<void**>(&pRoot2));
 			if (SUCCEEDED(hr))
 			{
 				BSTR bstr = NULL;
@@ -2403,7 +2403,7 @@ LRESULT CMainWindow::OnToolBarDropDown(WPARAM wParam, LPARAM lParam)
 	return TBDDRET_DEFAULT;
 }
 
-static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR lpszAddress, IEasySFTPDirectory* pDirectoryCurrent)
+static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR lpszAddress, IEasySFTPOldDirectory* pDirectoryCurrent)
 {
 	if (wcschr(lpszAddress, L':') == NULL)
 		return NULL;
@@ -2413,13 +2413,13 @@ static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR 
 	if (SUCCEEDED(theApp.m_pEasySFTPRoot->QueryInterface(IID_IShellFolder, (void**) &pRoot)))
 	{
 		PIDLIST_RELATIVE pidlRel = NULL;
-		IEasySFTPDirectory* pDir = NULL;
+		IEasySFTPOldDirectory* pDir = NULL;
 		if (SUCCEEDED(pRoot->ParseDisplayName(hWnd, NULL, (LPWSTR) lpszAddress, NULL, &pidlRel, NULL)))
 		{
 			IShellFolder* pFld = NULL;
 			if (SUCCEEDED(pRoot->BindToObject(pidlRel, NULL, IID_IShellFolder, (void**) &pFld)) && pFld)
 			{
-				if (FAILED(pFld->QueryInterface(IID_IEasySFTPDirectory, (void**) &pDir)))
+				if (FAILED(pFld->QueryInterface(IID_IEasySFTPOldDirectory, (void**) &pDir)))
 					pDir = NULL;
 				pFld->Release();
 			}

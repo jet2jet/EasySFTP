@@ -33,16 +33,16 @@ EXTERN_C const IID IID_IEasySFTPInternal =
 EXTERN_C const IID IID_IEasySFTPListener =
 { 0xAD29C042, 0xB9E3, 0x463a, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 // {AD29C042-B9E3-463e-9DF6-D7DA5B8D0199}
-EXTERN_C const IID IID_IEasySFTPDirectory =
+EXTERN_C const IID IID_IEasySFTPOldDirectory =
 { 0xAD29C042, 0xB9E3, 0x463e, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 // {AD29C042-B9E3-463c-9DF6-D7DA5B8D0199}
-EXTERN_C const IID IID_IEasySFTPRoot =
+EXTERN_C const IID IID_IEasySFTPOldRoot =
 { 0xAD29C042, 0xB9E3, 0x463c, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 // {AD29C042-B9E3-4636-9DF6-D7DA5B8D0199}
-EXTERN_C const IID IID_IEasySFTPRoot2 =
+EXTERN_C const IID IID_IEasySFTPOldRoot2 =
 { 0xAD29C042, 0xB9E3, 0x4636, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 // {AD29C042-B9E3-462c-9DF6-D7DA5B8D0199}
-EXTERN_C const CLSID CLSID_EasySFTP =
+EXTERN_C const CLSID CLSID_EasySFTPOld =
 { 0xAD29C042, 0xB9E3, 0x462c, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 
 #ifdef _DEBUG
@@ -357,10 +357,10 @@ bool CMainApplication::InitRegistryHook()
 		{
 			CMyStringW str;
 			str.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-				CLSID_EasySFTP.Data1, (int)CLSID_EasySFTP.Data2, (int)CLSID_EasySFTP.Data3,
-				(int)CLSID_EasySFTP.Data4[0], (int)CLSID_EasySFTP.Data4[1], (int)CLSID_EasySFTP.Data4[2],
-				(int)CLSID_EasySFTP.Data4[3], (int)CLSID_EasySFTP.Data4[4], (int)CLSID_EasySFTP.Data4[5],
-				(int)CLSID_EasySFTP.Data4[6], (int)CLSID_EasySFTP.Data4[7]);
+				CLSID_EasySFTPOld.Data1, (int)CLSID_EasySFTPOld.Data2, (int)CLSID_EasySFTPOld.Data3,
+				(int)CLSID_EasySFTPOld.Data4[0], (int)CLSID_EasySFTPOld.Data4[1], (int)CLSID_EasySFTPOld.Data4[2],
+				(int)CLSID_EasySFTPOld.Data4[3], (int)CLSID_EasySFTPOld.Data4[4], (int)CLSID_EasySFTPOld.Data4[5],
+				(int)CLSID_EasySFTPOld.Data4[6], (int)CLSID_EasySFTPOld.Data4[7]);
 			bool bHasCLSID = (::RegOpenKeyEx(hKey, str, 0, KEY_QUERY_VALUE, &hKey2) == ERROR_SUCCESS);
 			if (bHasCLSID)
 				::RegCloseKey(hKey2);
@@ -612,7 +612,7 @@ bool CMainApplication::InitEasySFTP()
 	pDesktop->Release();
 	if (FAILED(hr))
 		return false;
-	hr = pFolder->QueryInterface(IID_IEasySFTPRoot, (void**) &m_pEasySFTPRoot);
+	hr = pFolder->QueryInterface(IID_IEasySFTPOldRoot, (void**) &m_pEasySFTPRoot);
 	pFolder->Release();
 	if (FAILED(hr))
 		return false;
@@ -628,7 +628,7 @@ bool CMainApplication::InitEasySFTP()
 	// check where to register
 	{
 		CMyStringW str;
-		::MyStringFromGUIDW(CLSID_EasySFTP, str);
+		::MyStringFromGUIDW(CLSID_EasySFTPOld, str);
 		str.InsertString(L"Software\\Classes\\CLSID\\", 0);
 		HKEY hKey;
 		if (::RegOpenKeyEx(HKEY_CURRENT_USER, str, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)

@@ -10,7 +10,7 @@
 class CEasySFTPFolderRoot : public CFolderBase,
 	public IDelegateFolder,
 	public IPersistPropertyBag,
-	public IEasySFTPRoot2,
+	public IEasySFTPOldRoot2,
 	public IEasySFTPInternal
 	//public IParentAndItem
 {

@@ -336,7 +336,7 @@ public:
 	//CMyStringArrayW m_arrDefTextFileType;
 	//CMySimpleArray<void*> m_aObjectTransferring;
 	//CMyStringKeyListW<UINT> m_mapIcon;
-	IEasySFTPRoot* m_pEasySFTPRoot;
+	IEasySFTPOldRoot* m_pEasySFTPRoot;
 	PIDLIST_ABSOLUTE m_pidlEasySFTP;
 	bool m_bEmulatingRegistry;
 	bool m_bIsRegisteredAsUserClass;

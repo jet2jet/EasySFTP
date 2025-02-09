@@ -213,9 +213,9 @@ STDMETHODIMP CEasySFTPFolderRoot::QueryInterface(REFIID riid, void** ppv)
 		AddRef();
 		return S_OK;
 	}
-	if (IsEqualIID(riid, IID_IEasySFTPRoot) || IsEqualIID(riid, IID_IEasySFTPRoot2))
+	if (IsEqualIID(riid, IID_IEasySFTPOldRoot) || IsEqualIID(riid, IID_IEasySFTPOldRoot2))
 	{
-		*ppv = (IEasySFTPRoot2*)this;
+		*ppv = (IEasySFTPOldRoot2*)this;
 		AddRef();
 		return S_OK;
 	}
@@ -1299,7 +1299,7 @@ STDMETHODIMP CEasySFTPFolderRoot::GetClassID(CLSID* pClassID)
 {
 	if (!pClassID)
 		return E_POINTER;
-	*pClassID = CLSID_EasySFTP;
+	*pClassID = CLSID_EasySFTPOld;
 	return S_OK;
 }
 

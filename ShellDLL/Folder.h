@@ -109,7 +109,7 @@ class CFTPDirectoryBase : public CFolderBase,
 	public IStorage,
 	public IThumbnailHandlerFactory,
 	public IShellFolderPropertyInformation,
-	public IEasySFTPDirectory//,
+	public IEasySFTPOldDirectory//,
 	//public IFTPDataObjectListener
 {
 public:
@@ -168,7 +168,7 @@ public:
 
 	// IEasySFTPDirectory
 public:
-	STDMETHOD(GetRootDirectory)(IEasySFTPDirectory** ppRootDirectory);
+	STDMETHOD(GetRootDirectory)(IEasySFTPOldDirectory** ppRootDirectory);
 	STDMETHOD(GetHostInfo)(VARIANT_BOOL FAR* pbIsSFTP, int FAR* pnPort, BSTR FAR* pbstrHostName);
 	STDMETHOD(GetTextMode)(LONG FAR* pnTextMode);
 	STDMETHOD(SetTextMode)(LONG nTextMode);

@@ -118,7 +118,7 @@ HWND CShellFolderFileView::Create(PCIDLIST_ABSOLUTE lpItemID, IShellFolder* pFol
 	//pBrowser->AddRef();
 	m_pView = pView;
 	m_pFolder = pFolder;
-	if (FAILED(pFolder->QueryInterface(IID_IEasySFTPDirectory, (void**) &m_pDirectory)))
+	if (FAILED(pFolder->QueryInterface(IID_IEasySFTPOldDirectory, (void**) &m_pDirectory)))
 		m_pDirectory = NULL;
 	m_bReplacing = false;
 	return hWnd;
@@ -273,7 +273,7 @@ HRESULT CShellFolderFileView::ReplaceView(IShellFolder* pFolder)
 	pFolder->AddRef();
 	if (m_pDirectory)
 		m_pDirectory->Release();
-	if (FAILED(pFolder->QueryInterface(IID_IEasySFTPDirectory, (void**) &m_pDirectory)))
+	if (FAILED(pFolder->QueryInterface(IID_IEasySFTPOldDirectory, (void**) &m_pDirectory)))
 		m_pDirectory = NULL;
 	m_bReplacing = false;
 	return S_OK;

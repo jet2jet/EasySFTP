@@ -58,26 +58,26 @@ EXTERN_C const IID IID_IEasySFTPInternal =
 EXTERN_C const IID IID_IEasySFTPListener =
 { 0xAD29C042, 0xB9E3, 0x463a, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 // {AD29C042-B9E3-463e-9DF6-D7DA5B8D0199}
-EXTERN_C const IID IID_IEasySFTPDirectory =
+EXTERN_C const IID IID_IEasySFTPOldDirectory =
 { 0xAD29C042, 0xB9E3, 0x463e, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 // {AD29C042-B9E3-463c-9DF6-D7DA5B8D0199}
-EXTERN_C const IID IID_IEasySFTPRoot =
+EXTERN_C const IID IID_IEasySFTPOldRoot =
 { 0xAD29C042, 0xB9E3, 0x463c, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 // {AD29C042-B9E3-4636-9DF6-D7DA5B8D0199}
-EXTERN_C const IID IID_IEasySFTPRoot2 =
+EXTERN_C const IID IID_IEasySFTPOldRoot2 =
 { 0xAD29C042, 0xB9E3, 0x4636, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 // {AD29C042-B9E3-462c-9DF6-D7DA5B8D0199}
-EXTERN_C const CLSID CLSID_EasySFTP =
+EXTERN_C const CLSID CLSID_EasySFTPOld =
 { 0xAD29C042, 0xB9E3, 0x462c, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 
-STDAPI EasySFTPCreateRoot(IEasySFTPRoot** ppRoot)
+STDAPI EasySFTPCreateRoot(IEasySFTPOldRoot** ppRoot)
 {
 	if (!ppRoot)
 		return E_POINTER;
 	CEasySFTPFolderRoot* pRoot = new CEasySFTPFolderRoot();
 	if (!pRoot)
 		return E_OUTOFMEMORY;
-	HRESULT hr = pRoot->QueryInterface(IID_IEasySFTPRoot, (void**) ppRoot);
+	HRESULT hr = pRoot->QueryInterface(IID_IEasySFTPOldRoot, (void**) ppRoot);
 	pRoot->Release();
 	return hr;
 }
@@ -351,7 +351,7 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID FAR* ppv)
 		return E_POINTER;
 
 	*ppv = NULL;
-	if (IsEqualCLSID(rclsid, CLSID_EasySFTP))
+	if (IsEqualCLSID(rclsid, CLSID_EasySFTPOld))
 	{
 		HRESULT hr = E_OUTOFMEMORY;
 
@@ -412,10 +412,10 @@ STDAPI EasySFTPRegisterServer()
 
 	CMyStringW strCLSID, strModule;
 	strCLSID.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-		CLSID_EasySFTP.Data1, (int) CLSID_EasySFTP.Data2, (int) CLSID_EasySFTP.Data3,
-		(int) CLSID_EasySFTP.Data4[0], (int) CLSID_EasySFTP.Data4[1], (int) CLSID_EasySFTP.Data4[2],
-		(int) CLSID_EasySFTP.Data4[3], (int) CLSID_EasySFTP.Data4[4], (int) CLSID_EasySFTP.Data4[5],
-		(int) CLSID_EasySFTP.Data4[6], (int) CLSID_EasySFTP.Data4[7]);
+		CLSID_EasySFTPOld.Data1, (int) CLSID_EasySFTPOld.Data2, (int) CLSID_EasySFTPOld.Data3,
+		(int) CLSID_EasySFTPOld.Data4[0], (int) CLSID_EasySFTPOld.Data4[1], (int) CLSID_EasySFTPOld.Data4[2],
+		(int) CLSID_EasySFTPOld.Data4[3], (int) CLSID_EasySFTPOld.Data4[4], (int) CLSID_EasySFTPOld.Data4[5],
+		(int) CLSID_EasySFTPOld.Data4[6], (int) CLSID_EasySFTPOld.Data4[7]);
 	GetModuleFileNameString(theApp.m_hInstance, strModule);
 
 	lError = ::RegCreateKeyEx(hKeyCLSID, strCLSID, 0, NULL, REG_OPTION_NON_VOLATILE,
@@ -426,7 +426,7 @@ STDAPI EasySFTPRegisterServer()
 		::RegCloseKey(hKeyClasses);
 		return HRESULT_FROM_WIN32(lError);
 	}
-	// CLSID_EasySFTP
+	// CLSID_EasySFTPOld
 		::RegSetStringValue(hKeyCLSIDMe, NULL, theApp.m_strTitle);
 		::RegSetDWordValue(hKeyCLSIDMe, _T("System.IsPinnedToNameSpaceTree"), 1);
 		//::RegSetDWordValue(hKeyCLSIDMe, _T("SortOrderIndex"), 0x50);
@@ -626,10 +626,10 @@ STDAPI EasySFTPUnregisterServer()
 
 	CMyStringW strCLSID;
 	strCLSID.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-		CLSID_EasySFTP.Data1, (int) CLSID_EasySFTP.Data2, (int) CLSID_EasySFTP.Data3,
-		(int) CLSID_EasySFTP.Data4[0], (int) CLSID_EasySFTP.Data4[1], (int) CLSID_EasySFTP.Data4[2],
-		(int) CLSID_EasySFTP.Data4[3], (int) CLSID_EasySFTP.Data4[4], (int) CLSID_EasySFTP.Data4[5],
-		(int) CLSID_EasySFTP.Data4[6], (int) CLSID_EasySFTP.Data4[7]);
+		CLSID_EasySFTPOld.Data1, (int) CLSID_EasySFTPOld.Data2, (int) CLSID_EasySFTPOld.Data3,
+		(int) CLSID_EasySFTPOld.Data4[0], (int) CLSID_EasySFTPOld.Data4[1], (int) CLSID_EasySFTPOld.Data4[2],
+		(int) CLSID_EasySFTPOld.Data4[3], (int) CLSID_EasySFTPOld.Data4[4], (int) CLSID_EasySFTPOld.Data4[5],
+		(int) CLSID_EasySFTPOld.Data4[6], (int) CLSID_EasySFTPOld.Data4[7]);
 
 	if ((lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, _T("Software\\Classes"), 0, KEY_WRITE | DELETE, &hKeyClasses)) != ERROR_SUCCESS)
 	{
@@ -1869,7 +1869,7 @@ void CMainDLL::GetTemporaryFileName(LPCWSTR lpszFileName, CMyStringW& rstrResult
 	}
 }
 
-static const UUID UUID_EasySFTPLock = CLSID_EasySFTP;
+static const UUID UUID_EasySFTPLock = CLSID_EasySFTPOld;
 
 void CMainDLL::SetAttachmentLock(LPCWSTR lpszFileName, LPCWSTR lpszURL)
 {
