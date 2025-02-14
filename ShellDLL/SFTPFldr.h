@@ -100,7 +100,7 @@ struct CSFTPWaitDirectoryData : public CWaitResponseData
 	bool bResult;
 	HSFTPHANDLE hSFTPHandle;
 	DWORD dwReadLinkCount;
-	CSFTPFolderSFTPDirectory* pDirectory;
+	CFTPDirectoryBase* pDirectory;
 };
 
 struct CSFTPWaitFileHandle : public CSFTPWaitConfirm
@@ -118,26 +118,29 @@ struct CSFTPWaitSetStat : public CSFTPWaitConfirm
 
 ////////////////////////////////////////////////////////////////////////////////
 
-class CSFTPFolderSFTPDirectory : public CFTPDirectoryBase
+class CSFTPFolderSFTPDirectory : public CFTPDirectory
 {
 public:
 	CSFTPFolderSFTPDirectory(CDelegateMallocData* pMallocData,
 		CFTPDirectoryItem* pItemMe,
 		CFTPDirectoryBase* pParent,
-		CFTPDirectoryRootBase* pRoot,
 		LPCWSTR lpszDirectory);
 	virtual ~CSFTPFolderSFTPDirectory();
 
+	STDMETHOD(QueryInterface)(REFIID riid, void** ppv) { return CFTPDirectoryBase::QueryInterface(riid, ppv); }
+	STDMETHOD_(ULONG, AddRef)() { return CFTPDirectoryBase::AddRef(); }
+	STDMETHOD_(ULONG, Release)() { return CFTPDirectoryBase::Release(); }
+
 public:
-	STDMETHOD(CreateInstance)(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent, CFTPDirectoryRootBase* pRoot,
-		LPCWSTR lpszDirectory, CFTPDirectoryBase** ppResult);
-	STDMETHOD_(void, UpdateItem)(CFTPFileItem* pOldItem, LPCWSTR lpszNewItem, LONG lEvent);
+	STDMETHOD(CreateInstance)(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent,
+		LPCWSTR lpszDirectory, CFTPDirectoryBase** ppResult) override;
+	STDMETHOD_(void, UpdateItem)(CFTPFileItem* pOldItem, LPCWSTR lpszNewItem, LONG lEvent) override;
 
 protected:
-	CSFTPFolderSFTPDirectory(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe);
+	CSFTPFolderSFTPDirectory(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, ITypeInfo* pInfo);
 };
 
-class CSFTPFolderSFTP : public CFTPDirectoryRootBase,
+class CSFTPFolderSFTP : public CFTPDirectoryRoot,
 	public CSFTPChannelListener,
 	public CSSH2FingerPrintHandler,
 	public CPumpMessageProcessor
@@ -151,8 +154,6 @@ public:
 	// IUnknown
 public:
 	STDMETHOD(QueryInterface)(REFIID riid, void** ppv) { return CFTPDirectoryRootBase::QueryInterface(riid, ppv); }
-	STDMETHOD_(ULONG, AddRef)() { return CFTPDirectoryRootBase::AddRef(); }
-	STDMETHOD_(ULONG, Release)() { return CFTPDirectoryRootBase::Release(); }
 
 #ifdef _DEBUG
 	STDMETHOD(CompareIDs)(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2)
@@ -168,21 +169,21 @@ public:
 	STDMETHOD(SetFTPItemNameOf)(HWND hWnd, CFTPDirectoryBase* pDirectory,
 		CFTPFileItem* pItem, LPCWSTR pszName, SHGDNF uFlags);
 	STDMETHOD(RenameFTPItem)(LPCWSTR lpszSrcFileName, LPCWSTR lpszNewFileName, CMyStringW* pstrMsg);
-	STDMETHOD(UpdateFTPItemAttributes)(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
-		CServerFilePropertyDialog* pDialog, const CMyPtrArrayT<CServerFileAttrData>& aAttrs, bool* pabResults);
+	STDMETHOD(UpdateFTPItemAttribute)(CFTPDirectoryBase* pDirectory, const CServerFileAttrData* pAttr, CMyStringW* pstrMsg = NULL);
 	STDMETHOD(CreateFTPDirectory)(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszName);
 	STDMETHOD(CreateShortcut)(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszName, LPCWSTR lpszLinkTo, bool bHardLink);
 	STDMETHOD(CreateFTPItemStream)(CFTPDirectoryBase* pDirectory, CFTPFileItem* pItem, IStream** ppStream);
 	STDMETHOD(WriteFTPItem)(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszName, IStream* pStream,
 		void* pvObject, CTransferStatus* pStatus);
-	STDMETHOD(CreateInstance)(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent, CFTPDirectoryRootBase* pRoot,
-		LPCWSTR lpszDirectory, CFTPDirectoryBase** ppResult);
+	STDMETHOD(CreateInstance)(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent,
+		LPCWSTR lpszDirectory, CFTPDirectoryBase** ppResult) override;
 
+	STDMETHOD(get_IsUnixServer)(VARIANT_BOOL* pbRet);
 	STDMETHOD(Disconnect)();
 	STDMETHOD(IsConnected)() { return m_pClient != NULL ? S_OK : S_FALSE; }
 	STDMETHOD(IsTransferring)() { return m_dwTransferringCount > 0 ? S_OK : S_FALSE; }
 
-	STDMETHOD(OpenFile)(CFTPDirectoryBase* pDirectory, LPCWSTR lpszName, DWORD grfMode, HANDLE* phFile);
+	STDMETHOD(OpenFile)(CFTPDirectoryBase* pDirectory, LPCWSTR lpszName, DWORD grfMode, HANDLE* phFile, IEasySFTPFile** ppFile = NULL);
 	STDMETHOD(ReadFile)(HANDLE hFile, void* outBuffer, DWORD dwSize, DWORD* pdwRead);
 	STDMETHOD(WriteFile)(HANDLE hFile, const void* inBuffer, DWORD dwSize, DWORD* pdwWritten);
 	STDMETHOD(SeekFile)(HANDLE hFile, LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, ULARGE_INTEGER* lpNewFilePointer);
@@ -194,9 +195,13 @@ public:
 	STDMETHOD(StatDirectory)(CFTPDirectoryBase* pDirectory, DWORD grfMode, STATSTG* pStatstg, DWORD grfStatFlag);
 	STDMETHOD(SetFileTime)(LPCWSTR lpszFileName, const FILETIME* pctime, const FILETIME* patime, const FILETIME* pmtime);
 
-	STDMETHOD_(IShellFolder*, GetParentFolder)() { return m_pFolderRoot; }
-
-	virtual LPCWSTR GetProtocolName(int& nDefPort) const { nDefPort = 22; return L"sftp"; }
+	virtual EasySFTPConnectionMode GetProtocol(int* pDefPort) const
+	{
+		if (pDefPort)
+			*pDefPort = 22;
+		return EasySFTPConnectionMode::SFTP;
+	}
+	virtual LPCWSTR GetProtocolName() const { return L"sftp"; }
 	virtual bool IsLockSupported() const { return m_pChannel && m_pChannel->GetServerVersion() >= 6; }
 	virtual void PreShowPropertyDialog(CServerFilePropertyDialog* pDialog);
 	// pDialog may be NULL
@@ -207,6 +212,7 @@ public:
 	virtual bool ValidateDirectory(LPCWSTR lpszParentDirectory, PCUIDLIST_RELATIVE pidlChild,
 		CMyStringW& rstrRealPath);
 	virtual CFTPFileItem* RetrieveFileItem(CFTPDirectoryBase* pDirectory, LPCWSTR lpszFileName);
+	virtual ULONG GetServerVersion() { return m_pChannel ? m_pChannel->GetServerVersion() : 0; }
 
 	// CSFTPChannelListener
 public:
@@ -241,7 +247,7 @@ public:
 	virtual HRESULT PumpSocketAndMessage(DWORD dwWaitTime = 0xFFFFFFFF);
 
 public:
-	bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserInfo* pUser);
+	virtual bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser);
 	//void Disconnect();
 
 public:
@@ -260,7 +266,7 @@ public:
 	char m_nServerCharset;
 
 	bool m_bMyUserInfo;
-	CUserInfo* m_pUser;
+	IEasySFTPAuthentication* m_pUser;
 	CSSH2Client* m_pClient;
 	Phase m_phase;
 	bool m_bFirstAuthenticate;
@@ -281,8 +287,6 @@ public:
 
 protected:
 	//ULONG m_uRef;
-	CEasySFTPFolderRoot* m_pFolderRoot;
-
 	HWND m_hWndOwner;
 	UINT_PTR m_idTimer;
 	CRITICAL_SECTION m_csSocket;
@@ -296,7 +300,7 @@ protected:
 	void DoReceiveSocket();
 	inline int DoRetryAuthentication(const char* pszAuthList, bool bFirstAttempt)
 	{
-		return m_pFolderRoot->DoRetryAuthentication(m_hWndOwner, m_pUser, true, pszAuthList, bFirstAttempt);
+		return m_pParent->DoRetryAuthentication(m_hWndOwner, m_pUser, EasySFTPConnectionMode::SFTP, pszAuthList, bFirstAttempt);
 	}
 	void DoNextReadDirectory(CSFTPWaitDirectoryData* pData);
 	virtual HRESULT DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW& astrMsgs, bool bIsDirectory, LPCWSTR lpszFile, CFTPDirectoryBase* pDirectory = NULL);

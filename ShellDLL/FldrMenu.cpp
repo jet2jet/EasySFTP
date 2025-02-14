@@ -412,6 +412,7 @@ void CFTPFileItemMenu::DoOpen(HWND hWndOwner, bool bExtend, DWORD dwHotKey)
 			pBrowser->AddRef();
 	}
 
+	auto* pRoot = m_pParent->GetRoot();
 	CMyPtrArrayT<CFTPFileItem> aItems;
 	SHELLEXECUTEINFO sei;
 	memset(&sei, 0, sizeof(sei));
@@ -426,7 +427,7 @@ void CFTPFileItemMenu::DoOpen(HWND hWndOwner, bool bExtend, DWORD dwHotKey)
 			CFTPFileItem* pItem = m_aItems.GetItem(i);
 			if (pItem->IsDirectory())
 			{
-				PITEMID_CHILD pidlItem = ::CreateFileItem(m_pParent->m_pRoot->GetDelegateMalloc(), pItem);
+				PITEMID_CHILD pidlItem = ::CreateFileItem(pRoot->GetDelegateMalloc(), pItem);
 				sei.lpIDList = ::AppendItemIDList(m_pidlMe, pidlItem);
 				::ShellExecuteEx(&sei);
 				::CoTaskMemFree(sei.lpIDList);
@@ -457,7 +458,7 @@ void CFTPFileItemMenu::DoOpen(HWND hWndOwner, bool bExtend, DWORD dwHotKey)
 			CFTPFileItem* pItem = m_aItems.GetItem(i);
 			if (pItem->IsDirectory())
 			{
-				PITEMID_CHILD pidlItem = ::CreateFileItem(m_pParent->m_pRoot->GetDelegateMalloc(), pItem);
+				PITEMID_CHILD pidlItem = ::CreateFileItem(pRoot->GetDelegateMalloc(), pItem);
 				if (bFirst)
 				{
 					pBrowser->BrowseObject(pidlItem, wFlags);
@@ -487,34 +488,32 @@ void CFTPFileItemMenu::DoCutCopy(HWND hWndOwner, bool bCut)
 {
 	CFTPDataObject* pObject;
 	HRESULT hr;
-	hr = m_pParent->m_pRoot->GetFTPItemUIObjectOf(hWndOwner, m_pParent, m_aItems, &pObject);
+	hr = m_pParent->GetRoot()->GetFTPItemUIObjectOf(hWndOwner, m_pParent, m_aItems, &pObject);
 	if (FAILED(hr))
 		return;
-	//m_pParent->m_pRoot->BeforeClipboardOperation(pObject);
 	pObject->m_bIsClipboardData = true;
 	pObject->SetAsyncMode(TRUE);
 	pObject->m_dwPreferredDropEffect = (bCut ? DROPEFFECT_MOVE : DROPEFFECT_COPY);
-	//hr = ::OleSetClipboard(pObject);
-	////if (SUCCEEDED(hr))
-	////	m_pParent->m_pRoot->AfterClipboardOperation(pObject);
-	//pObject->Release();
 	theApp.PlaceClipboardData(pObject);
 	pObject->Release();
 }
 
 void CFTPFileItemMenu::DoProperty(HWND hWndOwner)
 {
+	auto* pRoot = m_pParent->GetRoot();
+	pRoot->AddRef();
 	CServerFilePropertyDialog dlg(m_aItems);
 	dlg.m_strDirectory = m_pParent->m_strDirectory;
-	m_pParent->m_pRoot->PreShowPropertyDialog(&dlg);
+	pRoot->PreShowPropertyDialog(&dlg);
 	if (dlg.ModalDialogW(hWndOwner) == IDOK)
 	{
 		bool* pb = (bool*) malloc(sizeof(bool) * dlg.m_aAttrs.GetCount());
 		memset(pb, 0, sizeof(bool) * dlg.m_aAttrs.GetCount());
-		m_pParent->m_pRoot->UpdateFTPItemAttributes(hWndOwner, m_pParent, &dlg, dlg.m_aAttrs, pb);
+		pRoot->UpdateFTPItemAttributes(hWndOwner, m_pParent, dlg.m_aAttrs, pb);
 		// currently no error check
 		free(pb);
 	}
+	pRoot->Release();
 }
 
 void CFTPFileItemMenu::DoDelete(HWND hWndOwner)
@@ -537,16 +536,7 @@ void CFTPFileItemMenu::DoDelete(HWND hWndOwner)
 	if (::MyMessageBoxW(hWndOwner, str, NULL, MB_ICONQUESTION | MB_YESNO) != IDYES)
 		return;
 
-	m_pParent->m_pRoot->DoDeleteFTPItems(hWndOwner, m_pParent, m_aItems);
-
-	//for (int i = 0; i < m_aItems.GetCount(); i++)
-	//{
-	//	CFTPFileItem* pItem = m_aItems.GetItem(i);
-	//	m_pParent->UpdateRemoveFile(pItem->strFileName, pItem->IsDirectory());
-	//	//PITEMID_CHILD pidlItem = ::CreateFileItem(m_pParent->m_pRoot->GetDelegateMalloc(), pItem);
-	//	//m_pParent->NotifyUpdate(pItem->IsDirectory() ? SHCNE_RMDIR : SHCNE_DELETE, pidlItem, NULL);
-	//	//::CoTaskMemFree(pidlItem);
-	//}
+	m_pParent->GetRoot()->DoDeleteFTPItems(hWndOwner, m_pParent, m_aItems);
 }
 
 #define BUFFER_SIZE      32768
@@ -568,6 +558,8 @@ void CFTPFileItemMenu::DownloadAndOpenFiles(HWND hWndOwner, bool bAsText, const 
 	}
 
 	bool bQuit = false;
+	auto* pRoot = m_pParent->GetRoot();
+	pRoot->AddRef();
 	for (int i = 0; i < aItems.GetCount(); i++)
 	{
 		CFTPFileItem* pItem = aItems.GetItem(i);
@@ -576,16 +568,16 @@ void CFTPFileItemMenu::DownloadAndOpenFiles(HWND hWndOwner, bool bAsText, const 
 		{
 			IStream* pStream;
 			CMyStringW strFileName;
-			HRESULT hr = m_pParent->m_pRoot->CreateFTPItemStream(m_pParent, pItem, &pStream);
+			HRESULT hr = pRoot->CreateFTPItemStream(m_pParent, pItem, &pStream);
 			if (SUCCEEDED(hr))
 			{
-				if (!TEXTMODE_IS_NO_CONVERTION(m_pParent->m_pRoot->m_bTextMode))
+				if (!TEXTMODE_IS_NO_CONVERTION(pRoot->m_bTextMode))
 				{
 					hr = bAsText ? S_OK : m_pParent->IsTextFile(pItem->strFileName);
 					if (SUCCEEDED(hr) && hr == S_OK)
 					{
 						IStream* pstm2;
-						hr = MyCreateTextStream(pStream, TEXTMODE_FOR_RECV(m_pParent->m_pRoot->m_bTextMode), &pstm2);
+						hr = MyCreateTextStream(pStream, TEXTMODE_FOR_RECV(pRoot->m_bTextMode), &pstm2);
 						if (SUCCEEDED(hr))
 						{
 							pStream->Release();
@@ -690,6 +682,7 @@ void CFTPFileItemMenu::DownloadAndOpenFiles(HWND hWndOwner, bool bAsText, const 
 	}
 
 	m_dlgTransfer.DestroyWindow();
+	pRoot->Release();
 
 	free(pvBuffer);
 }
@@ -814,7 +807,7 @@ UINT CFTPFileDirectoryMenu::_QueryContextMenu(HMENU hMenuTarget, HMENU hMenuCurr
 		}
 		if (mii.wID == ID_PARENT_NEW_SHORTCUT)
 		{
-			if (!m_pParent->m_pRoot->PreShowCreateShortcutDialog(NULL))
+			if (!m_pParent->GetRoot()->PreShowCreateShortcutDialog(NULL))
 				continue;
 		}
 		//if (uFlags & CMF_DVFILE)
@@ -1006,19 +999,23 @@ void CFTPFileDirectoryMenu::DoCreateFolder(HWND hWndOwner)
 {
 	CMyStringW str;
 	if (FileNameDialog(str, hWndOwner, true, false))
-		m_pParent->m_pRoot->CreateFTPDirectory(hWndOwner, m_pParent, str);
+		m_pParent->GetRoot()->CreateFTPDirectory(hWndOwner, m_pParent, str);
 }
 
 void CFTPFileDirectoryMenu::DoCreateShortcut(HWND hWndOwner)
 {
+	auto* pRoot = m_pParent->GetRoot();
 	CLinkDialog dlg;
 	dlg.m_strCurDir = m_pParent->m_strDirectory;
-	if (!m_pParent->m_pRoot->PreShowCreateShortcutDialog(&dlg))
-		return;
-	if (dlg.ModalDialogW(hWndOwner) == IDOK)
+	pRoot->AddRef();
+	if (pRoot->PreShowCreateShortcutDialog(&dlg))
 	{
-		m_pParent->m_pRoot->CreateShortcut(hWndOwner, m_pParent, dlg.m_strFileName, dlg.m_strLinkTo, dlg.m_bHardLink);
+		if (dlg.ModalDialogW(hWndOwner) == IDOK)
+		{
+			pRoot->CreateShortcut(hWndOwner, m_pParent, dlg.m_strFileName, dlg.m_strLinkTo, dlg.m_bHardLink);
+		}
 	}
+	pRoot->Release();
 }
 
 void CFTPFileDirectoryMenu::DoProperty(HWND hWndOwner)

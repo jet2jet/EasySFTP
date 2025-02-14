@@ -114,10 +114,40 @@
       <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
+    <Midl>
+      <HeaderFileName>EasySFTP_h.h</HeaderFileName>
+    </Midl>
+    <Midl>
+      <InterfaceIdentifierFileName>EasySFTP_i.c</InterfaceIdentifierFileName>
+      <TypeLibraryName>$(IntDir)\$(ProjectName).tlb</TypeLibraryName>
+      <OutputDirectory>
+      </OutputDirectory>
+    </Midl>
+    <Manifest />
+    <PreBuildEvent>
+      <Command>cd /d "$(SolutionDir)"
+set VERSION_HASH_OLD=
+set VERSION_HASH=
+for /f "delims=" %%A in (version-hash.txt) do set "VERSION_HASH_OLD=%%A"
+for /f "delims=" %%A in ('git log -n 1 "--pretty=format:%%h"') do set "VERSION_HASH=%%A"
+if "%VERSION_HASH_OLD%"=="%VERSION_HASH%" exit /b 0
+echo %VERSION_HASH%&gt;version-hash.txt
+echo #define VERSION_HASH "%VERSION_HASH%"&gt;version-hash.h
+exit /b 0
+</Command>
+    </PreBuildEvent>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>
       <TargetEnvironment>X64</TargetEnvironment>
+      <HeaderFileName>EasySFTP_h.h</HeaderFileName>
+      <InterfaceIdentifierFileName>EasySFTP_i.c</InterfaceIdentifierFileName>
+      <TypeLibraryName>$(IntDir)\$(ProjectName).tlb</TypeLibraryName>
+      <OutputDirectory>
+      </OutputDirectory>
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
@@ -142,6 +172,22 @@
       <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
+    <Manifest />
+    <PreBuildEvent>
+      <Command>cd /d "$(SolutionDir)"
+set VERSION_HASH_OLD=
+set VERSION_HASH=
+for /f "delims=" %%A in (version-hash.txt) do set "VERSION_HASH_OLD=%%A"
+for /f "delims=" %%A in ('git log -n 1 "--pretty=format:%%h"') do set "VERSION_HASH=%%A"
+if "%VERSION_HASH_OLD%"=="%VERSION_HASH%" exit /b 0
+echo %VERSION_HASH%&gt;version-hash.txt
+echo #define VERSION_HASH "%VERSION_HASH%"&gt;version-hash.h
+exit /b 0
+</Command>
+    </PreBuildEvent>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -169,10 +215,40 @@
       <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
+    <Midl>
+      <HeaderFileName>EasySFTP_h.h</HeaderFileName>
+    </Midl>
+    <Midl>
+      <InterfaceIdentifierFileName>EasySFTP_i.c</InterfaceIdentifierFileName>
+      <TypeLibraryName>$(IntDir)\$(ProjectName).tlb</TypeLibraryName>
+      <OutputDirectory>
+      </OutputDirectory>
+    </Midl>
+    <Manifest />
+    <PreBuildEvent>
+      <Command>cd /d "$(SolutionDir)"
+set VERSION_HASH_OLD=
+set VERSION_HASH=
+for /f "delims=" %%A in (version-hash.txt) do set "VERSION_HASH_OLD=%%A"
+for /f "delims=" %%A in ('git log -n 1 "--pretty=format:%%h"') do set "VERSION_HASH=%%A"
+if "%VERSION_HASH_OLD%"=="%VERSION_HASH%" exit /b 0
+echo %VERSION_HASH%&gt;version-hash.txt
+echo #define VERSION_HASH "%VERSION_HASH%"&gt;version-hash.h
+exit /b 0
+</Command>
+    </PreBuildEvent>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
       <TargetEnvironment>X64</TargetEnvironment>
+      <HeaderFileName>EasySFTP_h.h</HeaderFileName>
+      <InterfaceIdentifierFileName>EasySFTP_i.c</InterfaceIdentifierFileName>
+      <TypeLibraryName>$(IntDir)\$(ProjectName).tlb</TypeLibraryName>
+      <OutputDirectory>
+      </OutputDirectory>
     </Midl>
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
@@ -200,6 +276,22 @@
       <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
+    <Manifest />
+    <PreBuildEvent>
+      <Command>cd /d "$(SolutionDir)"
+set VERSION_HASH_OLD=
+set VERSION_HASH=
+for /f "delims=" %%A in (version-hash.txt) do set "VERSION_HASH_OLD=%%A"
+for /f "delims=" %%A in ('git log -n 1 "--pretty=format:%%h"') do set "VERSION_HASH=%%A"
+if "%VERSION_HASH_OLD%"=="%VERSION_HASH%" exit /b 0
+echo %VERSION_HASH%&gt;version-hash.txt
+echo #define VERSION_HASH "%VERSION_HASH%"&gt;version-hash.h
+exit /b 0
+</Command>
+    </PreBuildEvent>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Auth.cpp" />
@@ -208,6 +300,12 @@
     <ClCompile Include="CsetPage.cpp" />
     <ClCompile Include="DIMalloc.cpp" />
     <ClCompile Include="DragData.cpp" />
+    <ClCompile Include="EasySFTP_i.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="EnmIDLst.cpp" />
     <ClCompile Include="EnmStstg.cpp" />
     <ClCompile Include="ExBuffer.cpp" />
@@ -229,6 +327,7 @@
     <ClCompile Include="FTPStrm.cpp" />
     <ClCompile Include="Func.cpp" />
     <ClCompile Include="HostPage.cpp" />
+    <ClCompile Include="HostSet.cpp" />
     <ClCompile Include="LinkDlg.cpp" />
     <ClCompile Include="MErrDlg.cpp" />
     <ClCompile Include="MySocket.cpp" />
@@ -248,6 +347,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="StrList.cpp" />
     <ClCompile Include="SvInfo.cpp" />
     <ClCompile Include="TextStrm.cpp" />
     <ClCompile Include="TferPage.cpp" />
@@ -263,13 +363,16 @@
     <None Include="EasySFTP_2.ico" />
     <None Include="netdrive.ico" />
     <None Include="ReadMe.txt" />
+    <None Include="ShellDLL.tlb.rc2" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\version-hash.h" />
     <ClInclude Include="Auth.h" />
     <ClInclude Include="CFactory.h" />
     <ClInclude Include="Connect.h" />
     <ClInclude Include="DIMalloc.h" />
     <ClInclude Include="DragData.h" />
+    <ClInclude Include="EasySFTP_h.h" />
     <ClInclude Include="EnmIDLst.h" />
     <ClInclude Include="EnmStstg.h" />
     <ClInclude Include="ExBuffer.h" />
@@ -291,6 +394,7 @@
     <ClInclude Include="FTPStrm.h" />
     <ClInclude Include="Func.h" />
     <ClInclude Include="HostPage.h" />
+    <ClInclude Include="HostSet.h" />
     <ClInclude Include="LinkDlg.h" />
     <ClInclude Include="MErrDlg.h" />
     <ClInclude Include="MsgData.h" />
@@ -307,11 +411,13 @@
     <ClInclude Include="SSHChan.h" />
     <ClInclude Include="SSHCli.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StrList.h" />
     <ClInclude Include="SvInfo.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextStrm.h" />
     <ClInclude Include="TferStat.h" />
     <ClInclude Include="Transfer.h" />
+    <ClInclude Include="version.h" />
     <ClInclude Include="WinOpSSH.h" />
   </ItemGroup>
   <ItemGroup>
@@ -322,6 +428,9 @@
       <Project>{e3cbe15b-c6c0-4025-9b6b-49f7e49176ce}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Midl Include="ShellDLL.idl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

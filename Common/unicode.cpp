@@ -112,7 +112,7 @@ LPWSTR __stdcall UniLoadStringW(HINSTANCE hInstance, UINT uID)
 	return szRet;
 }
 
-EXTERN_C __out HANDLE WINAPI MyFindFirstFileW(__in LPCWSTR lpFileName, __out LPWIN32_FIND_DATAW lpFindFileData)
+EXTERN_C HANDLE WINAPI MyFindFirstFileW(__in LPCWSTR lpFileName, __out LPWIN32_FIND_DATAW lpFindFileData)
 {
 	HANDLE hRet;
 	hRet = ::FindFirstFileW(lpFileName, lpFindFileData);
@@ -564,7 +564,10 @@ BSTR __stdcall MyStringToBSTR(
 
 void __stdcall MyBSTRToString(BSTR bstr, CMyStringW& rstrString)
 {
-	rstrString.SetString(bstr, ::SysStringLen(bstr));
+	if (!bstr)
+		rstrString.Empty();
+	else
+		rstrString.SetString(bstr, ::SysStringLen(bstr));
 }
 #endif
 
@@ -577,6 +580,21 @@ void __stdcall MyStringFromGUIDW(REFGUID rguid, CMyStringW& rstrRet)
 		rguid.Data4[4], rguid.Data4[5], rguid.Data4[6], rguid.Data4[7]);
 }
 #endif
+
+size_t __stdcall MyGetUnalignedStringLen(const WCHAR UNALIGNED* pwstr)
+{
+	auto* p = reinterpret_cast<const BYTE UNALIGNED*>(pwstr);
+	while (p[0] || p[1])
+		p += 2;
+	return static_cast<size_t>(reinterpret_cast<const WCHAR UNALIGNED*>(p) - pwstr);
+}
+
+void __stdcall MyGetUnalignedString(const WCHAR UNALIGNED* pwstr, CMyStringW& rstrString)
+{
+	auto len = MyGetUnalignedStringLen(pwstr);
+	auto out = rstrString.GetBuffer(len);
+	memcpy(out, pwstr, sizeof(WCHAR) * len);
+}
 
 #ifdef _SHLOBJ_H_
 EXTERN_C int __stdcall MyDragQueryFileCount(HDROP hDrop)

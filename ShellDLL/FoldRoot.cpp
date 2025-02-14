@@ -1,7 +1,7 @@
 /*
  EasySFTP - Copyright (C) 2025 Kuri-Applications
 
- FoldRoot.cpp - implementation of CFTPFileStream
+ FoldRoot.cpp - implementation of CFTPDirectoryRootBase
  */
 
 #include "stdafx.h"
@@ -12,11 +12,13 @@
 
  ///////////////////////////////////////////////////////////////////////////////
 
-CFTPDirectoryRootBase::CFTPDirectoryRootBase(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe)
-	: CFTPDirectoryBase(pMallocData, pItemMe)
+CFTPDirectoryRootBase::CFTPDirectoryRootBase(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, CEasySFTPFolderRoot* pParent)
+	: CFTPDirectoryT(pMallocData, pItemMe, theApp.GetTypeInfo(IID_IEasySFTPRootDirectory))
 {
 	m_bIsRoot = true;
-	m_pRoot = this;
+	m_pParent = pParent;
+	if (pParent)
+		pParent->AddRef();
 	m_strDirectory = L"/";
 	m_bTextMode = TEXTMODE_NO_CONVERT;
 	m_nServerCharset = scsUTF8;
@@ -25,6 +27,37 @@ CFTPDirectoryRootBase::CFTPDirectoryRootBase(CDelegateMallocData* pMallocData, C
 	m_bUseSystemTextFileType = true;
 	m_pObjectOnClipboard = NULL;
 	m_bUseThumbnailPreview = true;
+	m_bIsTransferCanceled = false;
+	m_pTransferDialog = NULL;
+}
+
+CFTPDirectoryRootBase::~CFTPDirectoryRootBase()
+{
+	::EnterCriticalSection(&theApp.m_csHosts);
+	for (int i = 0, c = theApp.m_aHosts.GetCount(); i < c; ++i)
+	{
+		auto* pHostData = theApp.m_aHosts.GetItem(i);
+		if (pHostData && pHostData->pDirItem && pHostData->pDirItem->pDirectory == this)
+			pHostData->pDirItem->pDirectory = NULL;
+	}
+	::LeaveCriticalSection(&theApp.m_csHosts);
+
+	if (m_pTransferDialog)
+		delete m_pTransferDialog;
+	//if (m_pParent)
+	//	m_pParent->Release();
+}
+
+ULONG CFTPDirectoryRootBase::DetachAndRelease()
+{
+	if (m_pParent)
+	{
+		auto c = m_uRef;
+		for (ULONG u = 0; u < c; ++u)
+			m_pParent->Release();
+		m_pParent = NULL;
+	}
+	return CFTPDirectoryBase::DetachAndRelease();
 }
 
 STDMETHODIMP CFTPDirectoryRootBase::QueryInterface(REFIID riid, void** ppv)
@@ -43,7 +76,38 @@ STDMETHODIMP CFTPDirectoryRootBase::QueryInterface(REFIID riid, void** ppv)
 		*ppv = NULL;
 		return E_NOINTERFACE;
 	}
+	else if (IsEqualIID(riid, IID_IEasySFTPRootDirectory) ||
+		IsEqualIID(riid, IID_IEasySFTPDirectory) ||
+		IsEqualIID(riid, IID_IDispatch) ||
+		IsEqualIID(riid, IID_IUnknown))
+	{
+		*ppv = static_cast<IEasySFTPRootDirectory*>(this);
+		return S_OK;
+	}
 	return CFTPDirectoryBase::QueryInterface(riid, ppv);
+}
+
+STDMETHODIMP_(ULONG) CFTPDirectoryRootBase::AddRef()
+{
+	auto u = ::InterlockedIncrement(&m_uRef);
+	if (m_pParent)
+		m_pParent->AddRef();
+	return u;
+}
+
+STDMETHODIMP_(ULONG) CFTPDirectoryRootBase::Release()
+{
+	auto u = ::InterlockedDecrement(&m_uRef);
+	if (m_pParent)
+		m_pParent->Release();
+	if (!u)
+		delete this;
+	return u;
+}
+
+STDMETHODIMP CFTPDirectoryRootBase::GetClassInfo(ITypeInfo** ppTI)
+{
+	return theApp.m_pTypeLib->GetTypeInfoOfGuid(CLSID_EasySFTPRootDirectory, ppTI);
 }
 
 STDMETHODIMP CFTPDirectoryRootBase::DoDeleteFTPItems(HWND hWndOwner, CFTPDirectoryBase* pDirectory, const CMyPtrArrayT<CFTPFileItem>& aItems)
@@ -116,86 +180,130 @@ STDMETHODIMP CFTPDirectoryRootBase::MoveFTPItems(HWND hWndOwner, CFTPDirectoryBa
 	return hr;
 }
 
-STDMETHODIMP CFTPDirectoryRootBase::GetHostInfo(VARIANT_BOOL* pbIsSFTP, int* pnPort, BSTR* pbstrHostName)
+STDMETHODIMP CFTPDirectoryRootBase::UpdateFTPItemAttributes(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
+	const CMyPtrArrayT<CServerFileAttrData>& aAttrs, bool* pabResults)
 {
-	int nPort;
-	LPCWSTR lpw;
-	lpw = GetProtocolName(nPort);
-	if (pbIsSFTP)
-		*pbIsSFTP = (_wcsicmp(lpw, L"sftp") == 0);
-	if (pnPort)
-		*pnPort = nPort;
-	if (pbstrHostName)
+	CMyStringArrayW astrMsgs;
+	HRESULT hr = S_OK;
+	for (int i = 0; i < aAttrs.GetCount(); i++)
 	{
-		*pbstrHostName = ::SysAllocStringLen(m_strHostName, (UINT)m_strHostName.GetLength());
-		if (!*pbstrHostName)
-			return E_OUTOFMEMORY;
+		CServerFileAttrData* pAttr = aAttrs.GetItem(i);
+
+		CMyStringW strMsg;
+		auto hr2 = UpdateFTPItemAttribute(pDirectory, pAttr, &strMsg);
+		pabResults[i] = SUCCEEDED(hr2);
+		if (FAILED(hr2))
+		{
+			if (!strMsg.IsEmpty())
+				astrMsgs.Add(strMsg);
+			if (SUCCEEDED(hr))
+				hr = hr2;
+		}
 	}
+	if (FAILED(hr))
+		theApp.MultipleErrorMsgBox(hWndOwner, astrMsgs);
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryRootBase::get_HostName(BSTR* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = MyStringToBSTR(m_strHostName);
+	return *pRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPDirectoryRootBase::get_Port(long* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = m_nPort;
 	return S_OK;
 }
 
-STDMETHODIMP CFTPDirectoryRootBase::GetTextMode(LONG* pnTextMode)
+STDMETHODIMP CFTPDirectoryRootBase::get_ConnectionMode(EasySFTPConnectionMode* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = GetProtocol();
+	return S_OK;
+}
+
+STDMETHODIMP CFTPDirectoryRootBase::get_TextMode(EasySFTPTextMode* pnTextMode)
 {
 	if (!pnTextMode)
 		return E_POINTER;
-	*pnTextMode = (LONG)m_bTextMode;
+	*pnTextMode = static_cast<EasySFTPTextMode>(m_bTextMode);
 	return S_OK;
 }
 
-STDMETHODIMP CFTPDirectoryRootBase::SetTextMode(LONG nTextMode)
+STDMETHODIMP CFTPDirectoryRootBase::put_TextMode(EasySFTPTextMode nTextMode)
 {
-	if (nTextMode >= 0x100 || nTextMode < 0)
+	auto n = static_cast<int>(nTextMode);
+	if (n >= 0x100 || n < 0)
 		return E_INVALIDARG;
-	m_bTextMode = (BYTE)nTextMode;
+	m_bTextMode = static_cast<BYTE>(n);
 	return S_OK;
 }
 
-STDMETHODIMP CFTPDirectoryRootBase::GetTransferMode(LONG* pnTransferMode)
+STDMETHODIMP CFTPDirectoryRootBase::get_TransferMode(EasySFTPTransferMode* pnTransferMode)
 {
 	if (!pnTransferMode)
 		return E_POINTER;
-	*pnTransferMode = (LONG)m_nTransferMode;
+	*pnTransferMode = static_cast<EasySFTPTransferMode>(m_nTransferMode);
 	return S_OK;
 }
 
-STDMETHODIMP CFTPDirectoryRootBase::SetTransferMode(LONG nTransferMode)
+STDMETHODIMP CFTPDirectoryRootBase::put_TransferMode(EasySFTPTransferMode nTransferMode)
 {
-	if (nTransferMode >= 0x80 || nTransferMode < 0)
+	auto n = static_cast<int>(nTransferMode);
+	if (n >= 0x80 || n < 0)
 		return E_INVALIDARG;
-	m_nTransferMode = (BYTE)nTransferMode;
+	m_nTransferMode = static_cast<BYTE>(n);
 	return S_OK;
 }
 
-STDMETHODIMP CFTPDirectoryRootBase::IsTextFile(LPCWSTR lpszFileName)
+STDMETHODIMP CFTPDirectoryRootBase::IsTextFile(BSTR lpszFileName, VARIANT_BOOL* pbRet)
 {
+	if (!pbRet)
+		return E_POINTER;
 	if (m_nTransferMode == TRANSFER_MODE_TEXT)
+	{
+		*pbRet = VARIANT_TRUE;
 		return S_OK;
+	}
 	else if (m_nTransferMode == TRANSFER_MODE_BINARY)
-		return S_FALSE;
+	{
+		*pbRet = VARIANT_FALSE;
+		return S_OK;
+	}
 	if (!lpszFileName)
 		return E_POINTER;
 
-	LPCWSTR lp;
-	lp = wcsrchr(lpszFileName, L'\\');
+	CMyStringW strFile;
+	MyBSTRToString(lpszFileName, strFile);
+	LPCWSTR lp, lpFile;
+	lpFile = strFile;
+	lp = wcsrchr(lpFile, L'\\');
 	if (lp)
-		lpszFileName = lp + 1;
-	lp = wcsrchr(lpszFileName, L'/');
+		lpFile = lp + 1;
+	lp = wcsrchr(lpFile, L'/');
 	if (lp)
-		lpszFileName = lp + 1;
+		lpFile = lp + 1;
 	for (int i = 0; i < m_arrTextFileType.GetCount(); i++)
 	{
-		if (::MyMatchWildcardW(lpszFileName, m_arrTextFileType.GetItem(i)))
+		if (::MyMatchWildcardW(lpFile, m_arrTextFileType.GetItem(i)))
 			return S_OK;
 	}
 	if (m_bUseSystemTextFileType)
 	{
-		lp = wcsrchr(lpszFileName, L'.');
+		lp = wcsrchr(lpFile, L'.');
 		if (lp)
 		{
 			CMyStringW str(lp);
 			HKEY hKey;
 			DWORD dw;
-			bool bRet = false;
+			VARIANT_BOOL bRet = VARIANT_FALSE;
 			if (::RegOpenKeyEx(HKEY_CLASSES_ROOT, str, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
 			{
 				dw = MAX_PATH;
@@ -213,7 +321,7 @@ STDMETHODIMP CFTPDirectoryRootBase::IsTextFile(LPCWSTR lpszFileName)
 					str.ReleaseBufferA();
 #endif
 					if (str.Compare(L"text", true) == 0)
-						bRet = true;
+						bRet = VARIANT_TRUE;
 				}
 				if (!bRet)
 				{
@@ -230,19 +338,65 @@ STDMETHODIMP CFTPDirectoryRootBase::IsTextFile(LPCWSTR lpszFileName)
 #else
 						str.ReleaseBufferA();
 #endif
-						lpszFileName = str;
-						lp = wcschr(lpszFileName, L'/');
-						if (lp && _wcsnicmp(lpszFileName, L"text", ((size_t)((DWORD_PTR)lp - (DWORD_PTR)lpszFileName)) / sizeof(WCHAR)) == 0)
-							bRet = true;
+						lpFile = str;
+						lp = wcschr(lpFile, L'/');
+						if (lp && _wcsnicmp(lpFile, L"text", ((size_t)((DWORD_PTR)lp - (DWORD_PTR)lpFile)) / sizeof(WCHAR)) == 0)
+							bRet = VARIANT_TRUE;
 					}
 				}
 				::RegCloseKey(hKey);
 			}
-			return bRet ? S_OK : S_FALSE;
+			*pbRet = bRet;
+			return S_OK;
 		}
 	}
 
-	return S_FALSE;
+	*pbRet = VARIANT_FALSE;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPDirectoryRootBase::GetHostInfo(VARIANT_BOOL* pbIsSFTP, int* pnPort, BSTR* pbstrHostName)
+{
+	auto mode = GetProtocol();
+	if (pbIsSFTP)
+		*pbIsSFTP = (mode == EasySFTPConnectionMode::SFTP);
+	if (pnPort)
+		*pnPort = m_nPort;
+	if (pbstrHostName)
+	{
+		*pbstrHostName = MyStringToBSTR(m_strHostName);
+		if (!*pbstrHostName)
+			return E_OUTOFMEMORY;
+	}
+	return S_OK;
+}
+
+IShellFolder* CFTPDirectoryRootBase::GetParentFolder()
+{
+	return m_pParent;
+}
+
+HRESULT CFTPDirectoryRootBase::SetParentFolder(IShellFolder* pFolder)
+{
+	CEasySFTPFolderRoot* pRoot = NULL;
+	if (pFolder)
+	{
+		auto hr = pFolder->QueryInterface(IID_CEasySFTPFolderRoot, reinterpret_cast<void**>(&pRoot));
+		if (FAILED(hr))
+			return E_INVALIDARG;
+	}
+	if (m_pParent)
+	{
+		for (ULONG u = 0; u < m_uRef; ++u)
+			m_pParent->Release();
+	}
+	m_pParent = pRoot;
+	if (pRoot)
+	{
+		for (ULONG u = 1; u < m_uRef; ++u)
+			pRoot->AddRef();
+	}
+	return S_OK;
 }
 
 //void CFTPDirectoryRootBase::BeforeClipboardOperation(IDataObject* pObjectNew)
@@ -258,6 +412,53 @@ void CFTPDirectoryRootBase::ShowServerInfoDialog(HWND hWndOwner)
 	CServerInfoDialog dlg;
 	PreShowServerInfoDialog(&dlg);
 	dlg.ModalDialogW(hWndOwner);
+}
+
+void CFTPDirectoryRootBase::OpenTransferDialogImpl(HWND hWndOwner)
+{
+	if (!m_pTransferDialog)
+	{
+		m_bIsTransferCanceled = false;
+		m_pTransferDialog = new CTransferDialog(this);
+		m_pTransferDialog->CreateW(hWndOwner);
+	}
+}
+
+void CFTPDirectoryRootBase::CloseTransferDialogImpl()
+{
+	if (m_pTransferDialog)
+	{
+		m_bIsTransferCanceled = false;
+		m_pTransferDialog->DestroyWindow();
+		delete m_pTransferDialog;
+		m_pTransferDialog = NULL;
+	}
+}
+
+void CFTPDirectoryRootBase::TransferCanceled(void* pvTransfer)
+{
+	m_bIsTransferCanceled = true;
+}
+
+void CFTPDirectoryRootBase::TransferInProgress(void* pvObject, ULONGLONG uliPosition)
+{
+	if (m_pTransferDialog)
+		m_pTransferDialog->UpdateTransferItem(static_cast<CTransferDialog::CTransferItem*>(pvObject), uliPosition);
+}
+
+bool CFTPDirectoryRootBase::TransferIsCanceled(void* pvObject)
+{
+	return m_bIsTransferCanceled;
+}
+
+void CFTPDirectoryRootBase::OnDisconnect()
+{
+	if (m_uRef > 0)
+	{
+		AddRef();
+		// don't detach my parent (CFTPDirectoryRootBase::m_pParent)
+		CFTPDirectoryBase::DetachAndRelease();
+	}
 }
 
 HRESULT CFTPDirectoryRootBase::DoDeleteDirectoryRecursive(HWND hWndOwner, CMyStringArrayW& astrMsgs, LPCWSTR lpszName, CFTPDirectoryBase* pDirectory)

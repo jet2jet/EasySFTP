@@ -59,7 +59,7 @@ int CSSHAgent::GetKeyList2(LPBYTE* ppKeyList)
 	memcpy(pRet, response.GetCurrentBufferPermanent(nResponseLen), nResponseLen);
 
 	*ppKeyList = (LPBYTE) pRet;
-	return nResponseLen - 5;
+	return static_cast<int>(nResponseLen) - 5;
 }
 
 void* CSSHAgent::SignSSH2Key(LPCBYTE pszPubKey, LPCBYTE pszData, size_t nDataLen, size_t* pnOutLen)

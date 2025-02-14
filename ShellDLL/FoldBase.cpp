@@ -44,21 +44,10 @@ CFolderBase::CFolderBase(CDelegateMallocData* pMallocData)
 	m_pidlMe = NULL;
 	m_hWndOwnerCache = NULL;
 	m_pUnkSite = NULL;
-	m_pFolderParent = NULL;
-	m_pItemParent = NULL;
 }
 
 CFolderBase::~CFolderBase()
 {
-	if (m_pFolderParent)
-		m_pFolderParent->Release();
-	if (m_pItemParent)
-	{
-		m_pItemParent->Release();
-//#ifdef _DEBUG
-//		m_pItemParent = NULL;
-//#endif
-	}
 	if (m_pUnkSite)
 	{
 		m_pUnkSite->Release();
@@ -114,6 +103,14 @@ STDMETHODIMP CFolderBase::QueryInterface(REFIID riid, void** ppv)
 	}
 	AddRef();
 	return S_OK;
+}
+
+void CFolderBase::OnAddRef()
+{
+}
+
+void CFolderBase::OnRelease()
+{
 }
 
 STDMETHODIMP CFolderBase::ParseDisplayName(HWND hWnd, LPBC pbc, LPWSTR pszDisplayName,
@@ -303,66 +300,13 @@ STDMETHODIMP CFolderBase::GetClassID(CLSID* pClassID)
 STDMETHODIMP CFolderBase::Initialize(PCIDLIST_ABSOLUTE pidl)
 {
 	if (m_pidlMe)
-		return S_OK;
+		::CoTaskMemFree(m_pidlMe);
 
 	m_pidlMe = (PIDLIST_ABSOLUTE) ::DuplicateItemIDList(pidl);
 	if (!m_pidlMe)
 		return E_OUTOFMEMORY;
 
-	HRESULT hr;
-	IShellFolder* pParent = GetParentFolder();
-	if (pParent)
-	{
-		hr = pParent->QueryInterface(IID_IShellItem, (void**) &m_pItemParent);
-		//pParent->Release();
-		if (SUCCEEDED(hr))
-		{
-			if (m_pFolderParent)
-				m_pFolderParent->Release();
-			m_pFolderParent = pParent;
-			m_pFolderParent->AddRef();
-			return S_OK;
-		}
-	}
-	IShellFolder* pDesktop;
-	hr = ::SHGetDesktopFolder(&pDesktop);
-	if (FAILED(hr))
-		return hr;
-	PIDLIST_ABSOLUTE pidlParent = ::RemoveOneChild(pidl);
-	if (!pidlParent)
-	{
-		pDesktop->Release();
-		return E_OUTOFMEMORY;
-	}
-	hr = MyCreateShellItem(pidlParent, &m_pItemParent);
-	if (FAILED(hr))
-	{
-		m_pItemParent = NULL;
-		hr = S_OK;
-	}
-	if (m_pFolderParent)
-		m_pFolderParent->Release();
-	// if the item is empty, use Desktop shell folder (empty item means the root namespace)
-	if (pidlParent->mkid.cb == 0)
-	{
-		m_pFolderParent = pDesktop;
-		m_pFolderParent->AddRef();
-	}
-	else
-	{
-		hr = pDesktop->BindToObject(pidlParent, NULL, IID_IShellFolder, (void**)&m_pFolderParent);
-		if (FAILED(hr))
-		{
-			m_pFolderParent = NULL;
-			m_pItemParent->Release();
-			m_pItemParent = NULL;
-			return hr;
-		}
-	}
-	::CoTaskMemFree(pidlParent);
-	pDesktop->Release();
-
-	return hr;
+	return InitializeParent();
 }
 
 STDMETHODIMP CFolderBase::GetCurFolder(PIDLIST_ABSOLUTE* ppidl)
@@ -425,11 +369,12 @@ STDMETHODIMP CFolderBase::GetParent(IShellItem** ppsi)
 	//return pParent->QueryInterface(IID_IShellItem, (void**) ppsi);
 	if (!ppsi)
 		return E_POINTER;
-	*ppsi = m_pItemParent;
-	if (!m_pItemParent)
-		return E_FAIL;
-	m_pItemParent->AddRef();
-	return S_OK;
+	PIDLIST_ABSOLUTE pidlParent = ::RemoveOneChild(m_pidlMe);
+	if (!pidlParent)
+		return E_OUTOFMEMORY;
+	auto hr = MyCreateShellItem(pidlParent, ppsi);
+	::CoTaskMemFree(pidlParent);
+	return hr;
 }
 
 STDMETHODIMP CFolderBase::GetDisplayName(SIGDN sigdnName, LPWSTR* ppszName)
@@ -577,28 +522,13 @@ STDMETHODIMP CFolderBase::SetParentAndItem(PCIDLIST_ABSOLUTE pidlParent, IShellF
 	if (!pidlParent || !psf || !pidlChild)
 		return E_INVALIDARG;
 
-	if (m_pFolderParent)
-		m_pFolderParent->Release();
-	if (m_pItemParent)
-	{
-		m_pItemParent->Release();
-		m_pItemParent = NULL;
-	}
+	auto hr = SetParentFolder(psf);
+	if (FAILED(hr))
+		return hr;
+
 	if (m_pidlMe)
 		::CoTaskMemFree(m_pidlMe);
-	m_pFolderParent = psf;
-	psf->AddRef();
 	m_pidlMe = ::AppendItemIDList(pidlParent, pidlChild);
-
-	typedef HRESULT(STDAPICALLTYPE* T_SHCreateItemFromIDList)(__in PCIDLIST_ABSOLUTE pidl, __in REFIID riid, __deref_out void** ppv);
-	T_SHCreateItemFromIDList pfn = (T_SHCreateItemFromIDList) ::GetProcAddress(::GetModuleHandle(_T("shell32.dll")),
-		"SHCreateItemFromIDList");
-	if (pfn)
-	{
-		HRESULT hr = pfn(pidlParent, IID_IShellItem, (void**)&m_pItemParent);
-		if (FAILED(hr))
-			m_pItemParent = NULL;
-	}
 	return S_OK;
 }
 

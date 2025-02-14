@@ -172,7 +172,14 @@ HRESULT CFTPFileItemIcon::DoExtract(bool bOpenIcon, HICON* phIconLarge, HICON* p
 	{
 		auto hr = _ExtractIconImpl(iIndex, HIWORD(nIconSize), phIconSmall);
 		if (FAILED(hr))
+		{
+			if (phIconLarge)
+			{
+				::DestroyIcon(*phIconLarge);
+				*phIconLarge = NULL;
+			}
 			return hr;
+		}
 	}
 	return S_OK;
 }

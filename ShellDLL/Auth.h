@@ -10,22 +10,9 @@
 
 #define USERINFO_SIGNATURE    0x1362109A
 
+#include "EasySFTP_h.h"
 #include "Unknown.h"
-
-class CUserInfo : public CUnknownImpl
-{
-public:
-	CUserInfo() : dwSignature(USERINFO_SIGNATURE) { }
-	~CUserInfo() { }
-	DWORD dwSignature;
-	CMyStringW strName;
-	_SecureStringW strPassword, strNewPassword;
-	char nAuthType;
-	CMyStringW strPKeyFileName;
-	const void* pvSessionID;
-	size_t nSessionIDLen;
-	bool bSecondary;
-};
+#include "Dispatch.h"
 
 enum class AuthReturnType
 {
@@ -34,119 +21,57 @@ enum class AuthReturnType
 	Error = -1
 };
 
-class __declspec(novtable) CAuthentication
-{
-public:
-	virtual const char* GetAuthenticationType() = 0;
-	inline bool IsMatchAuthenticationType(LPCSTR lpszName)
-		{ return strcmp(lpszName, GetAuthenticationType()) == 0; }
-	virtual AuthReturnType Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService) = 0;
-	virtual void FinishAndDelete() = 0;
-	virtual bool CanRetry() { return false; }
-};
-
-class CPasswordAuthentication : public CAuthentication
-{
-public:
-	CPasswordAuthentication() : m_lpszUser(NULL), m_dwUserLen(0), m_lpszPassword(NULL), m_dwPasswordLen(0) {}
-	~CPasswordAuthentication();
-	virtual const char* GetAuthenticationType()
-		{ return "password"; }
-	virtual AuthReturnType Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService);
-	virtual void FinishAndDelete()
-		{ delete this; }
-private:
-	LPCSTR m_lpszUser;
-	size_t m_dwUserLen;
-	LPSTR m_lpszPassword;
-	size_t m_dwPasswordLen;
-};
-
-class CChangePasswordAuthentication : public CAuthentication
-{
-public:
-	CChangePasswordAuthentication() : m_lpszUser(NULL), m_dwUserLen(0), m_lpszPassword(NULL), m_dwPasswordLen(0) {}
-	~CChangePasswordAuthentication();
-	virtual const char* GetAuthenticationType()
-		{ return "password"; }
-	virtual AuthReturnType Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService);
-	virtual void FinishAndDelete()
-		{ delete this; }
-private:
-	LPCSTR m_lpszUser;
-	size_t m_dwUserLen;
-	LPSTR m_lpszPassword;
-	size_t m_dwPasswordLen;
-};
-
-class CPublicKeyAuthentication : public CAuthentication
-{
-public:
-	CPublicKeyAuthentication() : m_lpszUser(NULL), m_dwUserLen(0), m_lpszPKeyFileName(NULL), m_lpszPassword(NULL), m_dwPasswordLen(0) {}
-	~CPublicKeyAuthentication();
-	virtual const char* GetAuthenticationType()
-		{ return "publickey"; }
-	virtual AuthReturnType Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService);
-	virtual void FinishAndDelete()
-		{ delete this; }
-private:
-	LPCSTR m_lpszUser;
-	size_t m_dwUserLen;
-	LPCSTR m_lpszPKeyFileName;
-	LPSTR m_lpszPassword;
-	size_t m_dwPasswordLen;
-};
-
 class CSSHAgent;
 
-class CSSHAgentAuthentication : public CAuthentication
+#define AUTH_SESSION_SIGNATURE 0xa0b29dff
+
+struct CAuthSession
+{
+	union
+	{
+		DWORD dwSignature;
+		void* _padding;
+	};
+	CSSHAgent* pAgent;
+	LPBYTE lpPageantKeyList;
+	LPBYTE lpCurrentKey;
+	DWORD dwKeyCount;
+	DWORD dwKeyIndex;
+
+	~CAuthSession();
+};
+
+class CAuthentication : public CDispatchImplT<IEasySFTPAuthentication>
 {
 public:
-	CSSHAgentAuthentication(CSSHAgent* pAgent);
-	~CSSHAgentAuthentication();
-	virtual const char* GetAuthenticationType()
-		{ return "publickey"; }
-	virtual AuthReturnType Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService);
-	virtual void FinishAndDelete()
-		{ delete this; }
-	virtual bool CanRetry();
+	CAuthentication();
+	virtual ~CAuthentication();
+
+	virtual void* GetThisForDispatch() override { return static_cast<IEasySFTPAuthentication*>(this); }
+
+	STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override;
+
+	STDMETHOD(get_UserName)(BSTR* pRet) override;
+	STDMETHOD(put_UserName)(BSTR Name) override;
+	STDMETHOD(get_Password)(BSTR* pRet) override;
+	STDMETHOD(put_Password)(BSTR Password) override;
+	STDMETHOD(get_PublicKeyFileName)(BSTR* pRet) override;
+	STDMETHOD(put_PublicKeyFileName)(BSTR FileName) override;
+	STDMETHOD(get_Type)(EasySFTPAuthenticationMode* pMode) override;
+	STDMETHOD(put_Type)(EasySFTPAuthenticationMode mode) override;
+	STDMETHOD(get_AuthSession)(LONG_PTR* pOut) override;
+	STDMETHOD(put_AuthSession)(LONG_PTR session) override;
+
+	static AuthReturnType SSHAuthenticate(IEasySFTPAuthentication* pAuth, LIBSSH2_SESSION* pSession, LPCSTR lpszService, char** ppAuthList = NULL);
+	static bool CanRetry(IEasySFTPAuthentication* pAuth);
 
 private:
-	CSSHAgent* m_pAgent;
-	LPCSTR m_lpszUser;
-	LPBYTE m_lpPageantKeyList;
-	LPBYTE m_lpCurrentKey;
-	DWORD m_dwKeyCount;
-	DWORD m_dwKeyIndex;
-};
+	static AuthReturnType SSHAuthenticateWithAgent(IEasySFTPAuthentication* pAuth, CMyStringW& strUserName, LIBSSH2_SESSION* pSession, LPCSTR lpszService, CSSHAgent* (* CreateAgent)());
 
-class CPageantAuthentication : public CSSHAgentAuthentication
-{
 public:
-	CPageantAuthentication();
-};
-
-class CWinOpenSSHAgentAuthentication : public CSSHAgentAuthentication
-{
-public:
-	CWinOpenSSHAgentAuthentication();
-};
-
-class CNoneAuthentication : public CAuthentication
-{
-public:
-	CNoneAuthentication() : m_lpAuthList(NULL), m_lpszUser(NULL), m_dwUserLen(0) {}
-	~CNoneAuthentication();
-	virtual const char* GetAuthenticationType()
-		{ return "none"; }
-	virtual AuthReturnType Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService);
-	virtual void FinishAndDelete()
-		{ delete this; }
-
-	// such as: type1\0type2\0type3\0\0
-	LPSTR m_lpAuthList;
-
-private:
-	LPCSTR m_lpszUser;
-	size_t m_dwUserLen;
+	EasySFTPAuthenticationMode m_Mode;
+	CMyStringW m_strUserName;
+	_SecureStringW m_strPassword;
+	CMyStringW m_strPublicKeyFileName;
+	void* m_pSession;
 };

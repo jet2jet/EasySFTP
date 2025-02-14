@@ -31,21 +31,34 @@ protected:
 };
 
 template <class T>
-class CUnknownImplT : public T, public CUnknownImplBase
+class DECLSPEC_NOVTABLE CUnknownImplT : public T, public CUnknownImplBase
 {
 public:
 	CUnknownImplT() { }
 	virtual ~CUnknownImplT() { }
 
-	STDMETHOD(QueryInterface)(REFIID riid, void FAR* FAR* ppv)
-		{ return InternalQueryInterface(riid, ppv); }
-	STDMETHOD_(ULONG, AddRef)()
+	STDMETHOD(QueryInterface)(REFIID riid, void FAR* FAR* ppv) = 0;
+	STDMETHOD_(ULONG, AddRef)() override
 		{ return InternalAddRef(); }
-	STDMETHOD_(ULONG, Release)()
+	STDMETHOD_(ULONG, Release)() override
 		{ return InternalRelease(); }
 };
 
-typedef CUnknownImplT<IUnknown> CUnknownImpl;
+#define FORWARD_UNKNOWN_IMPL_BASE(base) \
+	STDMETHOD_(ULONG, AddRef)() override { return base::AddRef(); } \
+	STDMETHOD_(ULONG, Release)() override { return base::Release(); }
+#define FORWARD_UNKNOWN_IMPL_T() FORWARD_UNKNOWN_IMPL_BASE(CUnknownImplT)
+
+class CUnknownImpl : public virtual IUnknown, public CUnknownImplBase
+{
+public:
+	STDMETHOD_(ULONG, AddRef)() override
+		{ return InternalAddRef(); }
+	STDMETHOD_(ULONG, Release)() override
+		{ return InternalRelease(); }
+};
+
+#define FORWARD_UNKNOWN_IMPL() FORWARD_UNKNOWN_IMPL_BASE(CUnknownImpl)
 
 class DECLSPEC_NOVTABLE CReferenceCountClassBase : public CUnknownImplBase
 {

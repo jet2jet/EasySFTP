@@ -21,8 +21,8 @@ public:
 	int m_nPort;
 	CMyStringW m_strUserName;
 	_SecureStringW m_strPassword;
-	bool m_bSFTPMode;
-	char m_nAuthType;
+	EasySFTPConnectionMode m_ConnectionMode;
+	EasySFTPAuthenticationMode m_nAuthType;
 	CMyStringW m_strPKeyFileName;
 	EVP_PKEY* m_pPKey;
 
@@ -30,10 +30,12 @@ public:
 	bool m_bDisableAuthPassword;
 	bool m_bDisableAuthPublicKey;
 
+	HRESULT SetToAuthentication(IEasySFTPAuthentication* pUser);
+
 protected:
 	bool m_bPasswordDialog;
 
-	void UpdateSFTPMode(bool bSFTPMode);
+	void UpdateConnectionMode(EasySFTPConnectionMode ConnectionMode);
 
 	virtual bool OnInitDialog(HWND hWndFocus);
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);

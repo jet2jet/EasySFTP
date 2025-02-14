@@ -37,50 +37,54 @@ protected:
 	IDataObject* m_pObjectCur;
 	DWORD m_dwLastDragKeyState;
 
-	class CFTPDropHandlerOperation : public CTransferDialogListener,
-		public CTransferStatus
-	{
-	public:
-		CFTPDropHandlerOperation(CFTPDirectoryBase* pDirectory, HWND hWndOwner, IDataObject* pObject);
-		~CFTPDropHandlerOperation();
-
-		virtual void TransferCanceled(void* pvTransfer);
-		virtual void TransferInProgress(void* pvObject, ULONGLONG uliPosition);
-		virtual bool TransferIsCanceled(void* pvObject);
-
-		void SetFileDropMode(const STGMEDIUM* pstg);
-
-		HRESULT RetrieveFileContents(IDataObject* pObject);
-		HRESULT RetrieveFileName(HGLOBAL hGlobal, IDataObject* pObject = NULL);
-		HRESULT DoOperation();
-
-		CFTPDirectoryBase* m_pDirectory;
-		HWND m_hWndOwner;
-		bool m_bIsFileDrop;
-		union
-		{
-			struct
-			{
-				IStream* m_pMarshalledObject;
-				IAsyncOperation* m_pAsync;
-			};
-			struct
-			{
-				STGMEDIUM m_stgFileData;
-			};
-		};
-		DWORD m_dwEffect;
-		bool m_bStarted;
-		bool m_bFailedToStart;
-
-		CTransferDialog m_dlgTransfer;
-		bool m_bCanceled;
-
-		// pvArg == (CFTPDropHandlerOperation*) pOperation
-		static UINT __stdcall _ThreadProc(void* pvArg);
-	};
-
 	HRESULT GetPreferredDropEffect(IDataObject* pObject, DWORD* pdwEffectAccept, DWORD* pdwEffectPrefer);
 
 	HRESULT ThreadProc();
+};
+
+class CFTPDropHandlerOperation : public CTransferDialogListener,
+	public CTransferStatus
+{
+public:
+	CFTPDropHandlerOperation(CFTPDirectoryBase* pDirectory, HWND hWndOwner, IDataObject* pObject, CTransferDialog* pDlgTransfer = NULL, bool bNoOwnDialog = false);
+	~CFTPDropHandlerOperation();
+
+	virtual void TransferCanceled(void* pvTransfer);
+	virtual void TransferInProgress(void* pvObject, ULONGLONG uliPosition);
+	virtual bool TransferIsCanceled(void* pvObject);
+
+	void SetFileDropMode(const STGMEDIUM* pstg);
+
+	HRESULT RetrieveFileContents(IDataObject* pObject, BYTE bTextMode);
+	HRESULT RetrieveFileName(HGLOBAL hGlobal, IDataObject* pObject = NULL);
+	HRESULT RetrieveFileNameSingle(LPCWSTR lpszFile, IStream* pStreamFile, LPCWSTR lpszDest, bool bIsMove, BYTE bTextMode);
+	HRESULT RetrieveFileNameMultiple(const CMyStringArrayW& aFiles, bool bIsMove, BYTE bTextMode);
+	HRESULT RetrieveFileNameImpl(void* pvObject, LPCWSTR lpszFile, IStream* pStreamFile, LPCWSTR lpszDest, bool bIsMove, BYTE bTextMode, CMyStringArrayW* paDirectories = NULL);
+	HRESULT DoOperation();
+
+	CFTPDirectoryBase* m_pDirectory;
+	HWND m_hWndOwner;
+	bool m_bIsFileDrop;
+	union
+	{
+		struct
+		{
+			IStream* m_pMarshalledObject;
+			IAsyncOperation* m_pAsync;
+		};
+		struct
+		{
+			STGMEDIUM m_stgFileData;
+		};
+	};
+	DWORD m_dwEffect;
+	bool m_bStarted;
+	bool m_bFailedToStart;
+
+	CTransferDialog* m_pDlgTransfer;
+	bool m_bCanceled;
+	bool m_bOwnDialog;
+
+	// pvArg == (CFTPDropHandlerOperation*) pOperation
+	static UINT __stdcall _ThreadProc(void* pvArg);
 };

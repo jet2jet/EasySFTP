@@ -150,14 +150,13 @@ CSFTPFolderSFTPDirectory::CSFTPFolderSFTPDirectory(
 	CDelegateMallocData* pMallocData,
 	CFTPDirectoryItem* pItemMe,
 	CFTPDirectoryBase* pParent,
-	CFTPDirectoryRootBase* pRoot,
 	LPCWSTR lpszDirectory)
-	: CFTPDirectoryBase(pMallocData, pItemMe, pParent, pRoot, lpszDirectory)
+	: CFTPDirectory(pMallocData, pItemMe, pParent, lpszDirectory)
 {
 }
 
-CSFTPFolderSFTPDirectory::CSFTPFolderSFTPDirectory(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe)
-	: CFTPDirectoryBase(pMallocData, pItemMe)
+CSFTPFolderSFTPDirectory::CSFTPFolderSFTPDirectory(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, ITypeInfo* pInfo)
+	: CFTPDirectory(pMallocData, pItemMe, pInfo)
 {
 }
 
@@ -165,9 +164,9 @@ CSFTPFolderSFTPDirectory::~CSFTPFolderSFTPDirectory()
 {
 }
 
-STDMETHODIMP CSFTPFolderSFTPDirectory::CreateInstance(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent, CFTPDirectoryRootBase* pRoot, LPCWSTR lpszDirectory, CFTPDirectoryBase** ppResult)
+STDMETHODIMP CSFTPFolderSFTPDirectory::CreateInstance(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent, LPCWSTR lpszDirectory, CFTPDirectoryBase** ppResult)
 {
-	CSFTPFolderSFTPDirectory* p = new CSFTPFolderSFTPDirectory(m_pMallocData, pItemMe, pParent, pRoot, lpszDirectory);
+	CSFTPFolderSFTPDirectory* p = new CSFTPFolderSFTPDirectory(m_pMallocData, pItemMe, pParent, lpszDirectory);
 	if (!p)
 		return E_OUTOFMEMORY;
 	*ppResult = p;
@@ -178,107 +177,105 @@ STDMETHODIMP_(void) CSFTPFolderSFTPDirectory::UpdateItem(CFTPFileItem* pOldItem,
 {
 	CFTPDirectoryBase::UpdateItem(pOldItem, lpszNewItem, lEvent);
 
-	switch (lEvent)
-	{
-	case SHCNE_CREATE:
-	case SHCNE_MKDIR:
-	{
-		register CSFTPFolderSFTP* pRoot = (CSFTPFolderSFTP*)m_pRoot;
-		CMyStringW strFile(m_strDirectory);
-		if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
-			strFile += L'/';
-		strFile += lpszNewItem;
-		ULONG uMsgID = pRoot->m_pChannel->LStat(strFile);
-		if (!uMsgID)
-		{
-			break;
-		}
-		CSFTPWaitAttrData* pAttr = new CSFTPWaitAttrData();
-		if (!pAttr)
-		{
-			break;
-		}
-		pAttr->uMsgID = uMsgID;
-		pAttr->nType = CSFTPWaitAttrData::typeNormal;
-		pRoot->m_listWaitResponse.Add(pAttr, uMsgID);
+	//register CSFTPFolderSFTP* pRoot = static_cast<CSFTPFolderSFTP*>(m_pRoot);
+	//switch (lEvent)
+	//{
+	//case SHCNE_CREATE:
+	//case SHCNE_MKDIR:
+	//{
+	//	CMyStringW strFile(m_strDirectory);
+	//	if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
+	//		strFile += L'/';
+	//	strFile += lpszNewItem;
+	//	ULONG uMsgID = pRoot->m_pChannel->LStat(strFile);
+	//	if (!uMsgID)
+	//	{
+	//		break;
+	//	}
+	//	CSFTPWaitAttrData* pAttr = new CSFTPWaitAttrData();
+	//	if (!pAttr)
+	//	{
+	//		break;
+	//	}
+	//	pAttr->uMsgID = uMsgID;
+	//	pAttr->nType = CSFTPWaitAttrData::typeNormal;
+	//	pRoot->m_listWaitResponse.Add(pAttr, uMsgID);
 
-		while (pAttr->uMsgID)
-		{
-			auto hr = pRoot->PumpSocketAndMessage();
-			if (FAILED(hr) || hr == S_FALSE)
-			{
-				pAttr->nResult = SSH_FX_NO_CONNECTION;
-				break;
-			}
-		}
+	//	while (pAttr->uMsgID)
+	//	{
+	//		auto hr = pRoot->PumpSocketAndMessage();
+	//		if (FAILED(hr) || hr == S_FALSE)
+	//		{
+	//			pAttr->nResult = SSH_FX_NO_CONNECTION;
+	//			break;
+	//		}
+	//	}
 
-		if (pAttr->nResult != SSH_FX_OK)
-		{
-			delete pAttr;
-			break;
-		}
+	//	if (pAttr->nResult != SSH_FX_OK)
+	//	{
+	//		delete pAttr;
+	//		break;
+	//	}
 
-		CSFTPFileData fileData;
-		memcpy(&fileData.attr, &pAttr->fileData, sizeof(fileData.attr));
-		fileData.strFileName = lpszNewItem;
-		CFTPFileItem* pItem = ParseSFTPData(((CSFTPFolderSFTP*)m_pRoot)->m_pChannel->GetServerVersion(), &fileData);
-		delete pAttr;
+	//	CSFTPFileData fileData;
+	//	memcpy(&fileData.attr, &pAttr->fileData, sizeof(fileData.attr));
+	//	fileData.strFileName = lpszNewItem;
+	//	CFTPFileItem* pItem = ParseSFTPData(this, pRoot->m_pChannel->GetServerVersion(), &fileData);
+	//	delete pAttr;
 
-		::EnterCriticalSection(&m_csFiles);
-		m_aFiles.Add(pItem);
-		::LeaveCriticalSection(&m_csFiles);
-	}
-	break;
-	case SHCNE_UPDATEITEM:
-	case SHCNE_UPDATEDIR:
-	{
-		register CSFTPFolderSFTP* pRoot = (CSFTPFolderSFTP*)m_pRoot;
-		CMyStringW strFile;
-		if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
-			strFile += L'/';
-		strFile += pOldItem->strFileName;
-		ULONG uMsgID = ((CSFTPFolderSFTP*)m_pRoot)->m_pChannel->LStat(strFile);
-		if (!uMsgID)
-		{
-			break;
-		}
-		CSFTPWaitAttrData* pAttr = new CSFTPWaitAttrData();
-		if (!pAttr)
-		{
-			break;
-		}
-		pAttr->uMsgID = uMsgID;
-		pAttr->nType = CSFTPWaitAttrData::typeNormal;
-		pRoot->m_listWaitResponse.Add(pAttr, uMsgID);
+	//	::EnterCriticalSection(&m_csFiles);
+	//	m_aFiles.Add(pItem);
+	//	::LeaveCriticalSection(&m_csFiles);
+	//}
+	//break;
+	//case SHCNE_UPDATEITEM:
+	//case SHCNE_UPDATEDIR:
+	//{
+	//	CMyStringW strFile;
+	//	if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
+	//		strFile += L'/';
+	//	strFile += pOldItem->strFileName;
+	//	ULONG uMsgID = pRoot->m_pChannel->LStat(strFile);
+	//	if (!uMsgID)
+	//	{
+	//		break;
+	//	}
+	//	CSFTPWaitAttrData* pAttr = new CSFTPWaitAttrData();
+	//	if (!pAttr)
+	//	{
+	//		break;
+	//	}
+	//	pAttr->uMsgID = uMsgID;
+	//	pAttr->nType = CSFTPWaitAttrData::typeNormal;
+	//	pRoot->m_listWaitResponse.Add(pAttr, uMsgID);
 
-		while (pAttr->uMsgID)
-		{
-			auto hr = pRoot->PumpSocketAndMessage();
-			if (FAILED(hr) || hr == S_FALSE)
-			{
-				pAttr->nResult = SSH_FX_NO_CONNECTION;
-				break;
-			}
-		}
+	//	while (pAttr->uMsgID)
+	//	{
+	//		auto hr = pRoot->PumpSocketAndMessage();
+	//		if (FAILED(hr) || hr == S_FALSE)
+	//		{
+	//			pAttr->nResult = SSH_FX_NO_CONNECTION;
+	//			break;
+	//		}
+	//	}
 
-		if (pAttr->nResult != SSH_FX_OK)
-		{
-			delete pAttr;
-			break;
-		}
+	//	if (pAttr->nResult != SSH_FX_OK)
+	//	{
+	//		delete pAttr;
+	//		break;
+	//	}
 
-		ParseSFTPAttributes(((CSFTPFolderSFTP*)m_pRoot)->m_pChannel->GetServerVersion(), pOldItem, &pAttr->fileData);
-		delete pAttr;
-	}
-	break;
-	}
+	//	ParseSFTPAttributes(pRoot->m_pChannel->GetServerVersion(), pOldItem, &pAttr->fileData);
+	//	delete pAttr;
+	//}
+	//break;
+	//}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 CSFTPFolderSFTP::CSFTPFolderSFTP(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, CEasySFTPFolderRoot* pFolderRoot)
-	: CFTPDirectoryRootBase(pMallocData, pItemMe)
-	, m_pFolderRoot(pFolderRoot)
+	: CFTPDirectoryRootBase(pMallocData, pItemMe, pFolderRoot)
 {
 	m_pUser = NULL;
 	m_pClient = NULL;
@@ -289,8 +286,7 @@ CSFTPFolderSFTP::CSFTPFolderSFTP(CDelegateMallocData* pMallocData, CFTPDirectory
 	::InitializeCriticalSection(&m_csSocket);
 	::InitializeCriticalSection(&m_csReceive);
 	m_bNextLoop = false;
-	m_pFolderRoot->AddRef();
-	m_hWndOwnerCache = pFolderRoot->GetHwndOwnerCache();
+	m_hWndOwnerCache = m_pParent->GetHwndOwnerCache();
 	m_dwTransferringCount = 0;
 	//::InitializeCriticalSection(&m_csTransferringCount);
 }
@@ -298,40 +294,17 @@ CSFTPFolderSFTP::CSFTPFolderSFTP(CDelegateMallocData* pMallocData, CFTPDirectory
 CSFTPFolderSFTP::~CSFTPFolderSFTP()
 {
 	Disconnect();
-	m_pFolderRoot->Release();
-#ifdef _DEBUG
-	m_pFolderRoot = NULL;
-#endif
 	//::DeleteCriticalSection(&m_csTransferringCount);
 	::DeleteCriticalSection(&m_csReceive);
 	::DeleteCriticalSection(&m_csSocket);
 }
-
-//STDMETHODIMP CSFTPFolderSFTP::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUITEMID_CHILD_ARRAY apidl,
-//	REFIID riid, UINT* rgfReserved, void** ppv)
-//{
-//	if (!ppv)
-//		return E_POINTER;
-//	if (!cidl)
-//	{
-//		*ppv = NULL;
-//		return E_INVALIDARG;
-//	}
-//	if (!apidl)
-//	{
-//		*ppv = NULL;
-//		return E_POINTER;
-//	}
-//
-//	return CFTPDirectoryBase::GetUIObjectOf(hWndOwner, cidl, apidl, riid, rgfReserved, ppv);
-//}
 
 STDMETHODIMP CSFTPFolderSFTP::GetFTPItemUIObjectOf(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
 	const CMyPtrArrayT<CFTPFileItem>& aItems, CFTPDataObject** ppObject)
 {
 	if (!m_pChannel)
 		return OLE_E_NOTRUNNING;
-	CFTPDataObject* pObject = new CFTPDataObject(//(CSFTPFolderSFTPDirectory*) pDirectory,
+	CFTPDataObject* pObject = new CFTPDataObject(
 		m_pMallocData->pMalloc,
 		pDirectory->m_pidlMe,
 		m_strHostName,
@@ -595,118 +568,103 @@ STDMETHODIMP CSFTPFolderSFTP::RenameFTPItem(LPCWSTR lpszSrcFileName, LPCWSTR lps
 	return hr;
 }
 
-STDMETHODIMP CSFTPFolderSFTP::UpdateFTPItemAttributes(HWND hWndOwner, CFTPDirectoryBase* pDirectory,
-	CServerFilePropertyDialog* pDialog, const CMyPtrArrayT<CServerFileAttrData>& aAttrs, bool* pabResults)
+STDMETHODIMP CSFTPFolderSFTP::UpdateFTPItemAttribute(CFTPDirectoryBase* pDirectory, const CServerFileAttrData* pAttr, CMyStringW* pstrMsg)
 {
-	CMyStringArrayW astrMsgs;
-	HRESULT hr = S_OK;
-	CMyStringW strFile;
-	for (int i = 0; i < aAttrs.GetCount(); i++)
+	CSFTPFileAttribute attr;
+	CMyStringW strFile = pDirectory->m_strDirectory;
+	if ((strFile.operator LPCWSTR())[strFile.GetLength() - 1] != L'/')
+		strFile += L'/';
+	strFile += pAttr->pItem->strFileName;
+
+	attr.dwMask = 0;
+	if (pAttr->wMask & ServerFileAttrDataMask::OwnerGroupName)
 	{
-		CServerFileAttrData* pAttr = aAttrs.GetItem(i);
+		attr.dwMask = SSH_FILEXFER_ATTR_OWNERGROUP;
+		attr.strOwner = pAttr->strOwner;
+		attr.strGroup = pAttr->strGroup;
+	}
+	else if (pAttr->wMask & ServerFileAttrDataMask::OwnerGroupID)
+	{
+		attr.dwMask = SSH_FILEXFER_ATTR_UIDGID;
+		attr.uUserID = pAttr->uUID;
+		attr.uGroupID = pAttr->uGID;
+	}
+	if (pAttr->wMask & ServerFileAttrDataMask::Attribute)
+	{
+		attr.dwMask |= SSH_FILEXFER_ATTR_PERMISSIONS;
+		attr.dwPermissions = (DWORD)pAttr->nUnixMode;
+	}
 
-		CSFTPFileAttribute attr;
-		strFile = pDirectory->m_strDirectory;
-		if (((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
-			strFile += L'/';
-		strFile += pAttr->pItem->strFileName;
+	ULONG uMsgID = m_pChannel->SetStat(strFile, attr);
 
-		attr.dwMask = 0;
-		if (pDialog->m_bChangeOwner)
-		{
-			if (pDialog->m_bSupportedName)
-			{
-				attr.dwMask = SSH_FILEXFER_ATTR_OWNERGROUP;
-				attr.strOwner = pAttr->strOwner;
-				attr.strGroup = pAttr->strGroup;
-			}
-			else
-			{
-				attr.dwMask = SSH_FILEXFER_ATTR_UIDGID;
-				attr.uUserID = pAttr->uUID;
-				attr.uGroupID = pAttr->uGID;
-			}
-		}
-		if (pDialog->m_bChangeAttr)
-		{
-			attr.dwMask |= SSH_FILEXFER_ATTR_PERMISSIONS;
-			attr.dwPermissions = (DWORD)pAttr->nUnixMode;
-		}
-
-		ULONG uMsgID = m_pChannel->SetStat(strFile, attr);
-
-		if (!uMsgID)
+	if (!uMsgID)
+	{
+		if (pstrMsg)
 		{
 			CMyStringW str, str2;
 			str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
 			str = strFile;
 			str += L": ";
 			str += str2;
-			astrMsgs.Add(str);
-			if (SUCCEEDED(hr))
-				hr = E_OUTOFMEMORY;
-			continue;
+			*pstrMsg = str;
 		}
+		return E_OUTOFMEMORY;
+	}
 
-		CSFTPWaitSetStat* pWait = new CSFTPWaitSetStat();
-		if (!pWait)
+	CSFTPWaitSetStat* pWait = new CSFTPWaitSetStat();
+	if (!pWait)
+	{
+		if (pstrMsg)
 		{
 			CMyStringW str, str2;
 			str2.LoadString(IDS_COMMAND_OUTOFMEMORY);
 			str = strFile;
 			str += L": ";
 			str += str2;
-			astrMsgs.Add(str);
-			hr = E_OUTOFMEMORY;
-			continue;
+			*pstrMsg = str;
 		}
-		pWait->uMsgID = uMsgID;
-		//pWait->pbResult = &pabResults[i];
-		m_listWaitResponse.Add(pWait, uMsgID);
+		return E_OUTOFMEMORY;
+	}
+	pWait->uMsgID = uMsgID;
+	//pWait->pbResult = &pabResults[i];
+	m_listWaitResponse.Add(pWait, uMsgID);
 
-		while (pWait->uMsgID)
+	while (pWait->uMsgID)
+	{
+		auto hr = PumpSocketAndMessage();
+		if (FAILED(hr))
 		{
-			auto hr = PumpSocketAndMessage();
-			if (FAILED(hr))
-			{
-				delete pWait;
-				//pDirectory->Release();
-				if (hWndOwner)
-					::MyMessageBoxW(hWndOwner, MAKEINTRESOURCEW(IDS_SFTP_CONNECTION_LOST), NULL, MB_ICONEXCLAMATION);
-				return hr;
-			}
-			if (hr == S_FALSE)
-			{
-				pWait->nResult = SSH_FX_NO_CONNECTION;
-				break;
-			}
+			delete pWait;
+			//pDirectory->Release();
+			return hr;
 		}
+		if (hr == S_FALSE)
+		{
+			pWait->nResult = SSH_FX_NO_CONNECTION;
+			break;
+		}
+	}
 
-		HRESULT hr2 = SFTPResultToHResult(pWait->nResult);
-		if (FAILED(hr2))
+	HRESULT hr2 = SFTPResultToHResult(pWait->nResult);
+	if (FAILED(hr2))
+	{
+		if (pstrMsg)
 		{
 			CMyStringW str, str2;
 			GetSFTPStatusMessage(pWait->nResult, pWait->strMessage, str2);
 			str = strFile;
 			str += L": ";
 			str += str2;
-			astrMsgs.Add(str);
-			delete pWait;
-			if (SUCCEEDED(hr))
-				hr = hr2;
-			pabResults[i] = false;
-		}
-		else
-		{
-			delete pWait;
-			pabResults[i] = true;
-			//NotifyUpdate(pAttr->pItem->IsDirectory() ? SHCNE_UPDATEDIR : SHCNE_UPDATEITEM, strFile, NULL);
-			pDirectory->UpdateFileAttrs(pAttr->pItem->strFileName, pAttr->pItem->IsDirectory());
+			*pstrMsg = str;
 		}
 	}
-	if (FAILED(hr))
-		theApp.MultipleErrorMsgBox(hWndOwner, astrMsgs);
-	return hr;
+	else
+	{
+		//NotifyUpdate(pAttr->pItem->IsDirectory() ? SHCNE_UPDATEDIR : SHCNE_UPDATEITEM, strFile, NULL);
+		pDirectory->UpdateFileAttrs(pAttr->pItem->strFileName, pAttr->pItem->IsDirectory());
+	}
+	delete pWait;
+	return hr2;
 }
 
 STDMETHODIMP CSFTPFolderSFTP::CreateFTPDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszName)
@@ -1108,45 +1066,28 @@ STDMETHODIMP CSFTPFolderSFTP::WriteFTPItem(
 	return hr;
 }
 
-STDMETHODIMP CSFTPFolderSFTP::CreateInstance(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent, CFTPDirectoryRootBase* pRoot, LPCWSTR lpszDirectory, CFTPDirectoryBase** ppResult)
+STDMETHODIMP CSFTPFolderSFTP::CreateInstance(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent, LPCWSTR lpszDirectory, CFTPDirectoryBase** ppResult)
 {
-	CSFTPFolderSFTPDirectory* p = new CSFTPFolderSFTPDirectory(m_pMallocData, pItemMe, pParent, pRoot, lpszDirectory);
+	CSFTPFolderSFTPDirectory* p = new CSFTPFolderSFTPDirectory(m_pMallocData, pItemMe, pParent, lpszDirectory);
 	if (!p)
 		return E_OUTOFMEMORY;
 	*ppResult = p;
 	return S_OK;
 }
 
-bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserInfo* pUser)
+bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser)
 {
 	if (pUser)
 	{
-		//const CUserInfo* pBase = (const CUserInfo*) pUser;
-		//m_bMyUserInfo = false;
 		m_pUser = pUser;
 		pUser->AddRef();
 		m_bFirstAuthenticate = false;
-		//m_pUser = new CUserInfo();
-		//m_pUser->strName = pBase->strName;
-		//m_pUser->strPassword = pBase->strPassword;
-		//m_pUser->strNewPassword = pBase->strNewPassword;
-		//m_pUser->nAuthType = pBase->nAuthType;
-		//m_pUser->keyData = pBase->keyData;
-		//m_pUser->keyType = pBase->keyType;
-		//m_nServerCharset = scsUTF8;
 	}
 	else
 	{
-		m_pUser = new CUserInfo();
+		m_pUser = new CAuthentication();
 		//// set this flag to show password dialog when connected
 		m_bFirstAuthenticate = true;
-		//if (!DoRetryAuthentication(NULL, true))
-		//{
-		//	m_pUser->Release();
-		//	m_pUser = NULL;
-		//	return false;
-		//}
-		//m_nServerCharset = scsUTF8;
 	}
 	{
 		CMyStringW str(lpszHostName);
@@ -1264,6 +1205,14 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, CUserI
 //	}
 //}
 
+STDMETHODIMP CSFTPFolderSFTP::get_IsUnixServer(VARIANT_BOOL* pbRet)
+{
+	if (!pbRet)
+		return E_POINTER;
+	*pbRet = VARIANT_TRUE;
+	return S_OK;
+}
+
 STDMETHODIMP CSFTPFolderSFTP::Disconnect()
 {
 	if (!m_pClient)
@@ -1318,8 +1267,6 @@ STDMETHODIMP CSFTPFolderSFTP::Disconnect()
 	m_pClient = NULL;
 	::LeaveCriticalSection(&m_csSocket);
 
-	RemoveAllFiles();
-
 	if (m_pUser)
 	{
 		m_pUser->Release();
@@ -1333,11 +1280,13 @@ STDMETHODIMP CSFTPFolderSFTP::Disconnect()
 
 	m_hWndOwner = NULL;
 
+	OnDisconnect();
+
 	//m_strHostName.Empty();
 	return S_OK;
 }
 
-STDMETHODIMP CSFTPFolderSFTP::OpenFile(CFTPDirectoryBase* pDirectory, LPCWSTR lpszName, DWORD grfMode, HANDLE* phFile)
+STDMETHODIMP CSFTPFolderSFTP::OpenFile(CFTPDirectoryBase* pDirectory, LPCWSTR lpszName, DWORD grfMode, HANDLE* phFile, IEasySFTPFile** ppFile)
 {
 	if (grfMode & (STGM_SHARE_DENY_READ | STGM_SHARE_DENY_WRITE | STGM_SHARE_EXCLUSIVE | STGM_PRIORITY | STGM_CONVERT | STGM_TRANSACTED | STGM_NOSCRATCH | STGM_NOSNAPSHOT | STGM_SIMPLE | STGM_DIRECT_SWMR | STGM_DELETEONRELEASE))
 	{
@@ -1435,7 +1384,17 @@ STDMETHODIMP CSFTPFolderSFTP::OpenFile(CFTPDirectoryBase* pDirectory, LPCWSTR lp
 
 				hr = _StatFile(static_cast<HANDLE>(data), &data->statstg, STATFLAG_NONAME);
 				if (SUCCEEDED(hr))
+				{
 					*phFile = static_cast<HANDLE>(data);
+
+					if (ppFile)
+					{
+						auto* pItem = GetFileItem(strFile, NULL);
+						*ppFile = pItem;
+						if (pItem)
+							pItem->AddRef();
+					}
+				}
 			}
 		}
 	}
@@ -2015,7 +1974,7 @@ bool CSFTPFolderSFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirec
 	pData->hSFTPHandle = NULL;
 	pData->bResult = false;
 	pData->dwReadLinkCount = 0;
-	pData->pDirectory = (CSFTPFolderSFTPDirectory*)pDirectory;
+	pData->pDirectory = pDirectory;
 	m_listWaitResponse.Add(pData, uMsg);
 	pDirectory->AddRef();
 	while (pData->nStep)
@@ -2072,7 +2031,7 @@ bool CSFTPFolderSFTP::ValidateDirectory(LPCWSTR lpszParentDirectory, PCUIDLIST_R
 	if (m_pClient)
 	{
 		::EnterCriticalSection(&m_csSocket);
-		if (!m_pClient)
+		if (!m_pChannel)
 		{
 			::LeaveCriticalSection(&m_csSocket);
 			return false;
@@ -2173,7 +2132,7 @@ CFTPFileItem* CSFTPFolderSFTP::RetrieveFileItem(CFTPDirectoryBase* pDirectory, L
 		CSFTPFileData data;
 		data.strFileName = lpszFileName;
 		memcpy(&data.attr, &pAttr->fileData, sizeof(data.attr));
-		pItem = ParseSFTPData(m_pChannel->GetServerVersion(), &data);
+		pItem = ParseSFTPData(pDirectory, m_pChannel->GetServerVersion(), &data);
 		if (pAttr->fileData.aExAttrs)
 			free(pAttr->fileData.aExAttrs);
 	}
@@ -2216,7 +2175,8 @@ void CSFTPFolderSFTP::DoReceiveSocket()
 	//while (true)
 	//{
 	m_bNextLoop = false;
-	OnSFTPSocketReceive(m_pClient->m_socket.CanReceive());
+	if (m_pClient)
+		OnSFTPSocketReceive(m_pClient->m_socket.CanReceive());
 	//	if (!m_pClient || !m_pClient->m_socket.CanReceive())
 	//	{
 	//		break;
@@ -2402,16 +2362,15 @@ UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 			return 0;
 		}
 		m_phase = Phase::Authenticating;
-		m_pUser->bSecondary = false;
 	}
 
 	if (m_phase == Phase::Authenticating)
 	{
 		// m_bFirstAuthenticate が true のときは none 認証を行い、
 		// 実際に可能な認証方法を得る
-		auto r = m_pClient->Authenticate(
-			m_bFirstAuthenticate ? AUTHTYPE_NONE : m_pUser->nAuthType,
-			m_pUser);
+		EasySFTPAuthenticationMode mode;
+		m_pUser->get_Type(&mode);
+		auto r = m_pClient->Authenticate(m_pUser);
 		if (r == AuthReturnType::Again)
 			return 0;
 		else if (r == AuthReturnType::Error)
@@ -2430,20 +2389,18 @@ UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 			{
 				m_bFirstAuthenticate = false;
 				m_bNextLoop = true;
-				m_pUser->bSecondary = false;
 				return 0;
 			}
 			else if (m_bFirstAuthenticate)
 			{
 				auto lpAuthTypes = m_pClient->AvailableAuthTypes();
-				if (DoRetryAuthentication(lpAuthTypes, m_bFirstAuthenticate))
+				if (DoRetryAuthentication(lpAuthTypes, m_bFirstAuthenticate) > 0)
 				{
 					m_pClient->EndAuthenticate();
 					m_bFirstAuthenticate = false;
 					m_bNextLoop = true;
 					// need to reconnect to avoid 'change of username or service not allowed' error
 					m_bReconnect = true;
-					m_pUser->bSecondary = false;
 					OutputDebugStringW(L"[EasySFTP] reconnecting for authentication\n");
 					return 0;
 				}
@@ -2499,7 +2456,7 @@ static void __stdcall FingerPrintToString(const BYTE* pFingerPrint, size_t nLen,
 static void __stdcall _MergeFingerPrint(const CMyStringW& strHostName, const BYTE* pFingerPrint, size_t nLen)
 {
 	CGeneralSettings settings;
-	CMyPtrArrayT<CHostSettings> aHostSettings;
+	CMyPtrArrayT<CEasySFTPHostSetting> aHostSettings;
 	CMyPtrArrayT<CKnownFingerPrint> aKnownFingerPrints;
 	CKnownFingerPrint* pPrint = NULL;
 
@@ -2852,12 +2809,13 @@ void CSFTPFolderSFTP::SFTPFileHandle(CSFTPChannel* pChannel, CSFTPMessage* pMsg,
 }
 
 //static void __stdcall _ParseSFTPFileName(CSFTPFolderSFTPDirectory* pThis, const CSFTPFileData* aFiles, int nCount, CRecvDirectoryData* pData)
-static void __stdcall _ParseSFTPFileName(CSFTPFolderSFTPDirectory* pThis, const CSFTPFileData* aFiles, int nCount)
+static void __stdcall _ParseSFTPFileName(CFTPDirectoryBase* pThis, const CSFTPFileData* aFiles, int nCount)
 {
+	auto* pRoot = pThis->GetRoot();
 	while (nCount--)
 	{
 		CFTPFileItem* pItem;
-		pItem = ParseSFTPData(((CSFTPFolderSFTP*)pThis->m_pRoot)->m_pChannel->GetServerVersion(), aFiles++);
+		pItem = ParseSFTPData(pThis, pRoot->GetServerVersion(), aFiles++);
 		if (pItem)
 		{
 			if (pItem->type != fitypeCurDir && pItem->type != fitypeParentDir &&
@@ -2871,7 +2829,10 @@ static void __stdcall _ParseSFTPFileName(CSFTPFolderSFTPDirectory* pThis, const 
 					{
 						CFTPDirectoryItem* p = new CFTPDirectoryItem();
 						p->strName = pItem->strFileName;
-						p->pDirectory = NULL;
+						p->strRealPath = pThis->m_strDirectory;
+						if ((p->strRealPath.operator LPCWSTR())[p->strRealPath.GetLength() - 1] != L'/')
+							p->strRealPath += L'/';
+						p->strRealPath += pItem->strFileName;
 						pThis->m_aDirectories.Add(p);
 					}
 					pThis->m_aFiles.Add(pItem);
@@ -3095,7 +3056,7 @@ void CSFTPFolderSFTP::SFTPReceiveAttributes(CSFTPChannel* pChannel, CSFTPMessage
 					CSFTPFileData file;
 					file.strFileName = pData->strFileName;
 					memcpy(&file.attr, &attrs, sizeof(CSFTPFileAttribute));
-					CFTPFileItem* pItem = ParseSFTPData(pChannel->GetServerVersion(), &file);
+					CFTPFileItem* pItem = ParseSFTPData(NULL, pChannel->GetServerVersion(), &file);
 					pData->pLinkFrom->pTargetFile = pItem;
 					if ((pItem->nUnixMode & S_IFLNK) == S_IFLNK)
 					{

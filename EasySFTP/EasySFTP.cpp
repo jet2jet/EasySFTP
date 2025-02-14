@@ -237,13 +237,17 @@ bool CMainApplication::InitInstance()
 		return false;
 	}
 
-	if (!InitEasySFTP())
+	if ((m_bEmulatingRegistry && !InitRegHook()) || !InitEasySFTP())
 	{
 		if (m_bEmulatingRegistry)
 		{
 			if (::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK), NULL,
 				MB_ICONEXCLAMATION | MB_YESNO) == IDYES)
 				m_bExitWithRegister = true;
+		}
+		else
+		{
+			::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_INIT_SHELLDLL), NULL, MB_ICONEXCLAMATION);
 		}
 		return false;
 	}
@@ -597,7 +601,7 @@ bool CMainApplication::InitEasySFTP()
 	IShellFolder* pDesktop, * pFolder;
 	if (FAILED(::SHGetDesktopFolder(&pDesktop)))
 		return false;
-	hr = pDesktop->ParseDisplayName(NULL, NULL, (LPWSTR) L"::{AD29C042-B9E3-462c-9DF6-D7DA5B8D0199}",
+	hr = pDesktop->ParseDisplayName(NULL, NULL, (LPWSTR) L"::{AD29C042-B9E3-4740-9DF6-D7DA5B8D0199}",
 		NULL, (PIDLIST_RELATIVE*) &m_pidlEasySFTP, NULL);
 	if (FAILED(hr))
 		m_pidlEasySFTP = NULL;
@@ -1312,7 +1316,6 @@ void CMainApplication::LoadINISettings()
 	PVOID pvSection;
 	CMyStringW str;
 	//int n;
-	//CHostSettings* pHost;
 
 	hINI = ::MyLoadINIFileW(m_strINIFile, false);
 
@@ -1369,125 +1372,6 @@ void CMainApplication::LoadINISettings()
 		}
 		::MyEndReadProfileSectionW(pvSection);
 	}
-
-	//pvSection = ::MyGetProfileSectionW(hINI, L"FingerPrint");
-	//if (pvSection)
-	//{
-	//	LPWSTR lpw, lpw2;
-	//	n = 0;
-	//	while (true)
-	//	{
-	//		lpw = ::MyGetNextProfileStringW(pvSection, n, &lpw2);
-	//		if (!lpw)
-	//			break;
-	//		size_t nLen = (size_t) UnformatByteStringExW(lpw2, NULL, 0);
-	//		if (nLen)
-	//		{
-	//			CKnownFingerPrint* pPrint = new CKnownFingerPrint();
-	//			pPrint->strHostName = lpw;
-	//			pPrint->nFingerPrintLen = nLen;
-	//			pPrint->pFingerPrint = (BYTE*) malloc(nLen);
-	//			if (pPrint->pFingerPrint)
-	//			{
-	//				UnformatByteStringExW(lpw2, pPrint->pFingerPrint, (DWORD) nLen);
-	//				m_aKnownFingerPrints.Add(pPrint);
-	//			}
-	//			else
-	//				delete pPrint;
-	//		}
-	//		free(lpw);
-	//		free(lpw2);
-	//		n++;
-	//	}
-	//	::MyEndReadProfileSectionW(pvSection);
-	//}
-	//n = 1;
-	//while (true)
-	//{
-	//	LPWSTR lpw, lpw2;
-	//	str.Format(L"Host%d", n);
-	//	pvSection = ::MyGetProfileSectionW(hINI, str);
-	//	if (!pvSection)
-	//		break;
-	//	lpw = ::MyGetProfileStringW(pvSection, L"Name");
-	//	if (lpw)
-	//	{
-	//		lpw2 = ::MyGetProfileStringW(pvSection, L"Host");
-	//		if (lpw2)
-	//		{
-	//			pHost = new CHostSettings();
-	//			pHost->strDisplayName = lpw;
-	//			pHost->strHostName = lpw2;
-	//			free(lpw);
-	//			free(lpw2);
-	//			lpw2 = ::MyGetProfileStringW(pvSection, L"UserName");
-	//			if (lpw2)
-	//			{
-	//				pHost->strUserName = lpw2;
-	//				free(lpw2);
-	//			}
-	//			pHost->bSFTPMode = ::MyGetProfileBooleanW(pvSection, L"SFTPMode", false);
-	//			pHost->nPort = ::MyGetProfileIntW(pvSection, L"Port", pHost->bSFTPMode ? 22 : 21);
-	//			pHost->bTextMode = (BYTE) ::MyGetProfileDWordW(pvSection, L"TextMode", TEXTMODE_NO_CONVERT | TEXTMODE_UTF8);
-	//			pHost->nServerCharset = (char) ::MyGetProfileDWordW(pvSection, L"ServerCharset", scsUTF8);
-	//			lpw2 = ::MyGetProfileStringW(pvSection, L"InitLocalPath");
-	//			if (lpw2)
-	//			{
-	//				pHost->strInitLocalPath = lpw2;
-	//				free(lpw2);
-	//			}
-	//			lpw2 = ::MyGetProfileStringW(pvSection, L"InitServerPath");
-	//			if (lpw2)
-	//			{
-	//				pHost->strInitServerPath = lpw2;
-	//				free(lpw2);
-	//			}
-	//			pHost->nTransferMode = (char) ::MyGetProfileDWordW(pvSection, L"TransferMode", TRANSFER_MODE_AUTO);
-	//			lpw2 = ::MyGetProfileStringW(pvSection, L"TextFileType");
-	//			if (lpw2)
-	//			{
-	//				lpw = lpw2;
-	//				while (true)
-	//				{
-	//					LPWSTR lpw3 = wcschr(lpw2, L';');
-	//					if (lpw3)
-	//						*lpw3++ = 0;
-	//					pHost->arrTextFileType.Add(lpw2);
-	//					if (!lpw3)
-	//						break;
-	//					lpw2 = lpw3;
-	//				}
-	//				free(lpw);
-	//			}
-	//			else
-	//				pHost->arrTextFileType.CopyArray(theApp.m_arrDefTextFileType);
-	//			pHost->bUseSystemTextFileType = ::MyGetProfileBooleanW(pvSection, L"UseSystemTextFileType", true);
-	//			pHost->bAdjustRecvModifyTime = ::MyGetProfileBooleanW(pvSection, L"AdjustRecvModifyTime", false);
-	//			pHost->bAdjustSendModifyTime = ::MyGetProfileBooleanW(pvSection, L"AdjustSendModifyTime", false);
-	//			lpw2 = ::MyGetProfileStringW(pvSection, L"ChmodCommand");
-	//			if (lpw2)
-	//			{
-	//				pHost->strChmodCommand = lpw2;
-	//				free(lpw2);
-	//			}
-	//			else
-	//				pHost->strChmodCommand = DEFAULT_CHMOD_COMMAND;
-	//			//lpw2 = ::MyGetProfileStringW(pvSection, L"TouchCommand");
-	//			//if (lpw2)
-	//			//{
-	//			//	pHost->strTouchCommand = lpw2;
-	//			//	free(lpw2);
-	//			//}
-	//			//else
-	//			//	pHost->strTouchCommand = DEFAULT_TOUCH_COMMAND;
-	//			m_aHostSettings.Add(pHost);
-	//		}
-	//		else
-	//			free(lpw);
-	//		::MyEndReadProfileSectionW(pvSection);
-	//	}
-	//	n++;
-	//}
 
 	::MyCloseINIFile(hINI);
 }

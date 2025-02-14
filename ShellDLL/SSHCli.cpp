@@ -8,13 +8,15 @@
 #include "SSHCli.h"
 
 #include "Func.h"
+#include "unicode.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 
 CSSH2Client::CSSH2Client(void)
 	: m_pSession(NULL)
 	, m_pAuth(NULL)
-	, m_nAuthType(0)
+	, m_lpAuthList(NULL)
+	, m_nAuthType(EasySFTPAuthenticationMode::None)
 {
 }
 
@@ -26,13 +28,20 @@ CSSH2Client::~CSSH2Client(void)
 		libssh2_session_free(m_pSession);
 		m_socket.Close();
 	}
+	if (m_lpAuthList)
+		free(m_lpAuthList);
 }
 
 bool CSSH2Client::OnFirstReceive()
 {
 	if (m_pSession)
 		return false;
-	m_pSession = libssh2_session_init();
+	m_pSession = libssh2_session_init_ex(
+		[](size_t count, void**) { return malloc(count); },
+		[](void* ptr, void**) { return free(ptr); },
+		[](void* ptr, size_t count, void**) { return realloc(ptr, count); },
+		NULL
+		);
 	if (!m_pSession)
 		return false;
 #ifdef _DEBUG
@@ -82,45 +91,30 @@ int CSSH2Client::OnHandshake(CSSH2FingerPrintHandler* pHandler)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-AuthReturnType CSSH2Client::Authenticate(char nAuthType, CUserInfo* pUserInfo)
+AuthReturnType CSSH2Client::Authenticate(IEasySFTPAuthentication* pAuth)
 {
-	if (!m_pAuth)
+	if (m_pAuth)
+		m_pAuth->Release();
+	m_pAuth = pAuth;
+	pAuth->AddRef();
+	if (m_lpAuthList)
 	{
-		m_nAuthType = nAuthType;
-		switch (nAuthType)
-		{
-		case AUTHTYPE_PASSWORD:
-			m_pAuth = new CPasswordAuthentication();
-			break;
-		case AUTHTYPE_PUBLICKEY:
-			m_pAuth = new CPublicKeyAuthentication();
-			break;
-		case AUTHTYPE_PAGEANT:
-			m_pAuth = new CPageantAuthentication();
-			break;
-		case AUTHTYPE_WINSSHAGENT:
-			m_pAuth = new CWinOpenSSHAgentAuthentication();
-			break;
-		default:
-		case AUTHTYPE_NONE:
-			m_pAuth = new CNoneAuthentication();
-			m_nAuthType = AUTHTYPE_NONE;
-			break;
-		}
+		free(m_lpAuthList);
+		m_lpAuthList = NULL;
 	}
-	return m_pAuth->Authenticate(m_pSession, pUserInfo, "ssh-connection");
+	return CAuthentication::SSHAuthenticate(pAuth, m_pSession, "ssh-connection", &m_lpAuthList);
 }
 
 bool CSSH2Client::CanRetryAuthenticate()
 {
 	if (!m_pAuth)
 		return false;
-	return m_pAuth->CanRetry();
+	return CAuthentication::CanRetry(m_pAuth);
 }
 
 void CSSH2Client::EndAuthenticate()
 {
-	m_pAuth->FinishAndDelete();
+	m_pAuth->Release();
 	m_pAuth = NULL;
 }
 
@@ -128,9 +122,7 @@ LPSTR CSSH2Client::AvailableAuthTypes()
 {
 	if (!m_pAuth)
 		return NULL;
-	if (m_nAuthType != AUTHTYPE_NONE)
-		return NULL;
-	return static_cast<CNoneAuthentication*>(m_pAuth)->m_lpAuthList;
+	return m_lpAuthList;
 }
 
 void CSSH2Client::SendKeepAlive()

@@ -44,6 +44,26 @@ static const UINT s_uHeaderRootItemPIDs[] = {
 	PID_ROOTITEM_STATUS
 };
 
+static HRESULT GetConnectionModeFromUrl(LPCWSTR lpsz, EasySFTPConnectionMode* pMode)
+{
+	if (wcsncmp(lpsz, L"sftp:", 5) == 0)
+		*pMode = EasySFTPConnectionMode::SFTP;
+	else if (wcsncmp(lpsz, L"ftp:", 4) == 0)
+		*pMode = EasySFTPConnectionMode::FTP;
+	else
+		return E_INVALIDARG;
+	return S_OK;
+}
+
+static int CompareConnectionMode(EasySFTPConnectionMode mode1, EasySFTPConnectionMode mode2)
+{
+	if (mode1 == mode2)
+		return 0;
+	if (mode1 == EasySFTPConnectionMode::SFTP)
+		return -1;
+	return 1;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 class CEnumRootItemIDList : public CUnknownImplT<IEnumIDList>
@@ -110,7 +130,7 @@ STDMETHODIMP CEnumRootItemIDList::Next(ULONG celt, PITEMID_CHILD* rgelt, ULONG* 
 		if ((m_grfFlags & SHCONTF_FOLDERS) != 0)
 		{
 			*rgelt = ::CreateHostItem(m_pRoot->m_pMallocData->pMalloc,
-				pData->bSFTPMode, (WORD)pData->nPort, pData->pDirItem->strName);
+				pData->ConnectionMode, (WORD)pData->nPort, pData->pDirItem->strName);
 			if (*rgelt && pceltFetched)
 				(*pceltFetched)++;
 			rgelt++;
@@ -173,12 +193,13 @@ STDMETHODIMP CEnumRootItemIDList::Clone(IEnumIDList** ppEnum)
 
 CEasySFTPFolderRoot::CEasySFTPFolderRoot()
 	: CFolderBase(new CDelegateMallocData())
+	, CDispatchImplNoUnknownT(theApp.GetTypeInfo(IID_IEasySFTPRoot))
 {
 	m_pMallocData->pMalloc = new CDelegateItemIDMalloc();
 	m_uRef = 1;
 	//m_pListener = NULL;
 	m_pidlMe = NULL;
-	m_pItemParent = NULL;
+	m_pParent = NULL;
 	theApp.AddReference(this);
 
 	CMyStringW str;
@@ -189,6 +210,8 @@ CEasySFTPFolderRoot::CEasySFTPFolderRoot()
 
 CEasySFTPFolderRoot::~CEasySFTPFolderRoot()
 {
+	if (m_pParent)
+		m_pParent->Release();
 	//if (m_pListener)
 	//	m_pListener->Release();
 	//if (m_pidlMe)
@@ -201,27 +224,45 @@ STDMETHODIMP CEasySFTPFolderRoot::QueryInterface(REFIID riid, void** ppv)
 {
 	if (!ppv)
 		return E_POINTER;
+	if (IsEqualIID(riid, IID_CEasySFTPFolderRoot))
+	{
+		*ppv = this;
+		AddRef();
+		return S_OK;
+	}
 	if (IsEqualIID(riid, IID_IDelegateFolder))
 	{
-		*ppv = (IDelegateFolder*)this;
+		*ppv = static_cast<IDelegateFolder*>(this);
 		AddRef();
 		return S_OK;
 	}
 	if (IsEqualIID(riid, IID_IPersistPropertyBag))
 	{
-		*ppv = (IPersistPropertyBag*)this;
+		*ppv = static_cast<IPersistPropertyBag*>(this);
+		AddRef();
+		return S_OK;
+	}
+	if (IsEqualIID(riid, IID_IDispatch) || IsEqualIID(riid, IID_IEasySFTPRoot))
+	{
+		*ppv = static_cast<IEasySFTPRoot*>(this);
+		AddRef();
+		return S_OK;
+	}
+	if (IsEqualIID(riid, IID_IProvideClassInfo))
+	{
+		*ppv = static_cast<IProvideClassInfo*>(this);
 		AddRef();
 		return S_OK;
 	}
 	if (IsEqualIID(riid, IID_IEasySFTPOldRoot) || IsEqualIID(riid, IID_IEasySFTPOldRoot2))
 	{
-		*ppv = (IEasySFTPOldRoot2*)this;
+		*ppv = static_cast<IEasySFTPOldRoot2*>(this);
 		AddRef();
 		return S_OK;
 	}
 	if (IsEqualIID(riid, IID_IEasySFTPInternal))
 	{
-		*ppv = (IEasySFTPInternal*)this;
+		*ppv = static_cast<IEasySFTPInternal*>(this);
 		AddRef();
 		return S_OK;
 	}
@@ -238,7 +279,8 @@ STDMETHODIMP_(ULONG) CEasySFTPFolderRoot::AddRef()
 	str.Format(L"CEasySFTPFolderRoot::AddRef() (%p), count = %lu\n",
 		this, (m_uRef + 1));
 	OutputDebugString(str);
-	return (ULONG) ::InterlockedIncrement((LONG*)&m_uRef);
+	CFolderBase::OnAddRef();
+	return ::InterlockedIncrement(&m_uRef);
 }
 
 STDMETHODIMP_(ULONG) CEasySFTPFolderRoot::Release()
@@ -247,30 +289,44 @@ STDMETHODIMP_(ULONG) CEasySFTPFolderRoot::Release()
 	str.Format(L"CEasySFTPFolderRoot::Release() (%p), count = %lu\n",
 		this, (m_uRef - 1));
 	OutputDebugString(str);
-	if (::InterlockedDecrement((LONG*)&m_uRef))
-		return m_uRef;
+	CFolderBase::OnRelease();
+	auto u = ::InterlockedDecrement(&m_uRef);
+	if (u)
+		return u;
 	delete this;
 	return 0;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::GetClassInfo(ITypeInfo** ppTI)
+{
+	return theApp.m_pTypeLib->GetTypeInfoOfGuid(CLSID_EasySFTPRoot, ppTI);
 }
 
 STDMETHODIMP CEasySFTPFolderRoot::ParseDisplayName(HWND hWnd, LPBC pbc, LPWSTR pszDisplayName,
 	ULONG* pchEaten, PIDLIST_RELATIVE* ppidl, ULONG* pdwAttributes)
 {
-	bool bSFTPMode;
 	ULONG uEaten;
 	PIDLIST_RELATIVE pidlCurrent;
 	if (!ppidl)
 		return E_POINTER;
 	*ppidl = NULL;
 	m_hWndOwnerCache = hWnd;
-	if (!(bSFTPMode = !(memcmp(pszDisplayName, L"ftp://", sizeof(WCHAR) * 6) == 0)) ||
-		(memcmp(pszDisplayName, L"sftp://", sizeof(WCHAR) * 7) == 0))
+	EasySFTPConnectionMode mode;
+	if (SUCCEEDED(GetConnectionModeFromUrl(pszDisplayName, &mode)))
 	{
 		LPWSTR lpw, lpw2;
 		CMyStringW strName;
-		int nPort = bSFTPMode ? 22 : 21;
+		int nPort = mode == EasySFTPConnectionMode::SFTP ? 22 : 21;
 
-		pszDisplayName += (uEaten = bSFTPMode ? 7 : 6);
+		lpw = wcschr(pszDisplayName, L':');
+		if (!lpw)
+			return E_INVALIDARG;
+		++lpw;
+		if (lpw[0] != L'/' || lpw[1] != L'/')
+			return E_INVALIDARG;
+		lpw += 2;
+		uEaten = static_cast<ULONG>(lpw - pszDisplayName);
+		pszDisplayName = lpw;
 		lpw = wcschr(pszDisplayName, L'/');
 		lpw2 = wcschr(pszDisplayName, L':');
 		if (lpw2)
@@ -296,7 +352,7 @@ STDMETHODIMP CEasySFTPFolderRoot::ParseDisplayName(HWND hWnd, LPBC pbc, LPWSTR p
 		pszDisplayName += strName.GetLength();
 		uEaten += (ULONG)strName.GetLength();
 
-		pidlCurrent = (PIDLIST_RELATIVE) ::CreateHostItem(m_pMallocData->pMalloc, bSFTPMode, (WORD)nPort, strName);
+		pidlCurrent = (PIDLIST_RELATIVE) ::CreateHostItem(m_pMallocData->pMalloc, mode, (WORD)nPort, strName);
 		if (!pidlCurrent)
 			return E_OUTOFMEMORY;
 
@@ -334,7 +390,7 @@ STDMETHODIMP CEasySFTPFolderRoot::ParseDisplayName(HWND hWnd, LPBC pbc, LPWSTR p
 			if (pHostData->pDirItem->strName.Compare(pszDisplayName) == 0)
 			{
 				pidlCurrent = (PIDLIST_RELATIVE) ::CreateHostItem(m_pMallocData->pMalloc,
-					pHostData->bSFTPMode, (WORD)pHostData->nPort, pHostData->pDirItem->strName);
+					pHostData->ConnectionMode, (WORD)pHostData->nPort, pHostData->pDirItem->strName);
 				if (!pidlCurrent)
 				{
 					hr = E_OUTOFMEMORY;
@@ -378,7 +434,7 @@ STDMETHODIMP CEasySFTPFolderRoot::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc
 	return hr;
 }
 
-HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl, LPBC pbc, CUserInfo* pUser, CFTPDirectoryRootBase** ppRoot)
+HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl, LPBC pbc, IEasySFTPAuthentication* pUser, CFTPDirectoryRootBase** ppRoot)
 {
 	if (!pidl)
 		return E_POINTER;
@@ -392,24 +448,24 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 	bool bFound = false;
 	//bool bFolderAssigned = false;
 	::EnterCriticalSection(&theApp.m_csHosts);
-	pHostData = theApp.FindHostFolderDataUnsafe(pItem->bSFTP, strHostName, (int)pItem->nPort);
+	pHostData = theApp.FindHostFolderDataUnsafe(pItem->GetConnectionMode(), strHostName, (int)pItem->nPort);
 	bFound = (pHostData != NULL);
 	if (pHostData)
-		pDirectory = (CFTPDirectoryRootBase*)pHostData->pDirItem->pDirectory;
+		pDirectory = static_cast<CFTPDirectoryRootBase*>(pHostData->pDirItem->pDirectory);
 	//if (!bFolderAssigned)
 	if (!pDirectory)
 	{
 		if (!bFound)
 		{
 			pHostData = new CHostFolderData();
-			pHostData->bSFTPMode = pItem->bSFTP;
-			pHostData->pDirItem = new CFTPDirectoryItem();
+			pHostData->ConnectionMode = pItem->GetConnectionMode();
+			pHostData->pDirItem = new CFTPRootDirectoryItem();
 			pHostData->pDirItem->strName = strHostName;
 			pHostData->pDirItem->pDirectory = NULL;
 			pHostData->nPort = pItem->nPort;
 			pHostData->pSettings = NULL;
 		}
-		if (pItem->bSFTP)
+		if (pItem->GetConnectionMode() == EasySFTPConnectionMode::SFTP)
 		{
 			CSFTPFolderSFTP* pSFTP = new CSFTPFolderSFTP(m_pMallocData, pHostData->pDirItem, this);
 			if (!pSFTP)
@@ -495,7 +551,7 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 			if (!p)
 			{
 				pPFolder->Release();
-				pDirectory->Release();
+				pDirectory->DetachAndRelease();
 				if (!bFound)
 				{
 					pHostData->pDirItem->Release();
@@ -508,7 +564,7 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 			pPFolder->Release();
 			if (FAILED(hr))
 			{
-				pDirectory->Release();
+				pDirectory->DetachAndRelease();
 				if (!bFound)
 				{
 					pHostData->pDirItem->Release();
@@ -520,8 +576,6 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 		}
 		pHostData->pDirItem->pDirectory = pDirectory;
 	}
-	//else
-	pDirectory->AddRef();
 
 	if (!bFound)
 		theApp.m_aHosts.Add(pHostData);
@@ -529,67 +583,38 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 
 	if (pUser)
 	{
-		if (pItem->bSFTP)
+		if (!pDirectory->Connect(hWndOwner, strHostName, pItem->nPort, pUser))
 		{
-			if (!((CSFTPFolderSFTP*)pDirectory)->Connect(hWndOwner, strHostName, pItem->nPort, pUser))
-			{
-				pDirectory->Release();
-				//if (!bFound)
-				//{
-				//	// newでAddRefされているのでもう一度Releaseが必要
-				//	pDirectory->Release();
-				//	delete pHostData;
-				//}
-				//::LeaveCriticalSection(&theApp.m_csHosts);
-				return E_ABORT;
-			}
-		}
-		else
-		{
-			if (!((CSFTPFolderFTP*)pDirectory)->Connect(hWndOwner, strHostName, pItem->nPort, pUser))
-			{
-				pDirectory->Release();
-				//if (!bFound)
-				//{
-				//	// newでAddRefされているのでもう一度Releaseが必要
-				//	pDirectory->Release();
-				//	delete pHostData;
-				//}
-				//::LeaveCriticalSection(&theApp.m_csHosts);
-				return E_ABORT;
-			}
+			return E_ABORT;
 		}
 	}
 
+	pDirectory->AddRef();
 	*ppRoot = pDirectory;
-	//HRESULT hr;
-	//if (pidlNext->mkid.cb)
-	//	hr = pDirectory->BindToObject(pidlNext, pbc, riid, ppv);
-	//else
-	//	hr = pDirectory->QueryInterface(riid, ppv);
-	//pDirectory->Release();
-	//if (FAILED(hr))
-	//{
-	//	//pDirectory->Release();
-	//	if (!bFound)
-	//	{
-	//		pDirectory->Release();
-	//		delete pHostData;
-	//	}
-	//	//else if (!bFolderAssigned)
-	//	//{
-	//	//	pFolder->Release();
-	//	//	pHostData->pFolder = NULL;
-	//	//}
-	//}
-	//else if (!bFound)
-	//return hr;
 	return S_OK;
 }
 
 STDMETHODIMP CEasySFTPFolderRoot::BindToStorage(PCUIDLIST_RELATIVE pidl, LPBC pbc, REFIID riid, void** ppv)
 {
-	return E_NOTIMPL;
+	if (!pidl || !ppv)
+		return E_POINTER;
+	if (!IsEqualIID(riid, IID_IUnknown) &&
+		!IsEqualIID(riid, IID_IStorage) &&
+		!IsEqualIID(riid, IID_ISequentialStream) &&
+		!IsEqualIID(riid, IID_IStream))
+		return E_NOINTERFACE;
+	*ppv = NULL;
+	PCUIDLIST_RELATIVE pidlNext = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidl) + pidl->mkid.cb);
+	CFTPDirectoryRootBase* pRet;
+	HRESULT hr = _BindToObject(NULL, (PCUITEMID_CHILD)pidl, pbc, NULL, &pRet);
+	if (FAILED(hr))
+		return hr;
+	if (pidlNext->mkid.cb)
+		hr = pRet->BindToStorage(pidlNext, pbc, riid, ppv);
+	else
+		hr = pRet->QueryInterface(riid, ppv);
+	pRet->Release();
+	return hr;
 }
 
 STDMETHODIMP CEasySFTPFolderRoot::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pidl1, PCUIDLIST_RELATIVE pidl2)
@@ -650,19 +675,19 @@ STDMETHODIMP CEasySFTPFolderRoot::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE p
 
 		int r1, r2, r3, r4;
 		r1 = str1.Compare(str2);
-		if (pItem1->bSFTP)
-			r2 = pItem2->bSFTP ? 0 : -1;
-		else
-			r2 = pItem2->bSFTP ? 1 : 0;
+		r2 = CompareConnectionMode(pItem1->GetConnectionMode(), pItem2->GetConnectionMode());
 		r3 = pItem1->nPort - pItem2->nPort;
 		r3 = r3 < 0 ? -1 : r3 > 0 ? 1 : 0;
 		{
-			CHostFolderData* pHostData1 = theApp.FindHostFolderData(pItem1->bSFTP, pItem1->wchHostName, (int)pItem1->nPort);
-			CHostFolderData* pHostData2 = theApp.FindHostFolderData(pItem2->bSFTP, pItem2->wchHostName, (int)pItem2->nPort);
+			CMyStringW strHost1, strHost2;
+			MyGetUnalignedString(pItem1->wchHostName, strHost1);
+			MyGetUnalignedString(pItem2->wchHostName, strHost2);
+			CHostFolderData* pHostData1 = theApp.FindHostFolderData(pItem1->GetConnectionMode(), strHost1, (int)pItem1->nPort);
+			CHostFolderData* pHostData2 = theApp.FindHostFolderData(pItem2->GetConnectionMode(), strHost2, (int)pItem2->nPort);
 			bool bConnected1 = (pHostData1 != NULL && pHostData1->pDirItem->pDirectory != NULL &&
-				((CFTPDirectoryRootBase*)pHostData1->pDirItem->pDirectory)->IsConnected() == S_OK);
+				pHostData1->pDirItem->pDirectory->IsConnected() == S_OK);
 			bool bConnected2 = (pHostData2 != NULL && pHostData2->pDirItem->pDirectory != NULL &&
-				((CFTPDirectoryRootBase*)pHostData2->pDirItem->pDirectory)->IsConnected() == S_OK);
+				pHostData2->pDirItem->pDirectory->IsConnected() == S_OK);
 			if (bConnected1)
 				r4 = bConnected2 ? 0 : -1;
 			else
@@ -770,7 +795,7 @@ STDMETHODIMP CEasySFTPFolderRoot::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARR
 			CSFTPHostItem UNALIGNED* pItem = (CSFTPHostItem UNALIGNED*) * apidl;
 			a = SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_HASSUBFOLDER;
 
-			CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->bSFTP, strHostName, (int)pItem->nPort);
+			CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->GetConnectionMode(), strHostName, (int)pItem->nPort);
 			if (pHostData)
 				a |= SFGAO_CANRENAME | SFGAO_HASPROPSHEET;
 		}
@@ -837,7 +862,7 @@ STDMETHODIMP CEasySFTPFolderRoot::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUIT
 				return E_INVALIDARG;
 			pItem = (CSFTPHostItem UNALIGNED*) apidl[0];
 
-			CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->bSFTP, strHost, (int)pItem->nPort);
+			CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->GetConnectionMode(), strHost, (int)pItem->nPort);
 			if (!pHostData)
 				return E_INVALIDARG;
 			iIndex = IML_INDEX_NETDRIVE;
@@ -881,7 +906,7 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF 
 				return E_INVALIDARG;
 			pItem = (CSFTPHostItem UNALIGNED*) pidl;
 
-			CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->bSFTP, strHost, (int)pItem->nPort);
+			CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->GetConnectionMode(), strHost, (int)pItem->nPort);
 
 			switch (uFlags & 0x0FFF)
 			{
@@ -889,12 +914,13 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF 
 			{
 				if (uFlags & (SHGDN_FORPARSING | SHGDN_FORADDRESSBAR))
 				{
+					int nDef = 0;
 					CMyStringW str2;
-					str = pItem->bSFTP ? L"sftp" : L"ftp";
+					ConnectionModeToProtocolAndPort(pItem->GetConnectionMode(), str, nDef);
 					str += L"://";
 					GetHostNameForUrl(strHost, str2);
 					str += str2;
-					if (pItem->nPort != (pItem->bSFTP ? 22 : 21))
+					if (pItem->nPort != nDef)
 					{
 						str2.Format(L"%d", (int)pItem->nPort);
 						str += L':';
@@ -943,9 +969,12 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF 
 	}
 
 	SIZE_T nSize = sizeof(WCHAR) * (str.GetLength() + 1);
+	auto pStr = static_cast<LPWSTR>(::CoTaskMemAlloc(nSize));
+	if (!pStr)
+		return E_OUTOFMEMORY;
 	pName->uType = STRRET_WSTR;
-	pName->pOleStr = (LPWSTR) ::CoTaskMemAlloc(nSize);
-	memcpy(pName->pOleStr, (LPCWSTR)str, nSize);
+	pName->pOleStr = pStr;
+	memcpy(pStr, (LPCWSTR)str, nSize);
 	return S_OK;
 }
 
@@ -971,7 +1000,7 @@ STDMETHODIMP CEasySFTPFolderRoot::SetNameOf(HWND hWnd, PCUITEMID_CHILD pidl, LPC
 		for (int i = 0; i < theApp.m_aHosts.GetCount(); i++)
 		{
 			pHostData = theApp.m_aHosts.GetItem(i);
-			if (pHostData->bSFTPMode == pItem->bSFTP &&
+			if (pHostData->ConnectionMode == pItem->GetConnectionMode() &&
 				pHostData->pDirItem->strName.Compare(strHost) == 0 &&
 				pHostData->nPort == (int)pItem->nPort)
 			{
@@ -992,10 +1021,10 @@ STDMETHODIMP CEasySFTPFolderRoot::SetNameOf(HWND hWnd, PCUITEMID_CHILD pidl, LPC
 				return E_INVALIDARG;
 			else //if (uFlags & SHGDN_FOREDITING)
 			{
-				CHostSettings newData(*pHostData->pSettings);
-				newData.strDisplayName = pszName;
+				auto* pNewData = new CEasySFTPHostSetting(pHostData->pSettings);
+				pNewData->strDisplayName = pszName;
 
-				theApp.UpdateHostSettings(pHostData->pSettings, &newData, 0);
+				theApp.UpdateHostSettings(pHostData->pSettings, pNewData, 0);
 
 				// set dummy ppidlOut (pidl must be same because host name is not changed)
 				*ppidlOut = (PITEMID_CHILD) ::DuplicateItemIDList((PCUIDLIST_ABSOLUTE)pidl);
@@ -1082,7 +1111,7 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOL
 		for (int i = 0; i < theApp.m_aHosts.GetCount(); i++)
 		{
 			pHostData = theApp.m_aHosts.GetItem(i);
-			if (pHostData->bSFTPMode == pItem->bSFTP &&
+			if (pHostData->ConnectionMode == pItem->GetConnectionMode() &&
 				pHostData->pDirItem->strName.Compare(str) == 0 &&
 				pHostData->nPort == (int)pItem->nPort)
 			{
@@ -1104,8 +1133,9 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOL
 		break;
 	case PID_ROOTITEM_MODE:
 		pv->vt = VT_BSTR;
+		static_assert(IDS_CONNECTMODE_FTP > IDS_CONNECTMODE_SFTP, "Unexpected id");
 		if (pItem)
-			str.LoadString(pItem->bSFTP ? IDS_CONNECTMODE_SFTP : IDS_CONNECTMODE_FTP);
+			str.LoadString(pItem->ConnectionMode + IDS_CONNECTMODE_SFTP);
 		else
 			str.Empty();
 		pv->bstrVal = ::SysAllocStringLen(str, (UINT)str.GetLength());
@@ -1133,7 +1163,7 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDetailsEx(PCUITEMID_CHILD pidl, const SHCOL
 	{
 		bool bConnected;
 		bConnected = (bFound && pHostData->pDirItem->pDirectory != NULL &&
-			((CFTPDirectoryRootBase*)pHostData->pDirItem->pDirectory)->IsConnected() == S_OK);
+			pHostData->pDirItem->pDirectory->IsConnected() == S_OK);
 		str.LoadString(bConnected ? IDS_CONNECTED : IDS_NOT_CONNECTED);
 		pv->vt = VT_BSTR;
 		pv->bstrVal = ::SysAllocStringLen(str, (UINT)str.GetLength());
@@ -1211,7 +1241,7 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColum
 		for (int i = 0; i < theApp.m_aHosts.GetCount(); i++)
 		{
 			pHostData = theApp.m_aHosts.GetItem(i);
-			if (pHostData->bSFTPMode == pItem->bSFTP &&
+			if (pHostData->ConnectionMode == pItem->GetConnectionMode() &&
 				pHostData->pDirItem->strName.Compare(str) == 0 &&
 				pHostData->nPort == (int)pItem->nPort)
 			{
@@ -1235,7 +1265,7 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColum
 		break;
 	case PID_ROOTITEM_MODE:
 		if (pItem)
-			str.LoadString(pItem->bSFTP ? IDS_CONNECTMODE_SFTP : IDS_CONNECTMODE_FTP);
+			str.LoadString(pItem->ConnectionMode + IDS_CONNECTMODE_SFTP);
 		else
 			str.Empty();
 		psd->fmt = LVCFMT_LEFT;
@@ -1268,7 +1298,7 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDetailsOf(PCUITEMID_CHILD pidl, UINT iColum
 	{
 		bool bConnected;
 		bConnected = (bFound && pHostData->pDirItem->pDirectory != NULL &&
-			((CFTPDirectoryRootBase*)pHostData->pDirItem->pDirectory)->IsConnected() == S_OK);
+			pHostData->pDirItem->pDirectory->IsConnected() == S_OK);
 		str.LoadString(bConnected ? IDS_CONNECTED : IDS_NOT_CONNECTED);
 		psd->fmt = LVCFMT_LEFT;
 		psd->str.uType = STRRET_WSTR;
@@ -1303,12 +1333,6 @@ STDMETHODIMP CEasySFTPFolderRoot::GetClassID(CLSID* pClassID)
 	return S_OK;
 }
 
-//STDMETHODIMP CEasySFTPFolderRoot::GetCurFolder(PIDLIST_ABSOLUTE* ppidl)
-//{
-//	*ppidl = ::DuplicateItemIDList(m_pidlMe);
-//	return m_pidlMe ? S_OK : S_FALSE;
-//}
-
 
 STDMETHODIMP CEasySFTPFolderRoot::InitNew()
 {
@@ -1339,7 +1363,10 @@ STDMETHODIMP CEasySFTPFolderRoot::GetIconOf(PCUITEMID_CHILD pidl, UINT flags, in
 		//iIndex = 0;
 		if (wID == ID_RCOMMAND_ADD_HOST)
 		{
-			*pIconIndex = theApp.m_iNewHostIconIndex[CMainDLL::iconIndexSmall];
+			auto i = theApp.m_iNewHostIconIndex[CMainDLL::iconIndexSysSmall];
+			if (i < 0)
+				i = theApp.m_iNewHostIconIndex[CMainDLL::iconIndexSmall];
+			*pIconIndex = i;
 			return S_OK;
 		}
 		return S_FALSE;
@@ -1352,7 +1379,10 @@ STDMETHODIMP CEasySFTPFolderRoot::GetIconOf(PCUITEMID_CHILD pidl, UINT flags, in
 			return E_INVALIDARG;
 		//pItem = (CSFTPHostItem UNALIGNED*) pidl;
 
-		*pIconIndex = theApp.m_iNetDriveIconIndex[CMainDLL::iconIndexSmall];
+		auto i = theApp.m_iNetDriveIconIndex[CMainDLL::iconIndexSysSmall];
+		if (i < 0)
+			i = theApp.m_iNetDriveIconIndex[CMainDLL::iconIndexSmall];
+		*pIconIndex = i;
 		return S_OK;
 		//return S_FALSE;
 	}
@@ -1368,15 +1398,66 @@ STDMETHODIMP CEasySFTPFolderRoot::SetItemAlloc(IMalloc* pMalloc)
 	return S_OK;
 }
 
-STDMETHODIMP CEasySFTPFolderRoot::GetParent(IShellItem** ppsi)
+STDMETHODIMP CEasySFTPFolderRoot::get_Version(BSTR* pRet)
 {
-	if (!ppsi)
+	if (!pRet)
 		return E_POINTER;
-	*ppsi = m_pItemParent;
-	if (!m_pItemParent)
-		return E_FAIL;
-	m_pItemParent->AddRef();
-	return S_OK;
+	*pRet = ::SysAllocString(VERSION_STRING_W);
+	return *pRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::_Connect(VARIANT_BOOL bSFTP, LONG_PTR hWnd, LONG_PTR pvReserved,
+	BSTR lpszHostName, long nPort, IEasySFTPRootDirectory** ppFolder)
+{
+	IShellFolder* pFolder = NULL;
+	auto hr = Connect(bSFTP, reinterpret_cast<HWND>(hWnd), NULL, lpszHostName, nPort, &pFolder);
+	if (SUCCEEDED(hr))
+	{
+		if (!pFolder)
+			hr = E_NOINTERFACE;
+		else
+		{
+			hr = pFolder->QueryInterface(IID_IEasySFTPRootDirectory, reinterpret_cast<void**>(ppFolder));
+			pFolder->Release();
+		}
+	}
+	return hr;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::QuickConnectDialog(LONG_PTR hWndOwner, IEasySFTPRootDirectory** ppFolder)
+{
+	IShellFolder* pFolder = NULL;
+	auto hr = QuickConnectDialog(reinterpret_cast<HWND>(hWndOwner), &pFolder);
+	if (SUCCEEDED(hr))
+	{
+		if (!pFolder)
+			hr = E_NOINTERFACE;
+		else
+		{
+			hr = pFolder->QueryInterface(IID_IEasySFTPRootDirectory, reinterpret_cast<void**>(ppFolder));
+			pFolder->Release();
+		}
+	}
+	return hr;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::Connect(EasySFTPConnectionMode ConnectionMode, LONG_PTR hWnd, IEasySFTPAuthentication* pAuth,
+	BSTR lpszHostName, long nPort, VARIANT_BOOL bIgnoreFingerprint, IEasySFTPRootDirectory** ppFolder)
+{
+	PITEMID_CHILD pidlChild = ::CreateHostItem(m_pMallocData->pMalloc,
+		ConnectionMode, (WORD)nPort, lpszHostName);
+	if (!pidlChild)
+		return E_OUTOFMEMORY;
+	CFTPDirectoryRootBase* pRoot;
+	HRESULT hr = _BindToObject(reinterpret_cast<HWND>(hWnd), pidlChild, NULL, NULL, &pRoot);
+	::CoTaskMemFree(pidlChild);
+	if (FAILED(hr))
+		return hr;
+
+
+	hr = pRoot->QueryInterface(IID_IEasySFTPRootDirectory, reinterpret_cast<void**>(ppFolder));
+	pRoot->Release();
+	return hr;
 }
 
 //STDMETHODIMP CEasySFTPFolderRoot::SetListener(IEasySFTPListener* pListener)
@@ -1392,76 +1473,25 @@ STDMETHODIMP CEasySFTPFolderRoot::GetParent(IShellItem** ppsi)
 STDMETHODIMP CEasySFTPFolderRoot::Connect(VARIANT_BOOL bSFTP, HWND hWnd, const void* pvReserved,
 	LPCWSTR lpszHostName, int nPort, IShellFolder** ppFolder)
 {
-	PITEMID_CHILD pidlChild = ::CreateHostItem(m_pMallocData->pMalloc,
-		bSFTP != VARIANT_FALSE, (WORD)nPort, lpszHostName);
-	if (!pidlChild)
+	IEasySFTPRootDirectory* p = NULL;
+	BSTR bstrHost = ::SysAllocString(lpszHostName);
+	if (!bstrHost)
 		return E_OUTOFMEMORY;
-	CFTPDirectoryRootBase* pRoot;
-	//HRESULT hr = _BindToObject(hWnd, pidlChild, NULL, (CUserInfo*) pvReserved, &pRoot);
-	HRESULT hr = _BindToObject(hWnd, pidlChild, NULL, NULL, &pRoot);
-	::CoTaskMemFree(pidlChild);
+	auto hr = Connect(bSFTP ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP,
+		reinterpret_cast<LONG_PTR>(hWnd), NULL, bstrHost, nPort, VARIANT_FALSE, &p);
+	::SysFreeString(bstrHost);
 	if (FAILED(hr))
 		return hr;
+	if (!p)
+		return E_OUTOFMEMORY;
 
-	//CHostFolderData* pHostData;
-
-	//pHostData = new CHostFolderData();
-	//pHostData->bSFTPMode = (bSFTP != VARIANT_FALSE);
-	//pHostData->directory.strName = lpszHostName;
-	//pHostData->directory.pDirectory = NULL;
-	//pHostData->nPort = nPort;
-	//pHostData->pSettings = NULL;
-
-	//CFTPDirectoryRootBase* pRoot;
-	//HRESULT hr;
-	//if (bSFTP)
-	//{
-	//	CSFTPFolderSFTP* pSFTP = new CSFTPFolderSFTP(m_pMallocData, &pHostData->directory, this);
-	//	if (!pSFTP)
-	//	{
-	//		delete pHostData;
-	//		return E_OUTOFMEMORY;
-	//	}
-	//	if (!pSFTP->Connect(hWnd, lpszHostName, nPort, pvReserved))
-	//	{
-	//		pSFTP->Release();
-	//		delete pHostData;
-	//		return E_FAIL;
-	//	}
-
-	//	PITEMID_CHILD pidlChild = ::CreateHostItem(m_pMallocData->pMalloc, (bSFTP != VARIANT_FALSE), (WORD) nPort, lpszHostName);
-	//	if (!pidlChild)
-	//	{
-	//		pSFTP->Release();
-	//		delete pHostData;
-	//		return E_OUTOFMEMORY;
-	//	}
-	//	PIDLIST_ABSOLUTE p = ::AppendItemIDList(m_pidlMe, pidlChild);
-	//	::CoTaskMemFree(pidlChild);
-	//	if (!p)
-	//	{
-	//		pSFTP->Release();
-	//		delete pHostData;
-	//		return E_OUTOFMEMORY;
-	//	}
-	//	hr = pSFTP->Initialize(p);
-	//	::CoTaskMemFree(p);
-	//	if (FAILED(hr))
-	//	{
-	//		pSFTP->Release();
-	//		delete pHostData;
-	//		return hr;
-	//	}
-
-	//	pRoot = pSFTP;
-	//}
-	//else
-	//	return E_NOTIMPL;
-	//pRoot->m_bTextMode = TEXTMODE_NO_CONVERT;
-	//pRoot->m_nServerCharset = scsUTF8;
-	//pRoot->m_nTransferMode = TRANSFER_MODE_AUTO;
-	//pRoot->m_arrTextFileType.CopyArray(theApp.m_arrDefTextFileType);
-	//pRoot->m_bUseSystemTextFileType = true;
+	CFTPDirectoryBase* pFolderBase = NULL;
+	hr = p->QueryInterface(IID_CFTPDirectoryBase, reinterpret_cast<void**>(&pFolderBase));
+	p->Release();
+	if (FAILED(hr))
+		return hr;
+	auto* pRoot = pFolderBase->GetRoot();
+	pRoot->AddRef();
 	{
 		CMyStringW strRealPath;
 		CFTPDirectoryBase* pDirectory;
@@ -1476,20 +1506,13 @@ STDMETHODIMP CEasySFTPFolderRoot::Connect(VARIANT_BOOL bSFTP, HWND hWnd, const v
 				lpw++;
 			hr = pRoot->OpenNewDirectory(lpw, &pDirectory);
 			if (FAILED(hr))
-			{
-				//pRoot->Release();
-				//delete pHostData;
-				//return hr;
 				pDirectory = pRoot;
-			}
 			else
 				pRoot->Release();
 		}
 		*ppFolder = pDirectory;
 	}
-	//pSFTP->AddRef();
-	//pHostData->directory.pDirectory = pRoot;
-	//theApp.m_aHosts.Add(pHostData);
+	pFolderBase->Release();
 	return S_OK;
 }
 
@@ -1497,7 +1520,7 @@ STDMETHODIMP CEasySFTPFolderRoot::QuickConnectDialog(HWND hWndOwner, IShellFolde
 {
 	if (!ppFolder)
 		return E_POINTER;
-	CUserInfo* pUser = new CUserInfo();
+	CAuthentication* pUser = new CAuthentication();
 	*ppFolder = NULL;
 	if (!ConnectDialog(hWndOwner, pUser))
 	{
@@ -1505,7 +1528,7 @@ STDMETHODIMP CEasySFTPFolderRoot::QuickConnectDialog(HWND hWndOwner, IShellFolde
 		return S_FALSE;
 	}
 	PITEMID_CHILD pidlChild = ::CreateHostItem(m_pMallocData->pMalloc,
-		m_dlgConnect.m_bSFTPMode, (WORD)m_dlgConnect.m_nPort, m_dlgConnect.m_strHostName);
+		m_dlgConnect.m_ConnectionMode, (WORD)m_dlgConnect.m_nPort, m_dlgConnect.m_strHostName);
 	if (!pidlChild)
 	{
 		pUser->Release();
@@ -1549,6 +1572,102 @@ STDMETHODIMP CEasySFTPFolderRoot::GetDependencyLibraryInfo(BSTR* poutLibraryInfo
 
 	*poutLibraryInfo = ::SysAllocStringLen(str, static_cast<UINT>(str.GetLength()));
 	return *poutLibraryInfo ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::CreateAuthentication(EasySFTPAuthenticationMode mode, BSTR bstrUserName, IEasySFTPAuthentication** ppAuth)
+{
+	if (!ppAuth)
+		return E_POINTER;
+	CAuthentication* p = new CAuthentication();
+	if (!p)
+		return E_OUTOFMEMORY;
+	auto hr = p->put_Type(mode);
+	if (FAILED(hr))
+	{
+		p->Release();
+		return hr;
+	}
+	hr = p->put_UserName(bstrUserName);
+	if (FAILED(hr))
+	{
+		p->Release();
+		return hr;
+	}
+	*ppAuth = p;
+	return S_OK;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::get_HostSettings(IEasySFTPHostSettingList** ppList)
+{
+	if (!ppList)
+		return E_POINTER;
+	*ppList = new CEasySFTPHostSettingList(this);
+	return *ppList ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::CreateHostSetting(IEasySFTPHostSetting** ppRet)
+{
+	if (!ppRet)
+		return E_POINTER;
+	*ppRet = new CEasySFTPHostSetting();
+	return *ppRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::ConnectFromSetting(LONG_PTR hWnd, IEasySFTPHostSetting* pSetting, VARIANT_BOOL bIgnoreFingerprint, IEasySFTPDirectory** ppFolder)
+{
+	if (!ppFolder)
+		return E_POINTER;
+	auto hWndOwner = reinterpret_cast<HWND>(hWnd);
+	BSTR bstr;
+	CMyStringW strHostName, strServerFolder;
+	long nPort;
+	EasySFTPConnectionMode mode;
+	auto hr = pSetting->get_HostName(&bstr);
+	if (FAILED(hr))
+		return hr;
+	MyBSTRToString(bstr, strHostName);
+	::SysFreeString(bstr);
+
+	hr = pSetting->get_InitServerPath(&bstr);
+	if (FAILED(hr))
+		return hr;
+	MyBSTRToString(bstr, strServerFolder);
+	::SysFreeString(bstr);
+
+	hr = pSetting->get_ConnectionMode(&mode);
+	if (FAILED(hr))
+		return hr;
+
+	hr = pSetting->get_Port(&nPort);
+	if (FAILED(hr))
+		return hr;
+
+	PITEMID_CHILD pidlNew = ::CreateHostItem(m_pMallocData->pMalloc,
+		mode, (WORD)nPort, strHostName);
+
+	CAuthentication* pUser = new CAuthentication();
+	if (DoRetryAuthentication(hWndOwner, pUser, mode, NULL, true) <= 0)
+	{
+		pUser->Release();
+		::CoTaskMemFree(pidlNew);
+		return E_ABORT;
+	}
+	CFTPDirectoryRootBase* pRoot;
+	hr = _BindToObject(hWndOwner, pidlNew, NULL, pUser, &pRoot);
+	pUser->Release();
+	if (FAILED(hr))
+		return hr;
+
+	CFTPDirectoryBase* pDirectory;
+	hr = _RetrieveDirectory(pRoot, strServerFolder, &pDirectory);
+	if (SUCCEEDED(hr))
+	{
+		hr = pDirectory->QueryInterface(IID_IEasySFTPDirectory, reinterpret_cast<void**>(ppFolder));
+		pDirectory->Release();
+	}
+	pRoot->Release();
+
+	return hr;
 }
 
 STDMETHODIMP CEasySFTPFolderRoot::SetEmulateRegMode(bool bEmulate)
@@ -1598,43 +1717,67 @@ STDMETHODIMP_(void) CEasySFTPFolderRoot::UpdateItem(PCUITEMID_CHILD pidlOld, PCU
 	//}
 }
 
-bool CEasySFTPFolderRoot::ConnectDialog(HWND hWndOwner, CUserInfo* pUser)
+HRESULT CEasySFTPFolderRoot::InitializeParent()
+{
+	if (m_pParent)
+	{
+		m_pParent->Release();
+		m_pParent = NULL;
+	}
+	IShellFolder* pDesktop;
+	auto hr = ::SHGetDesktopFolder(&pDesktop);
+	if (FAILED(hr))
+		return hr;
+	PIDLIST_ABSOLUTE pidlParent = ::RemoveOneChild(m_pidlMe);
+	if (!pidlParent)
+	{
+		pDesktop->Release();
+		return S_OK;
+	}
+	// if the item is empty, use Desktop shell folder (empty item means the root namespace)
+	if (pidlParent->mkid.cb == 0)
+	{
+		m_pParent = pDesktop;
+		m_pParent->AddRef();
+	}
+	else
+	{
+		hr = pDesktop->BindToObject(pidlParent, NULL, IID_IShellFolder, reinterpret_cast<void**>(&m_pParent));
+		if (FAILED(hr))
+		{
+			m_pParent = NULL;
+			::CoTaskMemFree(pidlParent);
+			return hr;
+		}
+	}
+	::CoTaskMemFree(pidlParent);
+	pDesktop->Release();
+
+	return hr;
+}
+
+HRESULT CEasySFTPFolderRoot::SetParentFolder(IShellFolder* pFolder)
+{
+	if (m_pParent)
+		m_pParent->Release();
+	m_pParent = pFolder;
+	if (pFolder)
+		pFolder->AddRef();
+	return S_OK;
+}
+
+bool CEasySFTPFolderRoot::ConnectDialog(HWND hWndOwner, IEasySFTPAuthentication* pUser)
 {
 	m_dlgConnect.SetDialogMode(false);
 	if (m_dlgConnect.ModalDialogW(hWndOwner) == IDOK)
 	{
-		pUser->strName = m_dlgConnect.m_strUserName;
-		pUser->strPassword = m_dlgConnect.m_strPassword;
-		if (m_dlgConnect.m_bSFTPMode)
-		{
-			pUser->nAuthType = m_dlgConnect.m_nAuthType;
-			if (m_dlgConnect.m_pPKey)
-			{
-				pUser->strPKeyFileName = m_dlgConnect.m_strPKeyFileName;
-			}
-			else if (m_dlgConnect.m_nAuthType == AUTHTYPE_PAGEANT ||
-				m_dlgConnect.m_nAuthType == AUTHTYPE_WINSSHAGENT)
-			{
-				// do nothing
-			}
-			else
-			{
-				pUser->nAuthType = AUTHTYPE_PASSWORD;
-			}
-		}
-		//m_bTextMode = TEXTMODE_NO_CONVERT;
-		//m_nServerCharset = scsUTF8;
-		//m_nTransferMode = TRANSFER_MODE_AUTO;
-		//m_arrTextFileType.CopyArray(theApp.m_arrDefTextFileType);
-		//m_bUseSystemTextFileType = true;
-		//m_strChmodCommand = DEFAULT_CHMOD_COMMAND;
-		////m_strTouchCommand = DEFAULT_TOUCH_COMMAND;
-		return true;
+		if (SUCCEEDED(m_dlgConnect.SetToAuthentication(pUser)))
+			return true;
 	}
 	return false;
 }
 
-int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, CUserInfo* pUser, bool bSFTPMode, const char* pszAuthList, bool bFirstAttempt)
+int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, IEasySFTPAuthentication* pUser, EasySFTPConnectionMode mode, const char* pszAuthList, bool bFirstAttempt)
 {
 	//if (m_pListener)
 	//{
@@ -1644,7 +1787,7 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, CUserInfo* pUser,
 	//	return hr == S_OK ? 1 : 0;
 	//}
 
-	if (m_dlgConnect.m_bSFTPMode = bSFTPMode)
+	if ((m_dlgConnect.m_ConnectionMode = mode) == EasySFTPConnectionMode::SFTP)
 	{
 		bool bAvailable = true;
 		if (pszAuthList)
@@ -1673,7 +1816,7 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, CUserInfo* pUser,
 			m_dlgConnect.m_bDisableAuthPublicKey = false;
 			bAvailable = true;
 		}
-		// EasySFTP が対応している認証方法が見つからない場合はエラーを返す
+		// If the authentication methods EasySFTP supports are not found, return error
 		if (!bAvailable)
 			return -1;
 	}
@@ -1685,25 +1828,8 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, CUserInfo* pUser,
 	}
 	if (m_dlgConnect.ModalDialogW(hWndOwner) == IDOK)
 	{
-		pUser->strName = m_dlgConnect.m_strUserName;
-		pUser->strPassword = m_dlgConnect.m_strPassword;
-		if (bSFTPMode)
-		{
-			pUser->nAuthType = m_dlgConnect.m_nAuthType;
-			if (m_dlgConnect.m_pPKey)
-			{
-				pUser->strPKeyFileName = m_dlgConnect.m_strPKeyFileName;
-			}
-			else if (m_dlgConnect.m_nAuthType == AUTHTYPE_PAGEANT || m_dlgConnect.m_nAuthType == AUTHTYPE_WINSSHAGENT)
-			{
-				// do nothing
-			}
-			else
-			{
-				pUser->nAuthType = AUTHTYPE_PASSWORD;
-			}
-		}
-		return 1;
+		if (SUCCEEDED(m_dlgConnect.SetToAuthentication(pUser)))
+			return 1;
 	}
 	return 0;
 }
@@ -1715,8 +1841,8 @@ HRESULT CEasySFTPFolderRoot::OpenWithConnectDialog(HWND hWndOwner, PCUITEMID_CHI
 		return E_INVALIDARG;
 	CSFTPHostItem UNALIGNED* pItem = (CSFTPHostItem UNALIGNED*) pidl;
 
-	CUserInfo* pUser = new CUserInfo();
-	if (!DoRetryAuthentication(hWndOwner, pUser, pItem->bSFTP, NULL, true))
+	CAuthentication* pUser = new CAuthentication();
+	if (DoRetryAuthentication(hWndOwner, pUser, pItem->GetConnectionMode(), NULL, true) <= 0)
 	{
 		pUser->Release();
 		return E_ABORT;
@@ -1724,6 +1850,28 @@ HRESULT CEasySFTPFolderRoot::OpenWithConnectDialog(HWND hWndOwner, PCUITEMID_CHI
 	HRESULT hr = _BindToObject(hWndOwner, pidl, NULL, pUser, ppRoot);
 	pUser->Release();
 	return hr;
+}
+
+HRESULT CEasySFTPFolderRoot::AddHostSettings(CEasySFTPHostSetting* pSettings)
+{
+	theApp.UpdateHostSettings(NULL, pSettings, 1);
+
+	PITEMID_CHILD pidlNew = ::CreateHostItem(m_pMallocData->pMalloc,
+		pSettings->ConnectionMode, (WORD)pSettings->nPort, pSettings->strHostName);
+	NotifyUpdate(SHCNE_MKDIR, pidlNew, NULL);
+	::CoTaskMemFree(pidlNew);
+	return S_OK;
+}
+
+HRESULT CEasySFTPFolderRoot::RemoveHostSettings(CEasySFTPHostSetting* pSettings)
+{
+	theApp.UpdateHostSettings(pSettings, NULL, 2);
+
+	PITEMID_CHILD pidlNew = ::CreateHostItem(m_pMallocData->pMalloc,
+		pSettings->ConnectionMode, (WORD)pSettings->nPort, pSettings->strHostName);
+	NotifyUpdate(SHCNE_RMDIR, pidlNew, NULL);
+	::CoTaskMemFree(pidlNew);
+	return S_OK;
 }
 
 HRESULT CEasySFTPFolderRoot::_RetrieveDirectory(CFTPDirectoryRootBase* pRoot, LPCWSTR lpszPath, CFTPDirectoryBase** ppDirectory)
@@ -1745,17 +1893,7 @@ HRESULT CEasySFTPFolderRoot::_RetrieveDirectory(CFTPDirectoryRootBase* pRoot, LP
 		LPCWSTR lpw = strRealPath;
 		//if (*lpw == L'/')
 		lpw++;
-		HRESULT hr = pRoot->OpenNewDirectory(lpw, ppDirectory);
-		//if (FAILED(hr))
-		//{
-		//	//pRoot->Release();
-		//	//delete pHostData;
-		//	//return hr;
-		//	//pDirectory = pRoot;
-		return hr;
-		//}
-		//else
-		//	pRoot->Release();
+		return pRoot->OpenNewDirectory(lpw, ppDirectory);
 	}
 }
 
@@ -1779,13 +1917,13 @@ STDMETHODIMP CEasySFTPRootIcon::QueryInterface(REFIID riid, void** ppv)
 	if (IsEqualIID(riid, IID_IUnknown) ||
 		IsEqualIID(riid, IID_IExtractIconW))
 	{
-		*ppv = (IExtractIconW*)this;
+		*ppv = static_cast<IExtractIconW*>(this);
 		AddRef();
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, IID_IExtractIconA))
 	{
-		*ppv = (IExtractIconA*)this;
+		*ppv = static_cast<IExtractIconA*>(this);
 		AddRef();
 		return S_OK;
 	}
@@ -1794,12 +1932,12 @@ STDMETHODIMP CEasySFTPRootIcon::QueryInterface(REFIID riid, void** ppv)
 
 STDMETHODIMP_(ULONG) CEasySFTPRootIcon::AddRef()
 {
-	return (ULONG) ::InterlockedIncrement((LONG*)&m_uRef);
+	return ::InterlockedIncrement(&m_uRef);
 }
 
 STDMETHODIMP_(ULONG) CEasySFTPRootIcon::Release()
 {
-	ULONG u = (ULONG) ::InterlockedDecrement((LONG*)&m_uRef);
+	ULONG u = ::InterlockedDecrement(&m_uRef);
 	if (!u)
 		delete this;
 	return u;
@@ -1827,46 +1965,45 @@ STDMETHODIMP CEasySFTPRootIcon::GetIconLocation(UINT uFlags, LPWSTR pszIconFile,
 	return S_OK;
 }
 
+static HRESULT __stdcall _ExtractIconImpl(int iIndex, WORD iconSize, HICON* phIcon)
+{
+	if (iconSize <= 16)
+		*phIcon = ::ImageList_GetIcon(theApp.m_himlIconSmall, iIndex, ILD_TRANSPARENT);
+	else if (iconSize <= 32)
+		*phIcon = ::ImageList_GetIcon(theApp.m_himlIconLarge, iIndex, ILD_TRANSPARENT);
+	else if (iconSize <= 48)
+		*phIcon = ::ImageList_GetIcon(theApp.m_himlIconExtraLarge, iIndex, ILD_TRANSPARENT);
+	else if (iconSize <= 256)
+		*phIcon = ::ImageList_GetIcon(theApp.m_himlIconJumbo, iIndex, ILD_TRANSPARENT);
+	else
+	{
+		*phIcon = NULL;
+		return E_NOTIMPL;
+	}
+	if (!*phIcon)
+		return E_OUTOFMEMORY;
+	return S_OK;
+}
+
 HRESULT CEasySFTPRootIcon::DoExtract(HICON* phIconLarge, HICON* phIconSmall, UINT nIconSize)
 {
 	if (phIconLarge)
 	{
-		if (LOWORD(nIconSize) == 256)
-			*phIconLarge = ::ImageList_GetIcon(theApp.m_himlIconJumbo, m_iIndex, ILD_TRANSPARENT);
-		else if (LOWORD(nIconSize) == 48)
-			*phIconLarge = ::ImageList_GetIcon(theApp.m_himlIconExtraLarge, m_iIndex, ILD_TRANSPARENT);
-		else if (LOWORD(nIconSize) == 32)
-			*phIconLarge = ::ImageList_GetIcon(theApp.m_himlIconLarge, m_iIndex, ILD_TRANSPARENT);
-		else
-		{
-			*phIconLarge = NULL;
-			return E_NOTIMPL;
-		}
-		if (!*phIconLarge)
-			return E_OUTOFMEMORY;
+		auto hr = _ExtractIconImpl(m_iIndex, LOWORD(nIconSize), phIconLarge);
+		if (FAILED(hr))
+			return hr;
 	}
 	if (phIconSmall)
 	{
-		if (HIWORD(nIconSize) == 16)
-			*phIconSmall = ::ImageList_GetIcon(theApp.m_himlIconSmall, m_iIndex, ILD_TRANSPARENT);
-		else
+		auto hr = _ExtractIconImpl(m_iIndex, HIWORD(nIconSize), phIconSmall);
+		if (FAILED(hr))
 		{
 			if (phIconLarge)
 			{
 				::DestroyIcon(*phIconLarge);
 				*phIconLarge = NULL;
 			}
-			*phIconSmall = NULL;
-			return E_NOTIMPL;
-		}
-		if (!*phIconSmall)
-		{
-			if (phIconLarge)
-			{
-				::DestroyIcon(*phIconLarge);
-				*phIconLarge = NULL;
-			}
-			return E_OUTOFMEMORY;
+			return hr;
 		}
 	}
 	return S_OK;
@@ -1967,13 +2104,13 @@ STDMETHODIMP CEasySFTPRootMenu::QueryInterface(REFIID riid, void** ppv)
 	if (IsEqualIID(riid, IID_IUnknown) ||
 		IsEqualIID(riid, IID_IContextMenu))
 	{
-		*ppv = (IContextMenu*)this;
+		*ppv = static_cast<IContextMenu*>(this);
 		AddRef();
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, IID_IObjectWithSite))
 	{
-		*ppv = (IObjectWithSite*)this;
+		*ppv = static_cast<IObjectWithSite*>(this);
 		AddRef();
 		return S_OK;
 	}
@@ -1982,12 +2119,12 @@ STDMETHODIMP CEasySFTPRootMenu::QueryInterface(REFIID riid, void** ppv)
 
 STDMETHODIMP_(ULONG) CEasySFTPRootMenu::AddRef()
 {
-	return (ULONG) ::InterlockedIncrement((LONG*)&m_uRef);
+	return ::InterlockedIncrement(&m_uRef);
 }
 
 STDMETHODIMP_(ULONG) CEasySFTPRootMenu::Release()
 {
-	ULONG u = (ULONG) ::InterlockedDecrement((LONG*)&m_uRef);
+	ULONG u = ::InterlockedDecrement(&m_uRef);
 	if (!u)
 		delete this;
 	return u;
@@ -2058,31 +2195,6 @@ STDMETHODIMP CEasySFTPRootMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UI
 	}
 	return MAKE_HRESULT(SEVERITY_SUCCESS, 0, uMaxID - idCmdFirst + 1);
 }
-
-//static PIDLIST_ABSOLUTE __stdcall MakeIDListWithHostDefaultDirectory(PCIDLIST_ABSOLUTE pidlBase, PCUITEMID_CHILD pidlHostItem)
-//{
-//	CMyStringW str;
-//	if (!::PickupHostName(pidlHostItem, str))
-//		return ::AppendItemIDList(pidlBase, pidlHostItem);
-//	CSFTPHostItem UNALIGNED* pItem = (CSFTPHostItem UNALIGNED*) pidl;
-//
-//	CHostFolderData* pHostData;
-//	bool bFound = false;
-//	for (int i = 0; i < theApp.m_aHosts.GetCount(); i++)
-//	{
-//		pHostData = theApp.m_aHosts.GetItem(i);
-//		if (pHostData->bSFTPMode == pItem->bSFTP &&
-//			pHostData->directory.strName.Compare(str) == 0 &&
-//			pHostData->nPort == (int) pItem->nPort)
-//		{
-//			bFound = true;
-//			break;
-//		}
-//	}
-//	if (!bFound || !pHostData->pSettings)
-//		return ::AppendItemIDList(pidlBase, pidlHostItem);
-//	pHostData->pSettings->strInitServerPath;
-//}
 
 STDMETHODIMP CEasySFTPRootMenu::InvokeCommand(CMINVOKECOMMANDINFO* pici)
 {
@@ -2359,32 +2471,28 @@ void CEasySFTPRootMenu::DoAdd(HWND hWndOwner)
 	bool br1 = true;
 	bool br2 = true;
 	bool br3 = true;
-	CHostSettings settings;
+	CEasySFTPHostSetting* pSettings = new CEasySFTPHostSetting();
 
-	settings.bSFTPMode = false;
-	settings.nPort = 21;
-	settings.bTextMode = 0;
-	settings.nServerCharset = scsUTF8;
-	settings.nTransferMode = TRANSFER_MODE_AUTO;
-	settings.arrTextFileType.CopyArray(theApp.m_arrDefTextFileType);
-	settings.bAdjustRecvModifyTime = settings.bAdjustSendModifyTime = false;
-	settings.strChmodCommand = DEFAULT_CHMOD_COMMAND;
+	pSettings->ConnectionMode = EasySFTPConnectionMode::FTP;
+	pSettings->nPort = 21;
+	pSettings->bTextMode = 0;
+	pSettings->nServerCharset = scsUTF8;
+	pSettings->nTransferMode = TRANSFER_MODE_AUTO;
+	pSettings->arrTextFileType.CopyArray(theApp.m_arrDefTextFileType);
+	pSettings->bAdjustRecvModifyTime = pSettings->bAdjustSendModifyTime = false;
+	pSettings->strChmodCommand = DEFAULT_CHMOD_COMMAND;
 
 	CMyStringW strTitle(MAKEINTRESOURCEW(IDS_ADDHOST_PROP));
 	CMyPropertySheet sht;
-	sht.AddPage(new CHostGeneralSettingPage(&settings, &br1));
-	sht.AddPage(new CHostCharsetPage(&settings, &br2));
-	sht.AddPage(new CHostTransferPage(&settings, &br3));
+	sht.AddPage(new CHostGeneralSettingPage(pSettings, &br1));
+	sht.AddPage(new CHostCharsetPage(pSettings, &br2));
+	sht.AddPage(new CHostTransferPage(pSettings, &br3));
 	sht.m_dwPSHFlags = PSH_NOAPPLYNOW;
 	if (sht.Create(true, strTitle, hWndOwner) != (HWND)-1 && br1 && br2 && br3)
 	{
-		theApp.UpdateHostSettings(NULL, &settings, 1);
-
-		PITEMID_CHILD pidlNew = ::CreateHostItem(m_pRoot->m_pMallocData->pMalloc,
-			settings.bSFTPMode, (WORD)settings.nPort, settings.strHostName);
-		m_pRoot->NotifyUpdate(SHCNE_MKDIR, pidlNew, NULL);
-		::CoTaskMemFree(pidlNew);
+		m_pRoot->AddHostSettings(pSettings);
 	}
+	pSettings->Release();
 }
 
 void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
@@ -2399,7 +2507,7 @@ void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
 		return;
 	pItem = (CSFTPHostItem UNALIGNED*) m_apidl[0];
 
-	CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->bSFTP, strHost, (int)pItem->nPort);
+	CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->GetConnectionMode(), strHost, (int)pItem->nPort);
 	if (!pHostData || !pHostData->pSettings)
 		return;
 
@@ -2407,45 +2515,44 @@ void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
 	bool br1 = true;
 	bool br2 = true;
 	bool br3 = true;
-	CHostSettings oldSettings(*pHostData->pSettings);
-	CHostSettings settings(*pHostData->pSettings);
+	CEasySFTPHostSetting* pOldSettings = new CEasySFTPHostSetting(pHostData->pSettings);
+	CEasySFTPHostSetting* pSettings = new CEasySFTPHostSetting(pHostData->pSettings);
 	CMyStringW strTitle(MAKEINTRESOURCEW(IDS_CHANGEHOST_PROP));
 	CMyPropertySheet sht;
-	CHostGeneralSettingPage* pHGSPage = new CHostGeneralSettingPage(&settings, &br1);
+	CHostGeneralSettingPage* pHGSPage = new CHostGeneralSettingPage(pSettings, &br1);
 	pHGSPage->m_bNoModeChange = (pHostData->pDirItem->pDirectory != NULL &&
 		pHostData->pDirItem->pDirectory->IsConnected() == S_OK);
 	sht.AddPage(pHGSPage);
-	sht.AddPage(new CHostCharsetPage(&settings, &br2));
-	sht.AddPage(new CHostTransferPage(&settings, &br3));
+	sht.AddPage(new CHostCharsetPage(pSettings, &br2));
+	sht.AddPage(new CHostTransferPage(pSettings, &br3));
 	sht.m_dwPSHFlags = PSH_NOAPPLYNOW;
 	if (sht.Create(true, strTitle, hWndOwner) != (HWND)-1 && br1 && br2 && br3)
 	{
-		// TODO: merge host data here
-		pHostData->nPort = settings.nPort;
-		pHostData->pDirItem->strName = settings.strHostName;
-		if (pHostData->bSFTPMode != settings.bSFTPMode)
+		pHostData->nPort = pSettings->nPort;
+		pHostData->pDirItem->strName = pSettings->strHostName;
+		if (pHostData->ConnectionMode != pSettings->ConnectionMode)
 		{
-			pHostData->bSFTPMode = settings.bSFTPMode;
+			pHostData->ConnectionMode = pSettings->ConnectionMode;
 			if (pHostData->pDirItem->pDirectory)
 			{
 				pHostData->pDirItem->pDirectory->Release();
 				pHostData->pDirItem->pDirectory = NULL;
-				if (pHostData->bSFTPMode)
+				if (pHostData->ConnectionMode == EasySFTPConnectionMode::SFTP)
 				{
 					CSFTPFolderSFTP* pSFTP = new CSFTPFolderSFTP(m_pRoot->m_pMallocData,
 						pHostData->pDirItem, m_pRoot);
 					if (pSFTP)
 					{
-						pSFTP->m_strHostName = settings.strHostName;
-						pSFTP->m_nPort = settings.nPort;
-						pSFTP->m_bTextMode = settings.bTextMode;
-						pSFTP->m_nServerCharset = settings.nServerCharset;
-						pSFTP->m_nTransferMode = settings.nTransferMode;
-						pSFTP->m_arrTextFileType.CopyArray(settings.arrTextFileType);
-						pSFTP->m_bUseSystemTextFileType = settings.bUseSystemTextFileType;
-						pSFTP->m_bAdjustSendModifyTime = settings.bAdjustSendModifyTime;
-						pSFTP->m_bAdjustRecvModifyTime = settings.bAdjustRecvModifyTime;
-						pSFTP->m_bUseThumbnailPreview = settings.bUseThumbnailPreview;
+						pSFTP->m_strHostName = pSettings->strHostName;
+						pSFTP->m_nPort = pSettings->nPort;
+						pSFTP->m_bTextMode = pSettings->bTextMode;
+						pSFTP->m_nServerCharset = pSettings->nServerCharset;
+						pSFTP->m_nTransferMode = pSettings->nTransferMode;
+						pSFTP->m_arrTextFileType.CopyArray(pSettings->arrTextFileType);
+						pSFTP->m_bUseSystemTextFileType = pSettings->bUseSystemTextFileType;
+						pSFTP->m_bAdjustSendModifyTime = pSettings->bAdjustSendModifyTime;
+						pSFTP->m_bAdjustRecvModifyTime = pSettings->bAdjustRecvModifyTime;
+						pSFTP->m_bUseThumbnailPreview = pSettings->bUseThumbnailPreview;
 					}
 					pHostData->pDirItem->pDirectory = pSFTP;
 				}
@@ -2455,17 +2562,17 @@ void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
 						pHostData->pDirItem, m_pRoot);
 					if (pFTP)
 					{
-						pFTP->m_strHostName = settings.strHostName;
-						pFTP->m_nPort = settings.nPort;
-						pFTP->m_strChmodCommand = settings.strChmodCommand;
-						pFTP->m_bTextMode = settings.bTextMode;
-						pFTP->m_nServerCharset = settings.nServerCharset;
-						pFTP->m_nTransferMode = settings.nTransferMode;
-						pFTP->m_arrTextFileType.CopyArray(settings.arrTextFileType);
-						pFTP->m_bUseSystemTextFileType = settings.bUseSystemTextFileType;
-						pFTP->m_bAdjustSendModifyTime = settings.bAdjustSendModifyTime;
-						pFTP->m_bAdjustRecvModifyTime = settings.bAdjustRecvModifyTime;
-						pFTP->m_bUseThumbnailPreview = settings.bUseThumbnailPreview;
+						pFTP->m_strHostName = pSettings->strHostName;
+						pFTP->m_nPort = pSettings->nPort;
+						pFTP->m_strChmodCommand = pSettings->strChmodCommand;
+						pFTP->m_bTextMode = pSettings->bTextMode;
+						pFTP->m_nServerCharset = pSettings->nServerCharset;
+						pFTP->m_nTransferMode = pSettings->nTransferMode;
+						pFTP->m_arrTextFileType.CopyArray(pSettings->arrTextFileType);
+						pFTP->m_bUseSystemTextFileType = pSettings->bUseSystemTextFileType;
+						pFTP->m_bAdjustSendModifyTime = pSettings->bAdjustSendModifyTime;
+						pFTP->m_bAdjustRecvModifyTime = pSettings->bAdjustRecvModifyTime;
+						pFTP->m_bUseThumbnailPreview = pSettings->bUseThumbnailPreview;
 					}
 					pHostData->pDirItem->pDirectory = pFTP;
 				}
@@ -2473,29 +2580,28 @@ void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
 		}
 		else if (pHostData->pDirItem->pDirectory)
 		{
-			CFTPDirectoryRootBase* pRoot = (CFTPDirectoryRootBase*)pHostData->pDirItem->pDirectory;
-			if (!settings.bSFTPMode)
-				((CSFTPFolderFTP*)pRoot)->m_strChmodCommand = settings.strChmodCommand;
-			pRoot->m_bTextMode = settings.bTextMode;
-			pRoot->m_nServerCharset = settings.nServerCharset;
-			pRoot->m_nTransferMode = settings.nTransferMode;
-			pRoot->m_arrTextFileType.CopyArray(settings.arrTextFileType);
-			pRoot->m_bUseSystemTextFileType = settings.bUseSystemTextFileType;
-			pRoot->m_bAdjustSendModifyTime = settings.bAdjustSendModifyTime;
-			pRoot->m_bAdjustRecvModifyTime = settings.bAdjustRecvModifyTime;
-			pRoot->m_bUseThumbnailPreview = settings.bUseThumbnailPreview;
+			CFTPDirectoryRootBase* pRoot = static_cast<CFTPDirectoryRootBase*>(pHostData->pDirItem->pDirectory);
+			pRoot->SetChmodCommand(pSettings->strChmodCommand);
+			pRoot->m_bTextMode = pSettings->bTextMode;
+			pRoot->m_nServerCharset = pSettings->nServerCharset;
+			pRoot->m_nTransferMode = pSettings->nTransferMode;
+			pRoot->m_arrTextFileType.CopyArray(pSettings->arrTextFileType);
+			pRoot->m_bUseSystemTextFileType = pSettings->bUseSystemTextFileType;
+			pRoot->m_bAdjustSendModifyTime = pSettings->bAdjustSendModifyTime;
+			pRoot->m_bAdjustRecvModifyTime = pSettings->bAdjustRecvModifyTime;
+			pRoot->m_bUseThumbnailPreview = pSettings->bUseThumbnailPreview;
 		}
 
-		theApp.UpdateHostSettings(&oldSettings, &settings, 0);
+		theApp.UpdateHostSettings(pOldSettings, pSettings, 0);
 
 		PITEMID_CHILD pidlNew = ::CreateHostItem(m_pRoot->m_pMallocData->pMalloc,
-			settings.bSFTPMode, (WORD)settings.nPort, settings.strHostName);
+			pSettings->ConnectionMode, (WORD)pSettings->nPort, pSettings->strHostName);
 		m_pRoot->NotifyUpdate(SHCNE_RENAMEFOLDER, (PCUITEMID_CHILD)m_apidl[0], pidlNew);
 		::CoTaskMemFree(pidlNew);
 		//PITEMID_CHILD arr[2];
 		//arr[0] = (PITEMID_CHILD) m_apidl[0];
 		//arr[1] = ::CreateHostItem(m_pRoot->m_pMallocData->pMalloc,
-		//	settings.bSFTPMode, (WORD) settings.nPort, settings.strHostName);
+		//	pSettings->bSFTPMode, (WORD) pSettings->nPort, pSettings->strHostName);
 		//LRESULT lr = ::SHShellFolderView_Message(hWndOwner, SFVM_UPDATEOBJECT, (LPARAM) arr);
 		//if (lr == (LRESULT) -1)
 		//	::CoTaskMemFree(arr[1]);
@@ -2506,6 +2612,8 @@ void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
 		//	m_apidl[0] = arr[1];
 		//}
 	}
+	pOldSettings->Release();
+	pSettings->Release();
 }
 
 void CEasySFTPRootMenu::DoDelete(HWND hWndOwner)
@@ -2520,7 +2628,7 @@ void CEasySFTPRootMenu::DoDelete(HWND hWndOwner)
 		if (::PickupHostName((PCUITEMID_CHILD)m_apidl[i], str))
 		{
 			pItem = (CSFTPHostItem UNALIGNED*) m_apidl[i];
-			CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->bSFTP, str, (int)pItem->nPort);
+			CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->GetConnectionMode(), str, (int)pItem->nPort);
 			if (pHostData && pHostData->pSettings)
 			{
 				if (apidl.Add((PCUITEMID_CHILD)m_apidl[i]) != 0)
@@ -2536,7 +2644,7 @@ void CEasySFTPRootMenu::DoDelete(HWND hWndOwner)
 
 	if (pItem)
 	{
-		CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->bSFTP, str, (int)pItem->nPort);
+		CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->GetConnectionMode(), str, (int)pItem->nPort);
 		if (!pHostData || !pHostData->pSettings)
 		{
 			CMyStringW str2(str);
@@ -2552,20 +2660,23 @@ void CEasySFTPRootMenu::DoDelete(HWND hWndOwner)
 		return;
 
 	{
-		// do not 'new'
-		CHostSettings* pSettings = (CHostSettings*)malloc(sizeof(CHostSettings) * apidl.GetCount());
+		CMyPtrArrayT<CEasySFTPHostSetting> aSettings;
 		for (int i = 0, i2 = 0; i < m_nCount; i++)
 		{
 			if (::PickupHostName((PCUITEMID_CHILD)m_apidl[i], str))
 			{
-				CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->bSFTP, str, (int)pItem->nPort);
+				pItem = (CSFTPHostItem UNALIGNED*) m_apidl[i];
+				CHostFolderData* pHostData = theApp.FindHostFolderData(pItem->GetConnectionMode(), str, (int)pItem->nPort);
 				if (pHostData && pHostData->pSettings)
-					memcpy(&pSettings[i2++], pHostData->pSettings, sizeof(CHostSettings));
+				{
+					aSettings.Add(pHostData->pSettings);
+					pHostData->pSettings->AddRef();
+				}
 			}
 		}
-		theApp.UpdateHostSettings(pSettings, NULL, 2, apidl.GetCount());
-		// do not 'delete'
-		free(pSettings);
+		theApp.UpdateHostSettings(aSettings, {}, 2);
+		for (int i = 0; i < aSettings.GetCount(); ++i)
+			aSettings[i]->Release();
 	}
 
 	for (int i = 0; i < apidl.GetCount(); i++)
@@ -2599,7 +2710,7 @@ PIDLIST_ABSOLUTE CEasySFTPRootMenu::RetrieveDefaultDirectory(HWND hWndOwner, PCU
 	CSFTPHostItem UNALIGNED* pItem = (CSFTPHostItem UNALIGNED*) pidl;
 	CHostFolderData* pData;
 	LPCWSTR lpszPath;
-	pData = theApp.FindHostFolderData(pItem->bSFTP, strHost, (int)pItem->nPort);
+	pData = theApp.FindHostFolderData(pItem->GetConnectionMode(), strHost, (int)pItem->nPort);
 	if (!pData || !pData->pSettings)
 		lpszPath = L".";
 	else

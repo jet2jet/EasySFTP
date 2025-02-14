@@ -1,7 +1,7 @@
 #pragma once
 
 // note: CFolderBase::GetDisplayNameOf must be implemented in case the 'pidl' is NULL
-class CFolderBase : public IShellFolder2,//public IShellFolder3,
+class DECLSPEC_NOVTABLE CFolderBase : public IShellFolder2,//public IShellFolder3,
 	public IPersistFolder2,
 	public IShellItem,
 	public IParentAndItem,
@@ -18,6 +18,8 @@ public:
 	STDMETHOD(QueryInterface)(REFIID riid, void** ppv);
 	STDMETHOD_(ULONG, AddRef)() = 0;
 	STDMETHOD_(ULONG, Release)() = 0;
+	void OnAddRef();
+	void OnRelease();
 
 	STDMETHOD(ParseDisplayName)(HWND hWnd, LPBC pbc, LPWSTR pszDisplayName,
 		ULONG* pchEaten, PIDLIST_RELATIVE* ppidl, ULONG* pdwAttributes);
@@ -99,7 +101,9 @@ protected:
 	STDMETHOD_(void, UpdateItem)(PCUITEMID_CHILD pidlOld, PCUITEMID_CHILD pidlNew, LONG lEvent)
 	{ }
 
-	STDMETHOD_(IShellFolder*, GetParentFolder)() { return m_pFolderParent; }
+	virtual HRESULT InitializeParent() = 0;
+	virtual IShellFolder* GetParentFolder() = 0;
+	virtual HRESULT SetParentFolder(IShellFolder* pFolder) = 0;
 
 public:
 	PIDLIST_ABSOLUTE m_pidlMe;
@@ -108,6 +112,4 @@ protected:
 	IUnknown* m_pUnkSite;
 	HWND m_hWndOwnerCache;
 	CMyPtrArrayPtrT<HWND> m_ahWndViews;
-	IShellFolder* m_pFolderParent;
-	IShellItem* m_pItemParent;
 };

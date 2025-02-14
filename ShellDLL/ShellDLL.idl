@@ -1,0 +1,538 @@
+/*
+ EasySFTP - Copyright (C) 2025 Kuri-Applications
+
+ ShellDLL.idl - definition of type library (including interfaces and coclasses)
+ */
+
+import "oaidl.idl";
+import "basetsd.h";
+
+#define PVOID LONG_PTR
+#define HWND LONG_PTR
+
+[
+	uuid(AD29C042-B9E3-4620-9DF6-D7DA5B8D0199),
+	version(0.12),
+	helpstring("EasySFTP - SFTP/FTP client library"),
+	lcid(0x0411)
+]
+library EasySFTP
+{
+	importlib("stdole2.tlb");
+	importlib("stdole32.tlb");
+
+	interface IEasySFTPFile;
+	interface IEasySFTPFiles;
+	interface IEasySFTPStream;
+	interface IEasySFTPDirectory;
+	interface IEasySFTPRootDirectory;
+	interface IEasySFTPAuthentication;
+	interface IEasySFTPRoot;
+
+	cpp_quote("#define _ENUM_CLASS enum class")
+	cpp_quote("#define enum _ENUM_CLASS")
+
+	typedef enum EasySFTPSeekOrigin
+	{
+		SeekBegin = 0,
+		SeekCurrent = 1,
+		SeekEnd = 2
+	} EasySFTPSeekOrigin;
+
+	[helpstring("This enum should be used as a convination (Buffer* + Stream* + Encode*)")]
+	typedef enum EasySFTPTextMode
+	{
+		NoConversion = 0x00,
+		BufferCrLf = 0x00,
+		BufferCr = 0x01,
+		BufferLf = 0x02,
+		BufferMask = 0x03,
+		StreamCrLf = 0x00,
+		StreamCf = 0x04,
+		StreamLf = 0x08,
+		StreamMask = 0x0C,
+		EncodeNone = 0x00,
+		EncodeShiftJIS = 0x10,
+		EncodeUtf8 = 0x20,
+		EncodeEucJp = 0x30,
+		EncodeUcs4 = 0x40,
+		EncodeMask = 0xF0
+	} EasySFTPTextMode;
+
+	typedef enum EasySFTPTransferMode
+	{
+		Auto = 0,
+		Text = 1,
+		Binary = 2
+	} EasySFTPTransferMode;
+
+	typedef enum EasySFTPConnectionMode
+	{
+		SFTP = 0,
+		FTP = 1
+	} EasySFTPConnectionMode;
+
+	typedef enum EasySFTPAuthenticationMode
+	{
+		None = 0,
+		Password = 1,
+		PublicKey = 2,
+		Pageant = 3,
+		WinOpenSSH = 4
+	} EasySFTPAuthenticationMode;
+
+	typedef enum EasySFTPServerCharset
+	{
+		UTF8 = 0,
+		ShiftJIS = 1,
+		EUC = 2
+	} EasySFTPServerCharset;
+
+	cpp_quote("#undef enum")
+	cpp_quote("#undef _ENUM_CLASS")
+	cpp_quote("#define NoConversion EasySFTPTextMode::NoConversion")
+
+	// NOTE: 'dual' is necessary for PowerShell to list interface members
+
+	[
+		uuid(AD29C042-B9E3-4648-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPFile : IDispatch
+	{
+		[id(0), propget]
+		HRESULT FileName([out, retval] BSTR* pFileName);
+		[id(1), propget]
+		HRESULT IsDirectory([out, retval] VARIANT_BOOL* pbRet);
+		[id(2), propget]
+		HRESULT IsHidden([out, retval] VARIANT_BOOL* pbRet);
+		[id(3), propget]
+		HRESULT IsShortcut([out, retval] VARIANT_BOOL* pbRet);
+		[id(4), propget]
+		HRESULT CreateTime([out, retval] DATE* pdRet);
+		[id(5), propget]
+		HRESULT ModifyTime([out, retval] DATE* pdRet);
+		[id(6), propget]
+		HRESULT Size([out, retval] hyper* piRet);
+		[id(106), propget]
+		HRESULT Size32Bit([out, retval] long* piRet);
+		[id(7), propget]
+		HRESULT Uid([out, retval] long* piRet);
+		[id(8), propget]
+		HRESULT Gid([out, retval] long* piRet);
+		[id(9), propget]
+		HRESULT OwnerName([out, retval] BSTR* pRet);
+		[id(10), propget]
+		HRESULT GroupName([out, retval] BSTR* pRet);
+		[id(11), propget]
+		HRESULT ItemType([out, retval] BSTR* pRet);
+		[id(12), propget]
+		HRESULT Url([out, retval] BSTR* pRet);
+		[id(13), propget]
+		HRESULT Directory([out, retval] IEasySFTPDirectory** ppRet);
+		[id(51), propget, hidden]
+		HRESULT HasWinAttribute([out, retval] VARIANT_BOOL* pbRet);
+		[id(52), propget, hidden]
+		HRESULT WinAttribute([out, retval] long* piRet);
+		[id(53), propget, hidden]
+		HRESULT UnixAttribute([out, retval] long* piRet);
+	};
+
+	[
+		uuid(AD29C042-B9E3-464a-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPFiles : IDispatch
+	{
+		[id(0), propget]
+		HRESULT Item([in] VARIANT key, [out, retval] IEasySFTPFile** ppFile);
+		[id(1), propget]
+		HRESULT Count([out, retval] long* pRet);
+		[id(DISPID_NEWENUM), propget, hidden]
+		HRESULT _NewEnum([out, retval] IUnknown** ppRet);
+	};
+
+	[
+		uuid(AD29C042-B9E3-464c-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPStream : IDispatch
+	{
+		[id(1)]
+		HRESULT Read([out] void* buffer, [in] long length, [out, retval] long* piRead);
+		[id(2)]
+		HRESULT Write([in] const void* buffer, [in] long length, [out, retval] long* piWritten);
+		[id(3)]
+		HRESULT ReadAsUtf8String([in] long length, [out, retval] BSTR* pbRet);
+		[id(4)]
+		HRESULT WriteAsUtf8String([in] BSTR bstrString, [out, retval] long* piWritten);
+		[id(5)]
+		HRESULT Seek([in] long pos, [in] EasySFTPSeekOrigin origin, [out, retval] long* pNew);
+		[id(6)]
+		HRESULT Seek64([in] hyper pos, [in] EasySFTPSeekOrigin origin, [out, retval] hyper* pNew);
+		[id(7), propget]
+		HRESULT File([out, retval] IEasySFTPFile** ppFile);
+	};
+
+	[
+		uuid(AD29C042-B9E3-4646-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPDirectory : IDispatch
+	{
+		[id(0), propget]
+		HRESULT Name([out, retval] BSTR* pRet);
+		[id(1), propget]
+		HRESULT RootDirectory([out, retval] IEasySFTPRootDirectory** ppRootDirectory);
+		[id(2)]
+		HRESULT OpenDirectory([in] VARIANT File, [out, retval] IEasySFTPDirectory** ppRet);
+		[id(3), propget]
+		HRESULT Files([out, retval] IEasySFTPFiles** ppFiles);
+		[id(4)]
+		HRESULT OpenTransferDialog([in] HWND hWndOwner);
+		[id(5)]
+		HRESULT CloseTransferDialog();
+		[id(6)]
+		HRESULT OpenFile([in] BSTR lpszRelativeFileName, [in] VARIANT_BOOL bIsWrite, [in, defaultvalue(NoConversion)] EasySFTPTextMode nTextMode, [out, retval] IEasySFTPStream** ppStream);
+		[id(7)]
+		HRESULT UploadFrom([in] BSTR lpszDestinationRelativeName, [in] BSTR lpszSourceLocalName, [in, defaultvalue(NoConversion)] EasySFTPTextMode nTextMode);
+		[id(8), hidden]
+		HRESULT UploadFromStream([in] BSTR lpszDestinationRelativeFileName, [in] IUnknown* pStream, [in, defaultvalue(NoConversion)] EasySFTPTextMode nTextMode);
+		[id(9), hidden]
+		HRESULT UploadFromDataObject([in] IUnknown* pObject, [in, defaultvalue(NoConversion)] EasySFTPTextMode nTextMode);
+		[id(10)]
+		HRESULT DownloadTo([in] VARIANT File, [in] BSTR lpszTargetLocalName, [in, defaultvalue(NoConversion)] EasySFTPTextMode nTextMode);
+		[id(11), hidden]
+		HRESULT DownloadToStream([in] VARIANT File, [in] IUnknown* pStream, [in, defaultvalue(NoConversion)] EasySFTPTextMode nTextMode);
+		[id(12)]
+		HRESULT UploadFiles([in] SAFEARRAY(BSTR) LocalFiles, [in, defaultvalue(NoConversion)] EasySFTPTextMode nTextMode);
+		[id(13)]
+		HRESULT DownloadFiles([in] SAFEARRAY(VARIANT) RemoteFiles, [in] BSTR bstrDestinationDirectory, [in, defaultvalue(NoConversion)] EasySFTPTextMode nTextMode);
+		[id(14)]
+		HRESULT Move([in] VARIANT File, [in] BSTR lpszTargetName);
+		[id(15)]
+		HRESULT Remove([in] VARIANT File);
+		[id(16)]
+		HRESULT UpdateFileTime([in] VARIANT File, [in] DATE modifyTime, [in] DATE createTime, [in, defaultvalue(0)] DATE accessTime);
+		[id(17), hidden]
+		HRESULT UpdateAttributes([in] VARIANT File, [in] long attr);
+		[id(18)]
+		HRESULT CreateShortcut([in] BSTR LinkName, [in] BSTR TargetName);
+		[id(19), propget]
+		HRESULT FullPath([out, retval] BSTR* pRet);
+		[id(20), propget]
+		HRESULT Url([out, retval] BSTR* pRet);
+	};
+
+	[
+		uuid(AD29C042-B9E3-464e-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPRootDirectory : IEasySFTPDirectory
+	{
+		[id(31), propget]
+		HRESULT IsUnixServer([out, retval] VARIANT_BOOL* pbRet);
+		[id(32), propget]
+		HRESULT HostName([out, retval] BSTR* pRet);
+		[id(33), propget]
+		HRESULT Port([out, retval] long* pRet);
+		[id(34), propget]
+		HRESULT ConnectionMode([out, retval] EasySFTPConnectionMode* pRet);
+		[id(35), propget]
+		HRESULT TextMode([out, retval] EasySFTPTextMode* pnTextMode);
+		[id(35), propput]
+		HRESULT TextMode([in] EasySFTPTextMode nTextMode);
+		[id(36), propget]
+		HRESULT TransferMode([out, retval] EasySFTPTransferMode* pnTransferMode);
+		[id(36), propput]
+		HRESULT TransferMode([in] EasySFTPTransferMode nTransferMode);
+		[id(37)]
+		HRESULT IsTextFile([in] BSTR lpszFileName, [out, retval] VARIANT_BOOL* pbRet);
+		[id(38)]
+		HRESULT Disconnect();
+		[id(39), propget]
+		HRESULT Connected([out, retval] VARIANT_BOOL* pbRet);
+		[id(40), propget]
+		HRESULT Transferring([out, retval] VARIANT_BOOL* pbRet);
+	};
+
+	[
+		uuid(AD29C042-B9E3-4650-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPAuthentication : IDispatch
+	{
+		[id(0), propget]
+		HRESULT UserName([out, retval] BSTR* pRet);
+		[id(0), propput]
+		HRESULT UserName([in] BSTR Name);
+		[id(1), propget]
+		HRESULT Password([out, retval] BSTR* pRet);
+		[id(1), propput]
+		HRESULT Password([in] BSTR Password);
+		[id(2), propget]
+		HRESULT PublicKeyFileName([out, retval] BSTR* pRet);
+		[id(2), propput]
+		HRESULT PublicKeyFileName([in] BSTR FileName);
+		[id(3), propget]
+		HRESULT Type([out, retval] EasySFTPAuthenticationMode* pMode);
+		[id(3), propput]
+		HRESULT Type([in] EasySFTPAuthenticationMode mode);
+		[id(4), propget]
+		HRESULT AuthSession([out, retval] LONG_PTR* pRet);
+		[id(4), propput]
+		HRESULT AuthSession([in] LONG_PTR session);
+	};
+
+	[
+		uuid(AD29C042-B9E3-4654-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPStringList : IDispatch
+	{
+		[id(0), propget]
+		HRESULT Item([in] long Index, [out, retval] BSTR* pString);
+		[id(0), propput]
+		HRESULT Item([in] long Index, [in] BSTR String);
+		[id(1), propget]
+		HRESULT Count([out, retval] long* pRet);
+		[id(2)]
+		HRESULT Add([in] BSTR String, [out, retval] long* pRet);
+		[id(3)]
+		HRESULT Remove([in] long Index);
+		[id(4)]
+		HRESULT FindIndex([in] BSTR String, [out, retval] long* pRet);
+		[id(DISPID_NEWENUM), propget, hidden]
+		HRESULT _NewEnum([out, retval] IUnknown** ppRet);
+	};
+
+	[
+		uuid(AD29C042-B9E3-4652-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPHostSetting : IDispatch
+	{
+		[id(0), propget]
+		HRESULT Name([out, retval] BSTR* pRet);
+		[id(0), propput]
+		HRESULT Name([in] BSTR Value);
+		[id(1), propget]
+		HRESULT HostName([out, retval] BSTR* pRet);
+		[id(1), propput]
+		HRESULT HostName([in] BSTR Value);
+		[id(2), propget]
+		HRESULT ConnectionMode([out, retval] EasySFTPConnectionMode* pRet);
+		[id(2), propput]
+		HRESULT ConnectionMode([in] EasySFTPConnectionMode Value);
+		[id(3), propget]
+		HRESULT Port([out, retval] long* pRet);
+		[id(3), propput]
+		HRESULT Port([in] long Value);
+		[id(4), propget]
+		HRESULT InitLocalPath([out, retval] BSTR* pRet);
+		[id(4), propput]
+		HRESULT InitLocalPath([in] BSTR Value);
+		[id(5), propget]
+		HRESULT InitServerPath([out, retval] BSTR* pRet);
+		[id(5), propput]
+		HRESULT InitServerPath([in] BSTR Value);
+		[id(6), propget]
+		HRESULT TextMode([out, retval] EasySFTPTextMode* pRet);
+		[id(6), propput]
+		HRESULT TextMode([in] EasySFTPTextMode Value);
+		[id(7), propget]
+		HRESULT ServerCharset([out, retval] EasySFTPServerCharset* pRet);
+		[id(7), propput]
+		HRESULT ServerCharset([in] EasySFTPServerCharset Value);
+		[id(8), propget]
+		HRESULT TransferMode([out, retval] EasySFTPTransferMode* pRet);
+		[id(8), propput]
+		HRESULT TransferMode([in] EasySFTPTransferMode Value);
+		[id(9), propget]
+		HRESULT TextFileType([out, retval] IEasySFTPStringList** ppList);
+		[id(10), propget]
+		HRESULT UseSystemTextFileType([out, retval] VARIANT_BOOL* pRet);
+		[id(10), propput]
+		HRESULT UseSystemTextFileType([in] VARIANT_BOOL Value);
+		[id(11), propget]
+		HRESULT AdjustRecvModifyTime([out, retval] VARIANT_BOOL* pRet);
+		[id(11), propput]
+		HRESULT AdjustRecvModifyTime([in] VARIANT_BOOL Value);
+		[id(12), propget]
+		HRESULT AdjustSendModifyTime([out, retval] VARIANT_BOOL* pRet);
+		[id(12), propput]
+		HRESULT AdjustSendModifyTime([in] VARIANT_BOOL Value);
+		[id(13), propget]
+		HRESULT UseThumbnailPreview([out, retval] VARIANT_BOOL* pRet);
+		[id(13), propput]
+		HRESULT UseThumbnailPreview([in] VARIANT_BOOL Value);
+		[id(14), propget]
+		HRESULT ChmodCommand([out, retval] BSTR* pRet);
+		[id(14), propput]
+		HRESULT ChmodCommand([in] BSTR Value);
+		[id(15)]
+		HRESULT CopyFrom([in] IEasySFTPHostSetting* pSetting);
+	};
+	
+	[
+		uuid(AD29C042-B9E3-4656-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPHostSettingList : IDispatch
+	{
+		[id(0), propget]
+		HRESULT Item([in] long Index, [out, retval] IEasySFTPHostSetting** ppRet);
+		[id(1), propget]
+		HRESULT Count([out, retval] long* pRet);
+		[id(2)]
+		HRESULT Add([in] IEasySFTPHostSetting* Setting, [out, retval] long* pRet);
+		[id(3)]
+		HRESULT Remove([in] long Index);
+		[id(4)]
+		HRESULT FindHost([in] BSTR HostName, [in] EasySFTPConnectionMode Mode, [in, defaultvalue(0)] long Port, [out, retval] IEasySFTPHostSetting** ppRet);
+		[id(DISPID_NEWENUM), propget, hidden]
+		HRESULT _NewEnum([out, retval] IUnknown** ppRet);
+	};
+
+	[
+		uuid(AD29C042-B9E3-4644-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		dual
+	]
+	interface IEasySFTPRoot : IDispatch
+	{
+		[id(0), propget]
+		HRESULT Version([out, retval] BSTR* pRet);
+		[id(1), hidden]
+		HRESULT _Connect([in] VARIANT_BOOL bSFTP, [in] HWND hWnd, [in] PVOID pvReserved,
+			[in] BSTR lpszHostName, [in] long nPort, [out, retval] IEasySFTPRootDirectory** ppFolder);
+		[id(2)]
+		HRESULT QuickConnectDialog([in] HWND hWnd, [out, retval] IEasySFTPRootDirectory** ppFolder);
+		[id(3)]
+		HRESULT GetDependencyLibraryInfo([out, retval] BSTR* poutLibraryInfo);
+		[id(4)]
+		HRESULT Connect([in] EasySFTPConnectionMode ConnectionMode,
+			[in] HWND hWnd,
+			[in] IEasySFTPAuthentication* pAuth,
+			[in] BSTR lpszHostName,
+			[in, defaultvalue(0)] long nPort,
+			[in, defaultvalue(0)] VARIANT_BOOL bIgnoreFingerprint,
+			[out, retval] IEasySFTPRootDirectory** ppFolder);
+		[id(5)]
+		HRESULT CreateAuthentication([in] EasySFTPAuthenticationMode mode, [in] BSTR bstrUserName, [out, retval] IEasySFTPAuthentication** ppAuth);
+		[id(6), propget]
+		HRESULT HostSettings([out, retval] IEasySFTPHostSettingList** ppList);
+		[id(7)]
+		HRESULT CreateHostSetting([out, retval] IEasySFTPHostSetting** ppRet);
+		[id(8)]
+		HRESULT ConnectFromSetting([in] HWND hWnd,
+			[in] IEasySFTPHostSetting* pSetting,
+			[in, defaultvalue(0)] VARIANT_BOOL bIgnoreFingerprint,
+			[out, retval] IEasySFTPDirectory** ppFolder);
+
+		// for clear definition of NoConversion, put here
+		cpp_quote("#undef NoConversion")
+	};
+
+	// IID: AD29C042-B9E3-4658-9DF6-D7DA5B8D0199 is reserved
+	// IID: AD29C042-B9E3-465a-9DF6-D7DA5B8D0199 is reserved
+
+	[
+		uuid(AD29C042-B9E3-4740-9DF6-D7DA5B8D0199)
+	]
+	coclass EasySFTPRoot
+	{
+		[default] interface IEasySFTPRoot;
+	};
+
+	[
+		uuid(AD29C042-B9E3-4742-9DF6-D7DA5B8D0199),
+		noncreatable
+	]
+	coclass EasySFTPFile
+	{
+		[default] interface IEasySFTPFile;
+	};
+
+	[
+		uuid(AD29C042-B9E3-4744-9DF6-D7DA5B8D0199),
+		noncreatable
+	]
+	coclass EasySFTPFiles
+	{
+		[default] interface IEasySFTPFiles;
+	};
+
+	[
+		uuid(AD29C042-B9E3-4746-9DF6-D7DA5B8D0199),
+		noncreatable
+	]
+	coclass EasySFTPStream
+	{
+		[default] interface IEasySFTPStream;
+	};
+
+	[
+		uuid(AD29C042-B9E3-4748-9DF6-D7DA5B8D0199),
+		noncreatable
+	]
+	coclass EasySFTPDirectory
+	{
+		[default] interface IEasySFTPDirectory;
+	};
+
+	[
+		uuid(AD29C042-B9E3-474a-9DF6-D7DA5B8D0199),
+		noncreatable
+	]
+	coclass EasySFTPRootDirectory
+	{
+		[default] interface IEasySFTPRootDirectory;
+	};
+
+	[
+		uuid(AD29C042-B9E3-474c-9DF6-D7DA5B8D0199),
+		noncreatable
+	]
+	coclass EasySFTPAuthentication
+	{
+		[default] interface IEasySFTPAuthentication;
+	};
+
+	[
+		uuid(AD29C042-B9E3-474e-9DF6-D7DA5B8D0199),
+		noncreatable
+	]
+	coclass EasySFTPStringList
+	{
+		[default] interface IEasySFTPStringList;
+	};
+
+	[
+		uuid(AD29C042-B9E3-4750-9DF6-D7DA5B8D0199),
+		noncreatable
+	]
+	coclass EasySFTPHostSetting
+	{
+		[default] interface IEasySFTPHostSetting;
+	};
+
+	[
+		uuid(AD29C042-B9E3-4752-9DF6-D7DA5B8D0199),
+		noncreatable
+	]
+	coclass EasySFTPHostSettingList
+	{
+		[default] interface IEasySFTPHostSettingList;
+
+	};
+};

@@ -27,6 +27,7 @@
 #include "Unknown.h"
 
 #include "ESFTPFld.h"
+#include "../ShellDLL/EasySFTP_h.h"
 
 EXTERN_C BOOL MyFileIconInit(BOOL fRestoreCache);
 
@@ -93,73 +94,6 @@ union SHFILEINFO_UNION
 //#define INVALID_SERVER_FILE_NAME_CHARS_APPW  L":;\"|<>"
 
 ////////////////////////////////////////////////////////////////////////////////
-
-//struct CHostSettings
-//{
-//	bool bSFTPMode;
-//	CMyStringW strDisplayName;
-//	CMyStringW strHostName;
-//	int nPort;
-//	CMyStringW strUserName;
-//	CMyStringW strInitLocalPath;
-//	CMyStringW strInitServerPath;
-//	BYTE bTextMode;
-//	char nServerCharset;
-//	char nTransferMode;
-//	CMyStringArrayW arrTextFileType;
-//	bool bUseSystemTextFileType;
-//	bool bAdjustRecvModifyTime;
-//	bool bAdjustSendModifyTime;
-//	CMyStringW strChmodCommand;
-//	//CMyStringW strTouchCommand;
-//
-//	CHostSettings() { }
-//	CHostSettings(const CHostSettings& settings)
-//		: bSFTPMode(settings.bSFTPMode)
-//		, strDisplayName(settings.strDisplayName)
-//		, strHostName(settings.strHostName)
-//		, nPort(settings.nPort)
-//		, strUserName(settings.strUserName)
-//		, strInitLocalPath(settings.strInitLocalPath)
-//		, strInitServerPath(settings.strInitServerPath)
-//		, bTextMode(settings.bTextMode)
-//		, nServerCharset(settings.nServerCharset)
-//		, nTransferMode(settings.nTransferMode)
-//		, bUseSystemTextFileType(settings.bUseSystemTextFileType)
-//		, bAdjustRecvModifyTime(settings.bAdjustRecvModifyTime)
-//		, bAdjustSendModifyTime(settings.bAdjustSendModifyTime)
-//		, strChmodCommand(settings.strChmodCommand)
-//		//, strTouchCommand(settings.strTouchCommand)
-//	{
-//		arrTextFileType.CopyArray(settings.arrTextFileType);
-//	}
-//	void Copy(const CHostSettings& settings)
-//	{
-//		bSFTPMode = settings.bSFTPMode;
-//		strDisplayName = settings.strDisplayName;
-//		strHostName = settings.strHostName;
-//		nPort = settings.nPort;
-//		strUserName = settings.strUserName;
-//		strInitLocalPath = settings.strInitLocalPath;
-//		strInitServerPath = settings.strInitServerPath;
-//		bTextMode = settings.bTextMode;
-//		nServerCharset = settings.nServerCharset;
-//		nTransferMode = settings.nTransferMode;
-//		arrTextFileType.CopyArray(settings.arrTextFileType);
-//		bUseSystemTextFileType = settings.bUseSystemTextFileType;
-//		bAdjustRecvModifyTime = settings.bAdjustRecvModifyTime;
-//		bAdjustSendModifyTime = settings.bAdjustSendModifyTime;
-//		strChmodCommand = settings.strChmodCommand;
-//		//strTouchCommand = settings.strTouchCommand;
-//	}
-//};
-//
-//struct CKnownFingerPrint
-//{
-//	CMyStringW strHostName;
-//	BYTE* pFingerPrint;
-//	size_t nFingerPrintLen;
-//};
 
 struct CMRUStreamData
 {

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "resource.h"
+#include "version.h"
 
 #include "MyFunc.h"
 #include "Unicode.h"
@@ -15,6 +16,7 @@
 #include "Array.h"
 #include "KeyList.h"
 #include "Unknown.h"
+#include "Dispatch.h"
 #include "IDList.h"
 #include "Func.h"
 #include "TextStrm.h"
@@ -26,6 +28,9 @@
 #include "MyDialog.h"
 
 #include "ESFTPFld.h"
+#include "EasySFTP_h.h"
+
+#include "HostSet.h"
 
 template <class T>
 inline void __stdcall CallConstructor(T* ptr)
@@ -47,6 +52,10 @@ DECLARE_INTERFACE_IID_(IEasySFTPInternal, IUnknown, "AD29C042-B9E3-4638-9DF6-D7D
 };
 
 EXTERN_C const IID IID_IEasySFTPInternal;
+
+// for cast use
+EXTERN_C const IID IID_CFTPDirectoryBase;
+EXTERN_C const IID IID_CEasySFTPFolderRoot;
 
 #if !defined(NTDDI_WIN7) || (NTDDI_VERSION < NTDDI_WIN7)
 EXTERN_C const GUID FAR SID_SInPlaceBrowser;
@@ -87,11 +96,12 @@ struct CSFTPHostItem : public CSFTPRootItem
 {
 	union
 	{
-		bool bSFTP;
+		WORD ConnectionMode;
 		WORD wDummy;
 	};
 	WORD nPort;
 	WCHAR wchHostName[1];
+	inline EasySFTPConnectionMode GetConnectionMode() const { return static_cast<EasySFTPConnectionMode>(ConnectionMode); }
 };
 
 struct CSFTPFileItem
@@ -127,7 +137,7 @@ LPWSTR __stdcall DuplicateCoMemString(const CMyStringW& string);
 STDAPI MyCreateShellItem(PCIDLIST_ABSOLUTE pidl, IShellItem** ppItem);
 
 EXTERN_C PITEMID_CHILD __stdcall CreateRootCommandItem(IMalloc* pMalloc, WORD wID);
-EXTERN_C PITEMID_CHILD __stdcall CreateHostItem(IMalloc* pMalloc, bool bSFTPMode, WORD nPort, LPCWSTR lpszHostName);
+EXTERN_C PITEMID_CHILD __stdcall CreateHostItem(IMalloc* pMalloc, EasySFTPConnectionMode ConnectionMode, WORD nPort, LPCWSTR lpszHostName);
 EXTERN_C PITEMID_CHILD __stdcall CreateFileItem(IMalloc* pMalloc, CFTPFileItem* pItem);
 EXTERN_C PITEMID_CHILD __stdcall CreateDummyFileItem(IMalloc* pMalloc, LPCWSTR lpszFileName, bool bIsDirectory);
 EXTERN_C PIDLIST_RELATIVE __stdcall CreateFullPathFileItem(IMalloc* pMalloc, LPCWSTR lpszFileName);
@@ -135,11 +145,12 @@ extern "C++" bool __stdcall PickupRootCommandItemID(PCUITEMID_CHILD pidlHostItem
 extern "C++" bool __stdcall PickupHostName(PCUITEMID_CHILD pidlHostItem, CMyStringW& rstrHostName);
 extern "C++" bool __stdcall PickupFileName(PCUITEMID_CHILD pidlFileItem, CMyStringW& rstrFileName);
 // return true if strHostName is an address (IPv4/IPv6)
-extern "C++" bool __stdcall GetHostNameForUrl(CMyStringW& strHostName, CMyStringW & rstrName);
+extern "C++" bool __stdcall GetHostNameForUrl(CMyStringW& strHostName, CMyStringW& rstrName);
+extern "C++" void __stdcall ConnectionModeToProtocolAndPort(EasySFTPConnectionMode mode, CMyStringW& rstrProtocol, int& nDefaultPort);
 
 STDAPI MyCreateThumbnailProviderFromFileName(LPCWSTR lpszFileName, IThumbnailProvider** ppProvider);
 
-class CDelegateMallocData : public CUnknownImpl
+class CDelegateMallocData : public CReferenceCountClassBase
 {
 public:
 	CDelegateMallocData() : pMalloc(NULL) { }
@@ -176,67 +187,6 @@ union SHFILEINFO_UNION
 // allow unix path delimiter '/', windows path delimiter '\\', and wildcards
 #define INVALID_SERVER_FILE_NAME_CHARS_APPW  L":;\"|<>"
 
-struct CHostSettings
-{
-	bool bSFTPMode;
-	CMyStringW strDisplayName;
-	CMyStringW strHostName;
-	int nPort;
-	//CMyStringW strUserName;
-	CMyStringW strInitLocalPath;
-	CMyStringW strInitServerPath;
-	BYTE bTextMode;
-	char nServerCharset;
-	char nTransferMode;
-	CMyStringArrayW arrTextFileType;
-	bool bUseSystemTextFileType;
-	bool bAdjustRecvModifyTime;
-	bool bAdjustSendModifyTime;
-	bool bUseThumbnailPreview;
-	CMyStringW strChmodCommand;
-	//CMyStringW strTouchCommand;
-
-	CHostSettings() { }
-	CHostSettings(const CHostSettings& settings)
-		: bSFTPMode(settings.bSFTPMode)
-		, strDisplayName(settings.strDisplayName)
-		, strHostName(settings.strHostName)
-		, nPort(settings.nPort)
-		//, strUserName(settings.strUserName)
-		, strInitLocalPath(settings.strInitLocalPath)
-		, strInitServerPath(settings.strInitServerPath)
-		, bTextMode(settings.bTextMode)
-		, nServerCharset(settings.nServerCharset)
-		, nTransferMode(settings.nTransferMode)
-		, bUseSystemTextFileType(settings.bUseSystemTextFileType)
-		, bAdjustRecvModifyTime(settings.bAdjustRecvModifyTime)
-		, bAdjustSendModifyTime(settings.bAdjustSendModifyTime)
-		, strChmodCommand(settings.strChmodCommand)
-		//, strTouchCommand(settings.strTouchCommand)
-	{
-		arrTextFileType.CopyArray(settings.arrTextFileType);
-	}
-	void Copy(const CHostSettings& settings)
-	{
-		bSFTPMode = settings.bSFTPMode;
-		strDisplayName = settings.strDisplayName;
-		strHostName = settings.strHostName;
-		nPort = settings.nPort;
-		//strUserName = settings.strUserName;
-		strInitLocalPath = settings.strInitLocalPath;
-		strInitServerPath = settings.strInitServerPath;
-		bTextMode = settings.bTextMode;
-		nServerCharset = settings.nServerCharset;
-		nTransferMode = settings.nTransferMode;
-		arrTextFileType.CopyArray(settings.arrTextFileType);
-		bUseSystemTextFileType = settings.bUseSystemTextFileType;
-		bAdjustRecvModifyTime = settings.bAdjustRecvModifyTime;
-		bAdjustSendModifyTime = settings.bAdjustSendModifyTime;
-		strChmodCommand = settings.strChmodCommand;
-		//strTouchCommand = settings.strTouchCommand;
-	}
-};
-
 struct CKnownFingerPrint
 {
 	CMyStringW strHostName;
@@ -245,21 +195,27 @@ struct CKnownFingerPrint
 };
 
 class CFTPDirectoryBase;
+class CFTPDirectoryRootBase;
 
 struct CFTPDirectoryItem : public CReferenceCountClassBase
 {
-	CMyStringW strName;
 	CFTPDirectoryBase* pDirectory;
+	CMyStringW strName;
+	CMyStringW strRealPath;
+};
+
+struct CFTPRootDirectoryItem : public CFTPDirectoryItem
+{
 };
 
 struct CHostFolderData
 {
-	bool bSFTPMode;
+	EasySFTPConnectionMode ConnectionMode;
 	// pDirItem->strName is used for host name
 	// pDirItem->pDirectory must be CFTPDirectoryRootBase*
-	CFTPDirectoryItem* pDirItem;
+	CFTPRootDirectoryItem* pDirItem;
 	int nPort;
-	CHostSettings* pSettings;
+	CEasySFTPHostSetting* pSettings;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,33 +281,45 @@ public:
 	bool CheckQueueMessage();
 
 	static void __stdcall EmptyKnownFingerPrints(CMyPtrArrayT<CKnownFingerPrint>& aKnownFingerPrints);
-	static void __stdcall EmptyHostSettings(CMyPtrArrayT<CHostSettings>& aHostSettings);
+	static void __stdcall EmptyHostSettings(CMyPtrArrayT<CEasySFTPHostSetting>& aHostSettings);
 	void LoadINISettings(
 		CGeneralSettings* pSettings,
 		CMyPtrArrayT<CKnownFingerPrint>* paKnownFingerPrints,
-		CMyPtrArrayT<CHostSettings>* paHostSettings
+		CMyPtrArrayT<CEasySFTPHostSetting>* paHostSettings
 		);
 	void SaveINISettings(
 		CGeneralSettings* pSettings,
 		CMyPtrArrayT<CKnownFingerPrint>* paKnownFingerPrints,
-		CMyPtrArrayT<CHostSettings>* paHostSettings
+		CMyPtrArrayT<CEasySFTPHostSetting>* paHostSettings
 		);
+
+	ITypeInfo* GetTypeInfo(const GUID& guid);
 
 	//inline void LoadINISettings() { LoadINISettings(m_settings, m_aKnownFingerPrints, m_aHostSettings); }
 	// nCommand: 0 -- update, 1 -- add, 2 -- delete, -1 -- reload and merge only
-	void UpdateHostSettings(const CHostSettings* pOldSettings, const CHostSettings* pNewSettings, char nCommand, int nCount = 1);
+	void UpdateHostSettings(const CMyPtrArrayT<CEasySFTPHostSetting>& aOldSettings, const CMyPtrArrayT<CEasySFTPHostSetting>& aNewSettings, char nCommand);
+	void UpdateHostSettings(CEasySFTPHostSetting* pOldSettings, CEasySFTPHostSetting* pNewSettings, char nCommand)
+	{
+		CMyPtrArrayT<CEasySFTPHostSetting> aOldSettings;
+		CMyPtrArrayT<CEasySFTPHostSetting> aNewSettings;
+		if (pOldSettings)
+			aOldSettings.Add(pOldSettings);
+		if (pNewSettings)
+			aNewSettings.Add(pNewSettings);
+		UpdateHostSettings(aOldSettings, aNewSettings, nCommand);
+	}
 	//inline void SaveINISettings() { SaveINISettings(m_settings, m_aKnownFingerPrints, m_aHostSettings); }
 	// update m_aHosts
-	void MergeHostSettings(const CMyPtrArrayT<CHostSettings>& aHostSettings);
+	void MergeHostSettings(const CMyPtrArrayT<CEasySFTPHostSetting>& aHostSettings);
 
-	inline CHostFolderData* FindHostFolderData(bool bSFTP, LPCWSTR lpszHost, int nPort)
+	inline CHostFolderData* FindHostFolderData(EasySFTPConnectionMode mode, LPCWSTR lpszHost, int nPort)
 	{
 		::EnterCriticalSection(&m_csHosts);
-		CHostFolderData* pRet = FindHostFolderDataUnsafe(bSFTP, lpszHost, nPort);
+		CHostFolderData* pRet = FindHostFolderDataUnsafe(mode, lpszHost, nPort);
 		::LeaveCriticalSection(&m_csHosts);
 		return pRet;
 	}
-	CHostFolderData* FindHostFolderDataUnsafe(bool bSFTP, LPCWSTR lpszHost, int nPort);
+	CHostFolderData* FindHostFolderDataUnsafe(EasySFTPConnectionMode mode, LPCWSTR lpszHost, int nPort);
 
 	bool FileDialog(bool bOpen, CMyStringW& rstrFileName, CMyWindow* pWndOwner);
 	bool FolderDialog(CMyStringW& rstrDirectoryName, CMyWindow* pWndOwner);
@@ -372,6 +340,8 @@ public:
 	// set the file as 'retreived from foreign source'
 	void SetAttachmentLock(LPCWSTR lpszFileName, LPCWSTR lpszURL);
 
+	inline bool IsWin9x() const { return !m_bUseOFNUnicode; }
+
 public:
 	MSG m_msg;
 
@@ -383,8 +353,11 @@ public:
 	bool m_bEmulateRegMode;
 	CGeneralSettings m_settings;
 
+	ITypeLib* m_pTypeLib;
+
 	IImageList* m_pimlSysIconJumbo;
 	IImageList* m_pimlSysIconExtraLarge;
+	IImageList* m_pimlSysIconSysSmall;
 	HIMAGELIST m_himlSysIconLarge;
 	HIMAGELIST m_himlSysIconSmall;
 	HIMAGELIST m_himlIconJumbo;
@@ -394,6 +367,7 @@ public:
 	enum
 	{
 		iconIndexSmall = 0,
+		iconIndexSysSmall,
 		iconIndexLarge,
 		iconIndexExtraLarge,
 		iconIndexJumbo,

@@ -25,7 +25,7 @@ public:
 	virtual void ChannelDataReceived(CSSHChannel* pChannel, const void* pvData, size_t nSize) = 0;
 };
 
-class CSSHChannel : public CUnknownImpl
+class CSSHChannel : public CReferenceCountClassBase
 {
 public:
 	CSSHChannel(CSSHChannelListener* pListener);

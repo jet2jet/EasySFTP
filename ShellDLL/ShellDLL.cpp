@@ -8,6 +8,7 @@
 #include "ShellDLL.h"
 
 #include "RFolder.h"
+#include "FoldRoot.h"
 #include "CFactory.h"
 #include "INIFile.h"
 #include "MErrDlg.h"
@@ -41,6 +42,11 @@ void LogWin32LastError(const WCHAR* pszFuncName)
 #endif
 }
 
+ITypeInfo* GetTypeInfo(const GUID& guid)
+{
+	return theApp.GetTypeInfo(guid);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #if !defined(NTDDI_WIN7) || (NTDDI_VERSION < NTDDI_WIN7)
@@ -70,6 +76,41 @@ EXTERN_C const IID IID_IEasySFTPOldRoot2 =
 EXTERN_C const CLSID CLSID_EasySFTPOld =
 { 0xAD29C042, 0xB9E3, 0x462c, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
 
+// {AD29C042-B9E3-4658-9DF6-D7DA5B8D0199}
+EXTERN_C const IID IID_CFTPDirectoryBase =
+{ 0xAD29C042, 0xB9E3, 0x4658, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
+// {AD29C042-B9E3-465a-9DF6-D7DA5B8D0199}
+EXTERN_C const IID IID_CEasySFTPFolderRoot =
+{ 0xAD29C042, 0xB9E3, 0x4658, { 0x9D, 0xF6, 0xD7, 0xDA, 0x5B, 0x8D, 0x01, 0x99 } };
+
+static constexpr TCHAR s_szEasySFTPProgId[] = _T("EasySFTP.EasySFTPRoot");
+static constexpr TCHAR s_szEasySFTPProgIdCurrent[] = _T("EasySFTP.EasySFTPRoot.1");
+
+static HRESULT _InitEasySFTPRoot(CEasySFTPFolderRoot* pRoot)
+{
+	IShellFolder* pFolder;
+	CMyStringW str;
+	MyStringFromGUIDW(CLSID_EasySFTPRoot, str);
+	str.InsertString(L"::", 0);
+	auto hr = ::SHGetDesktopFolder(&pFolder);
+	if (FAILED(hr))
+		return hr;
+	PIDLIST_ABSOLUTE pidl;
+	hr = pFolder->ParseDisplayName(NULL, NULL, (LPWSTR)str.operator LPCWSTR(),
+		NULL, (PIDLIST_RELATIVE*)&pidl, NULL);
+	pFolder->Release();
+	if (FAILED(hr))
+	{
+		// fallback to use empty ID list
+		pidl = reinterpret_cast<PIDLIST_ABSOLUTE>(::MakeNullIDList());
+		if (!pidl)
+			return E_OUTOFMEMORY;
+	}
+	hr = pRoot->Initialize(pidl);
+	::CoTaskMemFree(pidl);
+	return hr;
+}
+
 STDAPI EasySFTPCreateRoot(IEasySFTPOldRoot** ppRoot)
 {
 	if (!ppRoot)
@@ -77,7 +118,31 @@ STDAPI EasySFTPCreateRoot(IEasySFTPOldRoot** ppRoot)
 	CEasySFTPFolderRoot* pRoot = new CEasySFTPFolderRoot();
 	if (!pRoot)
 		return E_OUTOFMEMORY;
-	HRESULT hr = pRoot->QueryInterface(IID_IEasySFTPOldRoot, (void**) ppRoot);
+	HRESULT hr = _InitEasySFTPRoot(pRoot);
+	if (FAILED(hr))
+	{
+		pRoot->Release();
+		return hr;
+	}
+	hr = pRoot->QueryInterface(IID_IEasySFTPOldRoot, (void**) ppRoot);
+	pRoot->Release();
+	return hr;
+}
+
+STDAPI EasySFTPCreate(IEasySFTPRoot** ppRoot)
+{
+	if (!ppRoot)
+		return E_POINTER;
+	CEasySFTPFolderRoot* pRoot = new CEasySFTPFolderRoot();
+	if (!pRoot)
+		return E_OUTOFMEMORY;
+	HRESULT hr = _InitEasySFTPRoot(pRoot);
+	if (FAILED(hr))
+	{
+		pRoot->Release();
+		return hr;
+	}
+	hr = pRoot->QueryInterface(IID_IEasySFTPRoot, (void**) ppRoot);
 	pRoot->Release();
 	return hr;
 }
@@ -216,6 +281,21 @@ LSTATUS __stdcall MyRegDeleteKey2(HKEY hKey, LPCTSTR lpszSubKey, LPTSTR& lpBuffe
 	return ::RegDeleteKey(hKey, lpszSubKey);
 }
 
+LSTATUS __stdcall MyRegDeleteKey2(HKEY hKey, LPCTSTR lpszSubKey)
+{
+	HKEY hKeyDest;
+	if (::RegOpenKeyEx(hKey, lpszSubKey, 0, KEY_ENUMERATE_SUB_KEYS | KEY_NOTIFY | KEY_QUERY_VALUE | DELETE, &hKeyDest) == ERROR_SUCCESS)
+	{
+		LPTSTR lpBuffer = NULL;
+		DWORD dwBufferLen = 0;
+		::_RegDeleteSubKeyValue(hKeyDest, lpBuffer, dwBufferLen, lpszSubKey);
+		if (lpBuffer)
+			free(lpBuffer);
+		::RegCloseKey(hKeyDest);
+	}
+	return ::RegDeleteKey(hKey, lpszSubKey);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef HRESULT (STDAPICALLTYPE* T_SHCreateItemFromIDList)(__in PCIDLIST_ABSOLUTE pidl, __in REFIID riid, __deref_out void **ppv);
@@ -317,41 +397,41 @@ static HWND __stdcall _MyCreateTimerWindow()
 	return h;
 }
 
-static bool __stdcall _IsElevated()
-{
-	auto hProcess = ::GetCurrentProcess();
-	HANDLE hToken;
-	if (!::OpenProcessToken(hProcess, TOKEN_QUERY, &hToken))
-		return false;
-	DWORD dw = 0, dwLen = 0;
-	if (!::GetTokenInformation(hToken, TokenElevation, &dw, sizeof(dw), &dwLen) || dwLen != sizeof(dw))
-	{
-		::CloseHandle(hToken);
-		return false;
-	}
-	::CloseHandle(hToken);
-	return dw != 0;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
-static HRESULT STDMETHODCALLTYPE EasySFTPClassCreateFunc(CClassFactory*, IUnknown* pUnkOuter, REFIID riid, void** ppv)
+typedef HRESULT (STDAPICALLTYPE* T_RegisterTypeLibForUser)(ITypeLib* ptlib, _In_ OLECHAR* szFullPath,
+	_In_opt_ OLECHAR* szHelpDir);
+typedef HRESULT (STDAPICALLTYPE* T_UnRegisterTypeLibForUser)(
+	REFGUID         libID,
+	WORD   wMajorVerNum,
+	WORD   wMinorVerNum,
+	LCID            lcid,
+	SYSKIND         syskind);
+
+static HRESULT STDMETHODCALLTYPE EasySFTPClassCreateFunc(CClassFactory*, IUnknown* pUnkOuter, REFIID riid, _Outptr_ void** ppv)
 {
 	if (pUnkOuter)
 		return CLASS_E_NOAGGREGATION;
 	CEasySFTPFolderRoot* pRoot = new CEasySFTPFolderRoot();
-	HRESULT hr = pRoot->QueryInterface(riid, ppv);
+	HRESULT hr = _InitEasySFTPRoot(pRoot);
+	if (FAILED(hr))
+	{
+		pRoot->Release();
+		return hr;
+	}
+	hr = pRoot->QueryInterface(riid, ppv);
 	pRoot->Release();
 	return hr;
 }
 
-STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID FAR* ppv)
+_Check_return_
+STDAPI DllGetClassObject(_In_ REFCLSID rclsid, _In_ REFIID riid, _Outptr_ LPVOID FAR* ppv)
 {
 	if (!ppv)
 		return E_POINTER;
 
 	*ppv = NULL;
-	if (IsEqualCLSID(rclsid, CLSID_EasySFTPOld))
+	if (IsEqualCLSID(rclsid, CLSID_EasySFTPOld) || IsEqualCLSID(rclsid, CLSID_EasySFTPRoot))
 	{
 		HRESULT hr = E_OUTOFMEMORY;
 
@@ -367,6 +447,7 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID FAR* ppv)
 	return CLASS_E_CLASSNOTAVAILABLE;
 }
 
+__control_entrypoint(DllExport)
 STDAPI DllCanUnloadNow()
 {
 	if (theApp.m_uCFLock > 0)
@@ -387,46 +468,68 @@ STDAPI DllCanUnloadNow()
 	return S_OK;
 }
 
-STDAPI EasySFTPRegisterServer();
+STDAPI EasySFTPRegisterServer(bool bForUser);
 
 STDAPI DllRegisterServer()
 {
-	return EasySFTPRegisterServer();
+	return EasySFTPRegisterServer(false);
 }
 
-STDAPI EasySFTPRegisterServer()
+STDAPI EasySFTPRegisterServer(bool bForUser)
 {
 	HKEY hKeyClasses, hKeyCLSID, hKeyCLSIDMe, hKeySFTP, hKeyExplorer, hKeyInstance, hKey2;
 	bool bMySFTPProcotol;
 	LSTATUS lError;
-	auto bIsElevated = _IsElevated();
 
-	if ((lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
-		_T("Software\\Classes"), 0, KEY_WRITE, &hKeyClasses)) != ERROR_SUCCESS)
-		return HRESULT_FROM_WIN32(lError);
-	if ((lError = ::RegOpenKeyEx(hKeyClasses, _T("CLSID"), 0, KEY_WRITE, &hKeyCLSID)) != ERROR_SUCCESS)
+	TLIBATTR* pAttr;
+	auto hr = theApp.m_pTypeLib->GetLibAttr(&pAttr);
+	if (FAILED(hr))
+		return hr;
+	GUID guidTypeLib = pAttr->guid;
+	theApp.m_pTypeLib->ReleaseTLibAttr(pAttr);
+
+	if (theApp.IsWin9x())
+		hKeyClasses = HKEY_CLASSES_ROOT;
+	else
 	{
-		::RegCloseKey(hKeyClasses);
-		return HRESULT_FROM_WIN32(lError);
+		if ((lError = ::RegOpenKeyEx(bForUser ? HKEY_CURRENT_USER : HKEY_LOCAL_MACHINE,
+			_T("Software\\Classes"), 0, KEY_WRITE, &hKeyClasses)) != ERROR_SUCCESS)
+			return HRESULT_FROM_WIN32(lError);
+		if ((lError = ::RegOpenKeyEx(hKeyClasses, _T("CLSID"), 0, KEY_WRITE, &hKeyCLSID)) != ERROR_SUCCESS)
+		{
+			::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
 	}
 
-	CMyStringW strCLSID, strModule;
+	CMyStringW strCLSID, strCLSIDOld, strTypeLib, strModule;
 	strCLSID.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+		CLSID_EasySFTPRoot.Data1, (int) CLSID_EasySFTPRoot.Data2, (int) CLSID_EasySFTPRoot.Data3,
+		(int) CLSID_EasySFTPRoot.Data4[0], (int) CLSID_EasySFTPRoot.Data4[1], (int) CLSID_EasySFTPRoot.Data4[2],
+		(int) CLSID_EasySFTPRoot.Data4[3], (int) CLSID_EasySFTPRoot.Data4[4], (int) CLSID_EasySFTPRoot.Data4[5],
+		(int) CLSID_EasySFTPRoot.Data4[6], (int) CLSID_EasySFTPRoot.Data4[7]);
+	strCLSIDOld.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
 		CLSID_EasySFTPOld.Data1, (int) CLSID_EasySFTPOld.Data2, (int) CLSID_EasySFTPOld.Data3,
 		(int) CLSID_EasySFTPOld.Data4[0], (int) CLSID_EasySFTPOld.Data4[1], (int) CLSID_EasySFTPOld.Data4[2],
 		(int) CLSID_EasySFTPOld.Data4[3], (int) CLSID_EasySFTPOld.Data4[4], (int) CLSID_EasySFTPOld.Data4[5],
 		(int) CLSID_EasySFTPOld.Data4[6], (int) CLSID_EasySFTPOld.Data4[7]);
+	strTypeLib.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+		guidTypeLib.Data1, (int) guidTypeLib.Data2, (int) guidTypeLib.Data3,
+		(int) guidTypeLib.Data4[0], (int) guidTypeLib.Data4[1], (int) guidTypeLib.Data4[2],
+		(int) guidTypeLib.Data4[3], (int) guidTypeLib.Data4[4], (int) guidTypeLib.Data4[5],
+		(int) guidTypeLib.Data4[6], (int) guidTypeLib.Data4[7]);
 	GetModuleFileNameString(theApp.m_hInstance, strModule);
 
 	lError = ::RegCreateKeyEx(hKeyCLSID, strCLSID, 0, NULL, REG_OPTION_NON_VOLATILE,
 		KEY_WRITE, NULL, &hKeyCLSIDMe, NULL);
-	::RegCloseKey(hKeyCLSID);
 	if (lError != ERROR_SUCCESS)
 	{
-		::RegCloseKey(hKeyClasses);
+		::RegCloseKey(hKeyCLSID);
+		if (!theApp.IsWin9x())
+			::RegCloseKey(hKeyClasses);
 		return HRESULT_FROM_WIN32(lError);
 	}
-	// CLSID_EasySFTPOld
+	// CLSID_EasySFTPRoot
 		::RegSetStringValue(hKeyCLSIDMe, NULL, theApp.m_strTitle);
 		::RegSetDWordValue(hKeyCLSIDMe, _T("System.IsPinnedToNameSpaceTree"), 1);
 		//::RegSetDWordValue(hKeyCLSIDMe, _T("SortOrderIndex"), 0x50);
@@ -436,8 +539,10 @@ STDAPI EasySFTPRegisterServer()
 		if (lError != ERROR_SUCCESS)
 		{
 			::RegCloseKey(hKeyCLSIDMe);
-			::RegDeleteKey(hKeyClasses, strCLSID);
-			::RegCloseKey(hKeyClasses);
+			::RegDeleteKey(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
 			return HRESULT_FROM_WIN32(lError);
 		}
 		// InprocServer32
@@ -445,14 +550,60 @@ STDAPI EasySFTPRegisterServer()
 			::RegSetStringValue(hKey2, _T("ThreadingModel"), _T("Apartment"));
 			::RegCloseKey(hKey2);
 
+		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("TypeLib"), 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_WRITE, NULL, &hKey2, NULL);
+		if (lError != ERROR_SUCCESS)
+		{
+			::RegCloseKey(hKeyCLSIDMe);
+			::RegDeleteKey(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
+		// TypeLib
+			::RegSetStringValue(hKey2, NULL, strTypeLib);
+			::RegCloseKey(hKey2);
+
+		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("ProgID"), 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_WRITE, NULL, &hKey2, NULL);
+		if (lError != ERROR_SUCCESS)
+		{
+			::RegCloseKey(hKeyCLSIDMe);
+			::RegDeleteKey(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
+		// ProgID
+			::RegSetStringValue(hKey2, NULL, s_szEasySFTPProgIdCurrent);
+			::RegCloseKey(hKey2);
+
+		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("VersionIndependentProgID"), 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_WRITE, NULL, &hKey2, NULL);
+		if (lError != ERROR_SUCCESS)
+		{
+			::RegCloseKey(hKeyCLSIDMe);
+			::RegDeleteKey(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
+		// VersionIndependentProgID
+			::RegSetStringValue(hKey2, NULL, s_szEasySFTPProgId);
+			::RegCloseKey(hKey2);
+
 		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("Instance"), 0, NULL, REG_OPTION_NON_VOLATILE,
 			KEY_WRITE, NULL, &hKeyInstance, NULL);
 		if (lError != ERROR_SUCCESS)
 		{
-			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
 			::RegCloseKey(hKeyCLSIDMe);
-			::RegDeleteKey(hKeyClasses, strCLSID);
-			::RegCloseKey(hKeyClasses);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
 			return HRESULT_FROM_WIN32(lError);
 		}
 		// Instance
@@ -462,28 +613,27 @@ STDAPI EasySFTPRegisterServer()
 			if (lError != ERROR_SUCCESS)
 			{
 				::RegCloseKey(hKeyInstance);
-				::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
-				::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
 				::RegCloseKey(hKeyCLSIDMe);
-				::RegDeleteKey(hKeyClasses, strCLSID);
-				::RegCloseKey(hKeyClasses);
+				MyRegDeleteKey2(hKeyCLSID, strCLSID);
+				::RegCloseKey(hKeyCLSID);
+				if (!theApp.IsWin9x())
+					::RegCloseKey(hKeyClasses);
 				return HRESULT_FROM_WIN32(lError);
 			}
 			// InitPropertyBag
 				::RegSetDWordValue(hKey2, _T("Attributes"), FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_DIRECTORY);
 				::RegCloseKey(hKey2);
+			::RegCloseKey(hKeyInstance);
 
 		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("DefaultIcon"), 0, NULL, REG_OPTION_NON_VOLATILE,
 			KEY_WRITE, NULL, &hKey2, NULL);
 		if (lError != ERROR_SUCCESS)
 		{
-			::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
-			::RegCloseKey(hKeyInstance);
-			::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
-			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
 			::RegCloseKey(hKeyCLSIDMe);
-			::RegDeleteKey(hKeyClasses, strCLSID);
-			::RegCloseKey(hKeyClasses);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
 			return HRESULT_FROM_WIN32(lError);
 		}
 		// DefaultIcon
@@ -499,20 +649,131 @@ STDAPI EasySFTPRegisterServer()
 			KEY_WRITE, NULL, &hKey2, NULL);
 		if (lError != ERROR_SUCCESS)
 		{
-			::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
-			::RegCloseKey(hKeyInstance);
-			::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
-			::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
-			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
 			::RegCloseKey(hKeyCLSIDMe);
-			::RegDeleteKey(hKeyClasses, strCLSID);
-			::RegCloseKey(hKeyClasses);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
 			return HRESULT_FROM_WIN32(lError);
 		}
 		// ShellFolder
 			::RegSetDWordValue(hKey2, _T("Attributes"), SFGAO_FOLDER | SFGAO_HASSUBFOLDER | SFGAO_STORAGEANCESTOR | SFGAO_STORAGE | SFGAO_ISSLOW);
 			//::RegSetDWordValue(hKey2, _T("FolderValueFlags"), 0x28);
 			::RegCloseKey(hKey2);
+		::RegCloseKey(hKeyCLSIDMe);
+
+	lError = ::RegCreateKeyEx(hKeyClasses, s_szEasySFTPProgId, 0, NULL, REG_OPTION_NON_VOLATILE,
+		KEY_WRITE, NULL, &hKeyCLSIDMe, NULL);
+	if (lError != ERROR_SUCCESS)
+	{
+		MyRegDeleteKey2(hKeyCLSID, strCLSID);
+		::RegCloseKey(hKeyCLSID);
+		if (!theApp.IsWin9x())
+			::RegCloseKey(hKeyClasses);
+		return HRESULT_FROM_WIN32(lError);
+	}
+	// s_szEasySFTPProgId
+		::RegSetStringValue(hKeyCLSIDMe, NULL, theApp.m_strTitle);
+
+		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("CurVer"), 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_WRITE, NULL, &hKey2, NULL);
+		if (lError != ERROR_SUCCESS)
+		{
+			::RegCloseKey(hKeyCLSIDMe);
+			::RegDeleteKey(hKeyCLSID, strCLSIDOld);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
+		// CurVer
+			::RegSetStringValue(hKey2, NULL, s_szEasySFTPProgIdCurrent);
+			::RegCloseKey(hKey2);
+
+		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("CLSID"), 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_WRITE, NULL, &hKey2, NULL);
+		if (lError != ERROR_SUCCESS)
+		{
+			::RegCloseKey(hKeyCLSIDMe);
+			::RegDeleteKey(hKeyCLSID, strCLSIDOld);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
+		// CLSID
+			::RegSetStringValue(hKey2, NULL, strCLSID);
+			::RegCloseKey(hKey2);
+
+	lError = ::RegCreateKeyEx(hKeyClasses, s_szEasySFTPProgIdCurrent, 0, NULL, REG_OPTION_NON_VOLATILE,
+		KEY_WRITE, NULL, &hKeyCLSIDMe, NULL);
+	if (lError != ERROR_SUCCESS)
+	{
+		MyRegDeleteKey2(hKeyCLSID, strCLSID);
+		::RegCloseKey(hKeyCLSID);
+		if (!theApp.IsWin9x())
+			::RegCloseKey(hKeyClasses);
+		return HRESULT_FROM_WIN32(lError);
+	}
+	// s_szEasySFTPProgIdCurrent
+		::RegSetStringValue(hKeyCLSIDMe, NULL, theApp.m_strTitle);
+
+		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("CLSID"), 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_WRITE, NULL, &hKey2, NULL);
+		if (lError != ERROR_SUCCESS)
+		{
+			::RegCloseKey(hKeyCLSIDMe);
+			::RegDeleteKey(hKeyCLSID, strCLSIDOld);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
+		// CLSID
+			::RegSetStringValue(hKey2, NULL, strCLSID);
+			::RegCloseKey(hKey2);
+
+	lError = ::RegCreateKeyEx(hKeyCLSID, strCLSIDOld, 0, NULL, REG_OPTION_NON_VOLATILE,
+		KEY_WRITE, NULL, &hKeyCLSIDMe, NULL);
+	if (lError != ERROR_SUCCESS)
+	{
+		MyRegDeleteKey2(hKeyCLSID, strCLSID);
+		::RegCloseKey(hKeyCLSID);
+		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
+		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+		if (!theApp.IsWin9x())
+			::RegCloseKey(hKeyClasses);
+		return HRESULT_FROM_WIN32(lError);
+	}
+	// CLSID_EasySFTPOld
+		::RegSetStringValue(hKeyCLSIDMe, NULL, theApp.m_strTitle + L" (old)");
+
+		lError = ::RegCreateKeyEx(hKeyCLSIDMe, _T("InprocServer32"), 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_WRITE, NULL, &hKey2, NULL);
+		if (lError != ERROR_SUCCESS)
+		{
+			::RegCloseKey(hKeyCLSIDMe);
+			::RegDeleteKey(hKeyCLSID, strCLSIDOld);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
+		// InprocServer32
+			::RegSetStringValue(hKey2, NULL, strModule);
+			::RegSetStringValue(hKey2, _T("ThreadingModel"), _T("Apartment"));
+			::RegCloseKey(hKey2);
+		::RegCloseKey(hKeyCLSIDMe);
 
 	lError = ::RegOpenKeyEx(hKeyClasses, _T("sftp"), 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hKeySFTP);
 	if (lError == ERROR_SUCCESS)
@@ -542,15 +803,13 @@ STDAPI EasySFTPRegisterServer()
 			REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKeySFTP, NULL);
 		if (lError != ERROR_SUCCESS)
 		{
-			::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
-			::RegCloseKey(hKeyInstance);
-			::RegDeleteKey(hKeyCLSIDMe, _T("ShellFolder"));
-			::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
-			::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
-			::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
-			::RegCloseKey(hKeyCLSIDMe);
-			::RegDeleteKey(hKeyClasses, strCLSID);
-			::RegCloseKey(hKeyClasses);
+			MyRegDeleteKey2(hKeyCLSID, strCLSIDOld);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
 			return HRESULT_FROM_WIN32(lError);
 		}
 		bMySFTPProcotol = true;
@@ -561,24 +820,22 @@ STDAPI EasySFTPRegisterServer()
 		::RegSetStringValue(hKeySFTP, _T("URL Protocol"), _T(""));
 		::RegSetDWordValue(hKeySFTP, _T("EditFlags"), 0x00000002); // FTA_Show
 	}
+	::RegCloseKey(hKeySFTP);
 
-	lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
+	lError = ::RegCreateKeyEx(theApp.IsWin9x() || !bForUser ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
 		_T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace"),
-		0, KEY_WRITE, &hKeyExplorer);
+		0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hKeyExplorer, NULL);
 	if (lError != ERROR_SUCCESS)
 	{
-		::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
-		::RegCloseKey(hKeyInstance);
-		::RegDeleteKey(hKeyCLSIDMe, _T("ShellFolder"));
-		::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
-		::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
-		::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
-		::RegCloseKey(hKeyCLSIDMe);
-		::RegDeleteKey(hKeyClasses, strCLSID);
-		::RegCloseKey(hKeySFTP);
+		MyRegDeleteKey2(hKeyCLSID, strCLSIDOld);
+		MyRegDeleteKey2(hKeyCLSID, strCLSID);
+		::RegCloseKey(hKeyCLSID);
 		if (bMySFTPProcotol)
-			::RegDeleteKey(hKeyClasses, _T("sftp"));
-		::RegCloseKey(hKeyClasses);
+			MyRegDeleteKey2(hKeyClasses, _T("sftp"));
+		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
+		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+		if (!theApp.IsWin9x())
+			::RegCloseKey(hKeyClasses);
 		return HRESULT_FROM_WIN32(lError);
 	}
 	lError = ::RegCreateKeyEx(hKeyExplorer, strCLSID, 0, NULL,
@@ -586,59 +843,115 @@ STDAPI EasySFTPRegisterServer()
 	::RegCloseKey(hKeyExplorer);
 	if (lError != ERROR_SUCCESS)
 	{
-		::RegDeleteKey(hKeyInstance, _T("InitPropertyBag"));
-		::RegCloseKey(hKeyInstance);
-		::RegDeleteKey(hKeyCLSIDMe, _T("ShellFolder"));
-		::RegDeleteKey(hKeyCLSIDMe, _T("DefaultIcon"));
-		::RegDeleteKey(hKeyCLSIDMe, _T("Instance"));
-		::RegDeleteKey(hKeyCLSIDMe, _T("InprocServer32"));
-		::RegCloseKey(hKeyCLSIDMe);
-		::RegDeleteKey(hKeyClasses, strCLSID);
-		::RegCloseKey(hKeySFTP);
+		MyRegDeleteKey2(hKeyCLSID, strCLSIDOld);
+		MyRegDeleteKey2(hKeyCLSID, strCLSID);
+		::RegCloseKey(hKeyCLSID);
 		if (bMySFTPProcotol)
-			::RegDeleteKey(hKeyClasses, _T("sftp"));
-		::RegCloseKey(hKeyClasses);
+			MyRegDeleteKey2(hKeyClasses, _T("sftp"));
+		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
+		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+		if (!theApp.IsWin9x())
+			::RegCloseKey(hKeyClasses);
 		return HRESULT_FROM_WIN32(lError);
 	}
 	::RegSetStringValue(hKey2, NULL, theApp.m_strTitle);
 	::RegCloseKey(hKey2);
-	::RegCloseKey(hKeyInstance);
-	::RegCloseKey(hKeySFTP);
-	::RegCloseKey(hKeyCLSIDMe);
-	::RegCloseKey(hKeyClasses);
+
+	{
+		CMyStringW str;
+		::GetModuleFileNameString(theApp.m_hInstance, str);
+		HRESULT hr;
+		T_RegisterTypeLibForUser pfn = reinterpret_cast<T_RegisterTypeLibForUser>(
+			::GetProcAddress(::GetModuleHandle(_T("oleaut32.dll")), "RegisterTypeLibForUser"));
+		if (pfn && bForUser)
+			hr = pfn(theApp.m_pTypeLib, str.GetBuffer(0), NULL);
+		else
+			hr = RegisterTypeLib(theApp.m_pTypeLib, str, NULL);
+		if (FAILED(hr))
+		{
+			str = _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace");
+			str += _T('\\');
+			str += strCLSID;
+			MyRegDeleteKey2(theApp.IsWin9x() || !bForUser ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, str);
+			MyRegDeleteKey2(hKeyCLSID, strCLSIDOld);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			if (bMySFTPProcotol)
+				MyRegDeleteKey2(hKeyClasses, _T("sftp"));
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
+			return hr;
+		}
+	}
+	::RegCloseKey(hKeyCLSID);
+	if (!theApp.IsWin9x())
+		::RegCloseKey(hKeyClasses);
 	return S_OK;
 }
 
-STDAPI EasySFTPUnregisterServer();
+STDAPI EasySFTPUnregisterServer(bool bForUser);
 
 STDAPI DllUnregisterServer()
 {
-	return EasySFTPUnregisterServer();
+	return EasySFTPUnregisterServer(false);
 }
 
-STDAPI EasySFTPUnregisterServer()
+STDAPI EasySFTPUnregisterServer(bool bForUser)
 {
 	HKEY hKeyClasses, hKeyCLSID, hKey;
 	LSTATUS lError;
-	auto bIsElevated = _IsElevated();
 	LPTSTR lpBuffer = NULL;
 	DWORD dwBufferLen = 0;
 
-	CMyStringW strCLSID;
+	CMyStringW strCLSID, strCLSIDOld;
 	strCLSID.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
+		CLSID_EasySFTPRoot.Data1, (int) CLSID_EasySFTPRoot.Data2, (int) CLSID_EasySFTPRoot.Data3,
+		(int) CLSID_EasySFTPRoot.Data4[0], (int) CLSID_EasySFTPRoot.Data4[1], (int) CLSID_EasySFTPRoot.Data4[2],
+		(int) CLSID_EasySFTPRoot.Data4[3], (int) CLSID_EasySFTPRoot.Data4[4], (int) CLSID_EasySFTPRoot.Data4[5],
+		(int) CLSID_EasySFTPRoot.Data4[6], (int) CLSID_EasySFTPRoot.Data4[7]);
+	strCLSIDOld.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
 		CLSID_EasySFTPOld.Data1, (int) CLSID_EasySFTPOld.Data2, (int) CLSID_EasySFTPOld.Data3,
 		(int) CLSID_EasySFTPOld.Data4[0], (int) CLSID_EasySFTPOld.Data4[1], (int) CLSID_EasySFTPOld.Data4[2],
 		(int) CLSID_EasySFTPOld.Data4[3], (int) CLSID_EasySFTPOld.Data4[4], (int) CLSID_EasySFTPOld.Data4[5],
 		(int) CLSID_EasySFTPOld.Data4[6], (int) CLSID_EasySFTPOld.Data4[7]);
 
-	if ((lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, _T("Software\\Classes"), 0, KEY_WRITE | DELETE, &hKeyClasses)) != ERROR_SUCCESS)
+	if (theApp.IsWin9x())
+		hKeyClasses = HKEY_CLASSES_ROOT;
+	else
 	{
-		return HRESULT_FROM_WIN32(lError);
+		if ((lError = ::RegOpenKeyEx(bForUser ? HKEY_CURRENT_USER : HKEY_LOCAL_MACHINE, _T("Software\\Classes"), 0, KEY_WRITE | DELETE, &hKeyClasses)) != ERROR_SUCCESS)
+		{
+			return HRESULT_FROM_WIN32(lError);
+		}
+	}
+
+	MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
+	MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+
+	{
+		CMyStringW str;
+		::GetModuleFileNameString(theApp.m_hInstance, str);
+		HRESULT hr;
+		TLIBATTR* pAttr;
+		hr = theApp.m_pTypeLib->GetLibAttr(&pAttr);
+		if (SUCCEEDED(hr))
+		{
+			T_UnRegisterTypeLibForUser pfn = reinterpret_cast<T_UnRegisterTypeLibForUser>(
+				::GetProcAddress(::GetModuleHandle(_T("oleaut32.dll")), "UnRegisterTypeLibForUser"));
+			if (pfn && bForUser)
+				hr = pfn(pAttr->guid, pAttr->wMajorVerNum, pAttr->wMinorVerNum, pAttr->lcid, pAttr->syskind);
+			else
+				hr = UnRegisterTypeLib(pAttr->guid, pAttr->wMajorVerNum, pAttr->wMinorVerNum, pAttr->lcid, pAttr->syskind);
+			theApp.m_pTypeLib->ReleaseTLibAttr(pAttr);
+		}
 	}
 
 	if (::RegOpenKeyEx(hKeyClasses, _T("CLSID"), 0, KEY_WRITE, &hKeyCLSID) == ERROR_SUCCESS)
 	{
-		::MyRegDeleteKey2(hKeyCLSID, strCLSID, lpBuffer, dwBufferLen);
+		MyRegDeleteKey2(hKeyCLSID, strCLSID, lpBuffer, dwBufferLen);
+		MyRegDeleteKey2(hKeyCLSID, strCLSIDOld, lpBuffer, dwBufferLen);
 		::RegCloseKey(hKeyCLSID);
 	}
 
@@ -665,31 +978,41 @@ STDAPI EasySFTPUnregisterServer()
 		::RegCloseKey(hKey);
 		if (str.Compare(strCLSID, true) == 0)
 		{
-			::MyRegDeleteKey2(HKEY_CLASSES_ROOT, _T("sftp"), lpBuffer, dwBufferLen);
+			MyRegDeleteKey2(HKEY_CLASSES_ROOT, _T("sftp"), lpBuffer, dwBufferLen);
 		}
 	}
 
-	lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace"),
+	lError = ::RegOpenKeyEx(theApp.IsWin9x() || !bForUser ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace"),
 		0, DELETE, &hKey);
 	if (lError == ERROR_SUCCESS)
 	{
-		::MyRegDeleteKey2(hKey, strCLSID, lpBuffer, dwBufferLen);
+		MyRegDeleteKey2(hKey, strCLSID, lpBuffer, dwBufferLen);
 		::RegCloseKey(hKey);
 	}
 
 	// Windows Explorer may add CLSID key
-	lError = ::RegOpenKeyEx(bIsElevated ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CLSID"),
+	lError = ::RegOpenKeyEx(theApp.IsWin9x() || !bForUser ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CLSID"),
 		0, DELETE, &hKey);
 	if (lError == ERROR_SUCCESS)
 	{
-		::MyRegDeleteKey2(hKey, strCLSID, lpBuffer, dwBufferLen);
+		MyRegDeleteKey2(hKey, strCLSID, lpBuffer, dwBufferLen);
 		::RegCloseKey(hKey);
 	}
 
-	::RegCloseKey(hKeyClasses);
+	if (!theApp.IsWin9x())
+		::RegCloseKey(hKeyClasses);
 	if (lpBuffer)
 		free(lpBuffer);
 	return S_OK;
+}
+
+STDAPI DllInstall(BOOL bInstall, _In_opt_ LPCWSTR pwszCmdline)
+{
+	bool bIsUser = pwszCmdline && _wcsnicmp(pwszCmdline, L"user", 4) == 0;
+	if (bInstall)
+		return EasySFTPRegisterServer(false);
+	else
+		return EasySFTPUnregisterServer(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -710,6 +1033,7 @@ CMainDLL::CMainDLL()
 	m_bUseBIUnicode = true;
 	m_ofnW.lStructSize = OPENFILENAME_SIZE_VERSION_400W;
 	m_uCFLock = 0;
+	m_pTypeLib = NULL;
 	m_pimlSysIconJumbo = NULL;
 	m_pimlSysIconExtraLarge = NULL;
 	m_himlIconJumbo = NULL;
@@ -736,6 +1060,13 @@ bool CMainDLL::InitInstance()
 	WSADATA wsaData;
 	if (::WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
 		return false;
+
+	{
+		CMyStringW str;
+		GetModuleFileNameString(m_hInstance, str);
+		if (FAILED(::LoadTypeLib(str, &m_pTypeLib)))
+			return false;
+	}
 
 	::InitCommonControls();
 
@@ -773,6 +1104,8 @@ bool CMainDLL::InitInstance()
 		T_SHGetImageList pfnSHGetImageList = (T_SHGetImageList) ::GetProcAddress(::GetModuleHandle(_T("shell32.dll")), "SHGetImageList");
 		if (pfnSHGetImageList)
 		{
+			if (FAILED(pfnSHGetImageList(SHIL_SYSSMALL, IID_IImageList, (void**) &m_pimlSysIconSysSmall)))
+				m_pimlSysIconSysSmall = NULL;
 			if (FAILED(pfnSHGetImageList(SHIL_EXTRALARGE, IID_IImageList, (void**) &m_pimlSysIconExtraLarge)))
 				m_pimlSysIconExtraLarge = NULL;
 			if (FAILED(pfnSHGetImageList(SHIL_JUMBO, IID_IImageList, (void**) &m_pimlSysIconJumbo)))
@@ -782,6 +1115,13 @@ bool CMainDLL::InitInstance()
 		{
 			m_pimlSysIconJumbo = NULL;
 			m_pimlSysIconExtraLarge = NULL;
+			m_pimlSysIconSysSmall = NULL;
+		}
+		for (auto i = 0; i < iconIndexMaxCount; ++i)
+		{
+			m_iEasySFTPIconIndex[i] = -1;
+			m_iNetDriveIconIndex[i] = -1;
+			m_iNewHostIconIndex[i] = -1;
 		}
 	}
 	m_himlIconJumbo = ::ImageList_Create(256, 256, ILC_COLOR32 | ILC_MASK, 0, 0);
@@ -798,6 +1138,8 @@ bool CMainDLL::InitInstance()
 		return false;
 	// Loads icons for root folder
 	{
+		auto cxSysSmall = ::GetSystemMetrics(SM_CXSMICON);
+		auto cySysSmall = ::GetSystemMetrics(SM_CYSMICON);
 		HICON hi;
 		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 			256, 256, LR_DEFAULTCOLOR);
@@ -816,6 +1158,14 @@ bool CMainDLL::InitInstance()
 		::ImageList_AddIcon(m_himlIconExtraLarge, hi);
 		if (m_pimlSysIconExtraLarge)
 			m_pimlSysIconExtraLarge->ReplaceIcon(-1, hi, &m_iEasySFTPIconIndex[iconIndexExtraLarge]);
+		::DestroyIcon(hi);
+		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+			cxSysSmall, cySysSmall, LR_DEFAULTCOLOR);
+		if (!hi)
+			hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+				16, 16, LR_DEFAULTCOLOR);
+		if (m_pimlSysIconSysSmall)
+			m_pimlSysIconSysSmall->ReplaceIcon(-1, hi, &m_iEasySFTPIconIndex[iconIndexSysSmall]);
 		::DestroyIcon(hi);
 		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 			32, 32, LR_DEFAULTCOLOR);
@@ -841,6 +1191,14 @@ bool CMainDLL::InitInstance()
 			m_pimlSysIconExtraLarge->ReplaceIcon(-1, hi, &m_iNetDriveIconIndex[iconIndexExtraLarge]);
 		::DestroyIcon(hi);
 		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
+			cxSysSmall, cySysSmall, LR_DEFAULTCOLOR);
+		if (!hi)
+			hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
+				16, 16, LR_DEFAULTCOLOR);
+		if (m_pimlSysIconSysSmall)
+			m_pimlSysIconSysSmall->ReplaceIcon(-1, hi, &m_iNetDriveIconIndex[iconIndexSysSmall]);
+		::DestroyIcon(hi);
+		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
 			32, 32, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconLarge, hi);
 		m_iNetDriveIconIndex[iconIndexLarge] = ::ImageList_AddIcon(m_himlSysIconLarge, hi);
@@ -863,6 +1221,14 @@ bool CMainDLL::InitInstance()
 		::ImageList_AddIcon(m_himlIconExtraLarge, hi);
 		if (m_pimlSysIconExtraLarge)
 			m_pimlSysIconExtraLarge->ReplaceIcon(-1, hi, &m_iNewHostIconIndex[iconIndexExtraLarge]);
+		::DestroyIcon(hi);
+		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
+			cxSysSmall, cySysSmall, LR_DEFAULTCOLOR);
+		if (!hi)
+			hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
+				16, 16, LR_DEFAULTCOLOR);
+		if (m_pimlSysIconSysSmall)
+			m_pimlSysIconSysSmall->ReplaceIcon(-1, hi, &m_iNewHostIconIndex[iconIndexSysSmall]);
 		::DestroyIcon(hi);
 		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
 			32, 32, LR_DEFAULTCOLOR);
@@ -1024,17 +1390,17 @@ bool CMainDLL::InitInstance()
 	if (!m_hWndTimer)
 		return false;
 
-	CMyPtrArrayT<CHostSettings> aHostSettings;
+	CMyPtrArrayT<CEasySFTPHostSetting> aHostSettings;
 	LoadINISettings(NULL, NULL, &aHostSettings);
 
 	for (int i = 0; i < aHostSettings.GetCount(); i++)
 	{
-		CHostSettings* pSettings = aHostSettings.GetItem(i);
+		CEasySFTPHostSetting* pSettings = aHostSettings.GetItem(i);
 
 		CHostFolderData* pData = new CHostFolderData();
-		pData->bSFTPMode = pSettings->bSFTPMode;
+		pData->ConnectionMode = pSettings->ConnectionMode;
 		pData->nPort = pSettings->nPort;
-		pData->pDirItem = new CFTPDirectoryItem();
+		pData->pDirItem = new CFTPRootDirectoryItem();
 		pData->pDirItem->strName = pSettings->strHostName;
 		pData->pDirItem->pDirectory = NULL;
 		pData->pSettings = pSettings;
@@ -1072,20 +1438,24 @@ int CMainDLL::ExitInstance()
 		m_pObjectOnClipboard = NULL;
 	}
 
+	CMyPtrArrayT<CFTPDirectoryBase> aDirectories;
 	for (int i = 0; i < m_aHosts.GetCount(); i++)
 	{
 		CHostFolderData* pData = m_aHosts.GetItem(i);
 		if (pData->pDirItem)
 		{
 			if (pData->pDirItem->pDirectory)
-				pData->pDirItem->pDirectory->Release();
+				aDirectories.Add(pData->pDirItem->pDirectory);
 			pData->pDirItem->Release();
+			pData->pDirItem = NULL;
 		}
 		if (pData->pSettings)
 			delete pData->pSettings;
 		delete pData;
 	}
 	m_aHosts.RemoveAll();
+	for (int i = 0; i < aDirectories.GetCount(); i++)
+		aDirectories.GetItem(i)->DetachAndRelease();
 	//SaveINISettings();
 	for (int i = 0; i < m_arrTempFileDirectories.GetCount(); i++)
 		_DeleteFileOrDirectory(m_arrTempFileDirectories.GetItem(i));
@@ -1114,10 +1484,15 @@ int CMainDLL::ExitInstance()
 	if (m_himlIconJumbo)
 		::ImageList_Destroy(m_himlIconJumbo);
 
+	if (m_pimlSysIconSysSmall)
+		m_pimlSysIconSysSmall->Release();
 	if (m_pimlSysIconExtraLarge)
 		m_pimlSysIconExtraLarge->Release();
 	if (m_pimlSysIconJumbo)
 		m_pimlSysIconJumbo->Release();
+
+	if (m_pTypeLib)
+		m_pTypeLib->Release();
 
 	::WSACleanup();
 	::OleUninitialize();
@@ -1132,6 +1507,7 @@ int CMainDLL::ExitInstance()
 	ERR_free_strings();
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
+	libssh2_exit();
 
 	return 0;
 }
@@ -1180,13 +1556,13 @@ void __stdcall CMainDLL::EmptyKnownFingerPrints(CMyPtrArrayT<CKnownFingerPrint>&
 	aKnownFingerPrints.RemoveAll();
 }
 
-void __stdcall CMainDLL::EmptyHostSettings(CMyPtrArrayT<CHostSettings>& aHostSettings)
+void __stdcall CMainDLL::EmptyHostSettings(CMyPtrArrayT<CEasySFTPHostSetting>& aHostSettings)
 {
 	register int i = aHostSettings.GetCount();
 	while (i--)
 	{
-		register CHostSettings* pHostSettings = aHostSettings.GetItem(i);
-		delete pHostSettings;
+		register CEasySFTPHostSetting* pHostSettings = aHostSettings.GetItem(i);
+		pHostSettings->Release();
 	}
 	aHostSettings.RemoveAll();
 }
@@ -1194,14 +1570,14 @@ void __stdcall CMainDLL::EmptyHostSettings(CMyPtrArrayT<CHostSettings>& aHostSet
 void CMainDLL::LoadINISettings(
 		CGeneralSettings* pSettings,
 		CMyPtrArrayT<CKnownFingerPrint>* paKnownFingerPrints,
-		CMyPtrArrayT<CHostSettings>* paHostSettings
+		CMyPtrArrayT<CEasySFTPHostSetting>* paHostSettings
 		)
 {
 	HINIFILE hINI;
 	PVOID pvSection;
 	CMyStringW str;
 	int n;
-	CHostSettings* pHost;
+	CEasySFTPHostSetting* pHost;
 
 	hINI = ::MyLoadINIFileW(m_strINIFile, false);
 
@@ -1263,7 +1639,7 @@ void CMainDLL::LoadINISettings(
 				lpw2 = ::MyGetProfileStringW(pvSection, L"Host");
 				if (lpw2)
 				{
-					pHost = new CHostSettings();
+					pHost = new CEasySFTPHostSetting();
 					pHost->strDisplayName = lpw;
 					pHost->strHostName = lpw2;
 					free(lpw);
@@ -1274,8 +1650,16 @@ void CMainDLL::LoadINISettings(
 					//	pHost->strUserName = lpw2;
 					//	free(lpw2);
 					//}
-					pHost->bSFTPMode = ::MyGetProfileBooleanW(pvSection, L"SFTPMode", false);
-					pHost->nPort = ::MyGetProfileIntW(pvSection, L"Port", pHost->bSFTPMode ? 22 : 21);
+					auto mode_ = ::MyGetProfileIntW(pvSection, L"ConnectionMode", -1);
+					EasySFTPConnectionMode mode;
+					if (mode_ < 0)
+						mode = ::MyGetProfileBooleanW(pvSection, L"SFTPMode", false) ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP;
+					else if (mode_ < static_cast<int>(EasySFTPConnectionMode::SFTP) || mode_ > static_cast<int>(EasySFTPConnectionMode::FTP))
+						mode = EasySFTPConnectionMode::SFTP;
+					else
+						mode = static_cast<EasySFTPConnectionMode>(mode_);
+					pHost->ConnectionMode = mode;
+					pHost->nPort = ::MyGetProfileIntW(pvSection, L"Port", mode == EasySFTPConnectionMode::SFTP ? 22 : 21);
 					pHost->bTextMode = (BYTE) ::MyGetProfileDWordW(pvSection, L"TextMode", TEXTMODE_NO_CONVERT | TEXTMODE_UTF8);
 					pHost->nServerCharset = (char) ::MyGetProfileDWordW(pvSection, L"ServerCharset", scsUTF8);
 					lpw2 = ::MyGetProfileStringW(pvSection, L"InitLocalPath");
@@ -1342,56 +1726,57 @@ void CMainDLL::LoadINISettings(
 	::MyCloseINIFile(hINI);
 }
 
-void CMainDLL::UpdateHostSettings(const CHostSettings* pOldSettings, const CHostSettings* pNewSettings, char nCommand, int nCount)
+void CMainDLL::UpdateHostSettings(const CMyPtrArrayT<CEasySFTPHostSetting>& aOldSettings, const CMyPtrArrayT<CEasySFTPHostSetting>& aNewSettings, char nCommand)
 {
 	CGeneralSettings settings;
 	CMyPtrArrayT<CKnownFingerPrint> aKnownFingerPrints;
-	CMyPtrArrayT<CHostSettings> aHostSettings;
-	bool bFound = false;
-	int n;
-	CHostSettings* pFound;
+	CMyPtrArrayT<CEasySFTPHostSetting> aHostSettings;
 
 	LoadINISettings(&settings, &aKnownFingerPrints, &aHostSettings);
-	while (nCount--)
+	if (nCommand >= 0)
 	{
-		if (pOldSettings)
+		bool bFound = false;
+		int n;
+		auto i = 0;
+		auto nCount = aNewSettings.GetCount();
+		CEasySFTPHostSetting* pFound;
+		while (nCount--)
 		{
-			for (n = 0; n < aHostSettings.GetCount(); n++)
+			auto pOldSettings = i < aOldSettings.GetCount() ? aOldSettings.GetItem(i) : NULL;
+			if (pOldSettings)
 			{
-				pFound = aHostSettings.GetItem(n);
-				if (pFound->bSFTPMode == pOldSettings->bSFTPMode &&
-					pFound->strDisplayName.Compare(pOldSettings->strDisplayName) == 0 &&
-					pFound->strHostName.Compare(pOldSettings->strHostName) == 0 &&
-					pFound->nPort == pOldSettings->nPort)
+				for (n = 0; n < aHostSettings.GetCount(); n++)
 				{
-					bFound = true;
-					break;
+					pFound = aHostSettings.GetItem(n);
+					if (pFound->ConnectionMode == pOldSettings->ConnectionMode &&
+						pFound->strDisplayName.Compare(pOldSettings->strDisplayName) == 0 &&
+						pFound->strHostName.Compare(pOldSettings->strHostName) == 0 &&
+						pFound->nPort == pOldSettings->nPort)
+					{
+						bFound = true;
+						break;
+					}
 				}
 			}
-		}
-		switch (nCommand)
-		{
-			case -1:
-				break;
+			switch (nCommand)
+			{
 			case 0: // update
 			case 1: // add
 				if (bFound)
-					pFound->Copy(*pNewSettings);
+					pFound->Copy(aNewSettings.GetItem(i));
 				else
-					aHostSettings.Add(new CHostSettings(*pNewSettings));
+					aHostSettings.Add(new CEasySFTPHostSetting(aNewSettings.GetItem(i)));
 				break;
 			case 2: // delete
 				if (bFound)
 				{
 					aHostSettings.RemoveItem(n);
-					delete pFound;
+					pFound->Release();
 				}
 				break;
+			}
+			++i;
 		}
-		if (pNewSettings)
-			pNewSettings++;
-		if (pOldSettings)
-			pOldSettings++;
 	}
 	::EnterCriticalSection(&m_csHosts);
 	MergeHostSettings(aHostSettings);
@@ -1406,7 +1791,7 @@ void CMainDLL::UpdateHostSettings(const CHostSettings* pOldSettings, const CHost
 void CMainDLL::SaveINISettings(
 		CGeneralSettings* pSettings,
 		CMyPtrArrayT<CKnownFingerPrint>* paKnownFingerPrints,
-		CMyPtrArrayT<CHostSettings>* paHostSettings
+		CMyPtrArrayT<CEasySFTPHostSetting>* paHostSettings
 		)
 {
 	HANDLE hFile;
@@ -1445,13 +1830,13 @@ void CMainDLL::SaveINISettings(
 
 	for (int n = 0; n < paHostSettings->GetCount(); n++)
 	{
-		CHostSettings* pHost = paHostSettings->GetItem(n);
+		CEasySFTPHostSetting* pHost = paHostSettings->GetItem(n);
 		::MyWriteCRLFW(hFile);
 		str.Format(L"Host%d", n + 1);
 		::MyWriteINISectionW(hFile, str);
 		::MyWriteINIValueW(hFile, L"Name", pHost->strDisplayName);
 		::MyWriteINIValueW(hFile, L"Host", pHost->strHostName);
-		::MyWriteINIValueW(hFile, L"SFTPMode", pHost->bSFTPMode ? 1 : 0);
+		::MyWriteINIValueW(hFile, L"ConnectionMode", static_cast<int>(pHost->ConnectionMode));
 		::MyWriteINIValueW(hFile, L"Port", pHost->nPort);
 		//::MyWriteINIValueW(hFile, L"UserName", pHost->strUserName);
 		::MyWriteINIValueW(hFile, L"TextMode", (int) pHost->bTextMode);
@@ -1476,7 +1861,15 @@ void CMainDLL::SaveINISettings(
 	::CloseHandle(hFile);
 }
 
-void CMainDLL::MergeHostSettings(const CMyPtrArrayT<CHostSettings>& aHostSettings)
+ITypeInfo* CMainDLL::GetTypeInfo(const GUID& guid)
+{
+	ITypeInfo* pInfo;
+	if (FAILED(m_pTypeLib->GetTypeInfoOfGuid(guid, &pInfo)))
+		return NULL;
+	return pInfo;
+}
+
+void CMainDLL::MergeHostSettings(const CMyPtrArrayT<CEasySFTPHostSetting>& aHostSettings)
 {
 	// update host settings and delete if the host data is not exist in aHostSettings
 	for (int iH = 0; iH < m_aHosts.GetCount(); iH++)
@@ -1485,15 +1878,15 @@ void CMainDLL::MergeHostSettings(const CMyPtrArrayT<CHostSettings>& aHostSetting
 		bool bFound = false;
 		for (int iS = 0; iS < aHostSettings.GetCount(); iS++)
 		{
-			CHostSettings* pSettings = aHostSettings.GetItem(iS);
+			CEasySFTPHostSetting* pSettings = aHostSettings.GetItem(iS);
 			if (pHost->pDirItem->strName.Compare(pSettings->strHostName) == 0 &&
-				pHost->bSFTPMode == pSettings->bSFTPMode &&
+				pHost->ConnectionMode == pSettings->ConnectionMode &&
 				pHost->nPort == pSettings->nPort)
 			{
 				if (pHost->pSettings)
-					pHost->pSettings->Copy(*pSettings);
+					pHost->pSettings->Copy(pSettings);
 				else
-					pHost->pSettings = new CHostSettings(*pSettings);
+					pHost->pSettings = new CEasySFTPHostSetting(pSettings);
 				bFound = true;
 				break;
 			}
@@ -1502,7 +1895,7 @@ void CMainDLL::MergeHostSettings(const CMyPtrArrayT<CHostSettings>& aHostSetting
 		{
 			if (pHost->pSettings)
 			{
-				delete pHost->pSettings;
+				pHost->pSettings->Release();
 				pHost->pSettings = NULL;
 			}
 			if (!pHost->pDirItem->pDirectory)
@@ -1516,13 +1909,13 @@ void CMainDLL::MergeHostSettings(const CMyPtrArrayT<CHostSettings>& aHostSetting
 	// add if the host data is not exist in m_aHosts
 	for (int iS = 0; iS < aHostSettings.GetCount(); iS++)
 	{
-		CHostSettings* pSettings = aHostSettings.GetItem(iS);
+		CEasySFTPHostSetting* pSettings = aHostSettings.GetItem(iS);
 		bool bFound = false;
 		for (int iH = 0; iH < m_aHosts.GetCount(); iH++)
 		{
 			CHostFolderData* pHost = m_aHosts.GetItem(iH);
 			if (pHost->pDirItem->strName.Compare(pSettings->strHostName) == 0 &&
-				pHost->bSFTPMode == pSettings->bSFTPMode &&
+				pHost->ConnectionMode == pSettings->ConnectionMode &&
 				pHost->nPort == pSettings->nPort)
 			{
 				bFound = true;
@@ -1532,25 +1925,25 @@ void CMainDLL::MergeHostSettings(const CMyPtrArrayT<CHostSettings>& aHostSetting
 		if (!bFound)
 		{
 			CHostFolderData* pHost = new CHostFolderData();
-			pHost->bSFTPMode = pSettings->bSFTPMode;
-			pHost->pDirItem = new CFTPDirectoryItem();
+			pHost->ConnectionMode = pSettings->ConnectionMode;
+			pHost->pDirItem = new CFTPRootDirectoryItem();
 			pHost->pDirItem->strName = pSettings->strHostName;
 			pHost->pDirItem->pDirectory = NULL;
 			pHost->nPort = pSettings->nPort;
-			pHost->pSettings = new CHostSettings(*pSettings);
+			pHost->pSettings = new CEasySFTPHostSetting(*pSettings);
 			m_aHosts.Add(pHost);
 		}
 	}
 }
 
-CHostFolderData* CMainDLL::FindHostFolderDataUnsafe(bool bSFTP, LPCWSTR lpszHost, int nPort)
+CHostFolderData* CMainDLL::FindHostFolderDataUnsafe(EasySFTPConnectionMode mode, LPCWSTR lpszHost, int nPort)
 {
 	CHostFolderData* pHostData;
 	bool bFound = false;
 	for (int i = 0; i < m_aHosts.GetCount(); i++)
 	{
 		pHostData = m_aHosts.GetItem(i);
-		if (pHostData->bSFTPMode == bSFTP &&
+		if (pHostData->ConnectionMode == mode &&
 			pHostData->pDirItem->strName.Compare(lpszHost) == 0 &&
 			pHostData->nPort == nPort)
 		{
@@ -1808,7 +2201,26 @@ void CMainDLL::RemoveReference(CEasySFTPFolderRoot* pRoot)
 	int n = m_aRootRefs.FindItem(pRoot);
 	if (n >= 0)
 		m_aRootRefs.RemoveItem(n);
+	int rest = m_aRootRefs.GetCount();
 	::LeaveCriticalSection(&m_csRootRefs);
+	if (!rest)
+	{
+		// release all directories
+		::EnterCriticalSection(&m_csHosts);
+		for (int i = 0; i < m_aHosts.GetCount(); i++)
+		{
+			CHostFolderData* pData = m_aHosts.GetItem(i);
+			if (pData->pDirItem)
+			{
+				if (pData->pDirItem->pDirectory)
+				{
+					delete pData->pDirItem->pDirectory;
+					pData->pDirItem->pDirectory = NULL;
+				}
+			}
+		}
+		::LeaveCriticalSection(&m_csHosts);
+	}
 }
 
 void CMainDLL::MyChangeNotify(LONG wEventId, UINT uFlags, PIDLIST_ABSOLUTE pidl1, PIDLIST_ABSOLUTE pidl2)
@@ -1911,7 +2323,7 @@ EXTERN_C PITEMID_CHILD __stdcall CreateRootCommandItem(IMalloc* pMalloc, WORD wI
 	return (PITEMID_CHILD) pItem;
 }
 
-EXTERN_C PITEMID_CHILD __stdcall CreateHostItem(IMalloc* pMalloc, bool bSFTPMode, WORD nPort, LPCWSTR lpszHostName)
+EXTERN_C PITEMID_CHILD __stdcall CreateHostItem(IMalloc* pMalloc, EasySFTPConnectionMode ConnectionMode, WORD nPort, LPCWSTR lpszHostName)
 {
 	CSFTPHostItem* pItem;
 	SIZE_T nSize;
@@ -1928,7 +2340,7 @@ EXTERN_C PITEMID_CHILD __stdcall CreateHostItem(IMalloc* pMalloc, bool bSFTPMode
 	if (!pItem)
 		return NULL;
 	pItem->uSignature = SFTP_HOST_ITEM_SIGNATURE;
-	pItem->bSFTP = bSFTPMode;
+	pItem->ConnectionMode = static_cast<WORD>(ConnectionMode);
 	pItem->nPort = nPort;
 	memcpy(pItem->wchHostName, lpszHostName,
 		(nSize - (sizeof(CSFTPHostItem) - (sizeof(DELEGATEITEMID) - sizeof(BYTE)) - sizeof(WCHAR))));
@@ -2116,4 +2528,19 @@ extern "C++" bool __stdcall GetHostNameForUrl(CMyStringW& strHostName, CMyString
 	}
 	rstrName = strHostName;
 	return false;
+}
+
+extern "C++" void __stdcall ConnectionModeToProtocolAndPort(EasySFTPConnectionMode mode, CMyStringW& rstrProtocol, int& nDefaultPort)
+{
+	switch (mode)
+	{
+		case EasySFTPConnectionMode::SFTP:
+			rstrProtocol = L"sftp";
+			nDefaultPort = 22;
+			break;
+		case EasySFTPConnectionMode::FTP:
+			rstrProtocol = L"ftp";
+			nDefaultPort = 21;
+			break;
+	}
 }

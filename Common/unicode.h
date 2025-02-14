@@ -7,14 +7,14 @@
 #ifndef __UNICODE_H__
 #define __UNICODE_H__
 
-LPWSTR __stdcall AnsiToUnicode(LPCSTR lpszString, UINT uLen);
+LPWSTR __stdcall AnsiToUnicodeStr(LPCSTR lpszString, UINT uLen);
 
 ///////////////////////////////////////////////////////////////////////////////
 
 //#include "Convert.h"
 #include "UString.h"
 
-EXTERN_C __out HANDLE WINAPI MyFindFirstFileW(__in LPCWSTR lpFileName, __out LPWIN32_FIND_DATAW lpFindFileData);
+EXTERN_C HANDLE WINAPI MyFindFirstFileW(__in LPCWSTR lpFileName, __out LPWIN32_FIND_DATAW lpFindFileData);
 EXTERN_C BOOL WINAPI MyFindNextFileW(__in  HANDLE hFindFile, __out LPWIN32_FIND_DATAW lpFindFileData);
 
 EXTERN_C HANDLE WINAPI MyCreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess,
@@ -55,6 +55,8 @@ BSTR __stdcall MyStringToBSTR(
 	CMyStringW& string);
 void __stdcall MyBSTRToString(BSTR bstr, CMyStringW& rstrString);
 #endif
+
+void __stdcall MyGetUnalignedString(const WCHAR UNALIGNED* pwstr, CMyStringW& rstrString);
 
 #ifdef _INC_SHELLAPI
 EXTERN_C int __stdcall MyDragQueryFileCount(HDROP hDrop);

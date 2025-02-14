@@ -8,15 +8,17 @@
 #include "ShellDLL.h"
 #include "CsetPage.h"
 
-CHostCharsetPage::CHostCharsetPage(CHostSettings* pSettings, bool* pbResult)
+CHostCharsetPage::CHostCharsetPage(CEasySFTPHostSetting* pSettings, bool* pbResult)
 	: CMyPropertyPage(IDD)
 	, m_pSettings(pSettings)
 	, m_pbResult(pbResult)
 {
+	pSettings->AddRef();
 }
 
 CHostCharsetPage::~CHostCharsetPage()
 {
+	m_pSettings->Release();
 }
 
 LRESULT CHostCharsetPage::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)

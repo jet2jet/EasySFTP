@@ -23,7 +23,7 @@ public:
 	virtual bool ReceiveMessage(CMyStringW& rstrMessage, int* pnCode) = 0;
 };
 
-class __declspec(novtable) CFTPPassiveMessage : public IUnknown
+class __declspec(novtable) CFTPPassiveMessage : public CReferenceCountClassBase
 {
 public:
 	CFTPPassiveMessage() { m_bCanceled = false; }
@@ -49,7 +49,7 @@ public:
 	virtual void FinishFileListing() = 0;
 };
 
-class CFTPFileListingMessage : public CUnknownImplT<CFTPPassiveMessage>
+class CFTPFileListingMessage : public CFTPPassiveMessage
 {
 public:
 	CFTPFileListingMessage(CFTPFileListingListener* pListener, LPCWSTR lpszDirectory)
@@ -66,7 +66,7 @@ public:
 	CMyStringW m_strDirectory;
 };
 
-class CFTPFileMListingMessage : public CUnknownImplT<CFTPPassiveMessage>
+class CFTPFileMListingMessage : public CFTPPassiveMessage
 {
 public:
 	CFTPFileMListingMessage(CFTPFileListingListener* pListener, LPCWSTR lpszDirectory)
@@ -87,7 +87,7 @@ public:
 #define STREAM_BUFFER_SIZE    20480
 #define RECV_STREAM_BUFFER_SIZE    STREAM_BUFFER_SIZE
 
-class CFTPFileSendMessage : public CUnknownImplT<CFTPPassiveMessage>
+class CFTPFileSendMessage : public CFTPPassiveMessage
 {
 public:
 	CFTPFileSendMessage(IStream* pStreamLocalData, LPCWSTR lpszRemoteFileName);
@@ -108,7 +108,7 @@ public:
 	CFTPMessageDispatcher* m_pDispatcher;
 };
 
-class CFTPReadFileMessage : public CUnknownImplT<CFTPPassiveMessage>
+class CFTPReadFileMessage : public CFTPPassiveMessage
 {
 public:
 	CFTPReadFileMessage(LPCWSTR lpszRemoteFileName);
@@ -129,7 +129,7 @@ public:
 	CFTPMessageDispatcher* m_pDispatcher;
 };
 
-class CFTPWriteFileMessage : public CUnknownImplT<CFTPPassiveMessage>
+class CFTPWriteFileMessage : public CFTPPassiveMessage
 {
 public:
 	CFTPWriteFileMessage(LPCWSTR lpszRemoteFileName);
@@ -186,7 +186,7 @@ public:
 	CSFTPFolderFTP* m_pRoot;
 };
 
-class CFTPFileRecvMessage : public CUnknownImplT<CFTPPassiveMessage>
+class CFTPFileRecvMessage : public CFTPPassiveMessage
 {
 public:
 	CFTPFileRecvMessage(LPCWSTR lpszRemoteFileName, ULONGLONG uliOffse);

@@ -10,15 +10,17 @@
 
 #include "FNameDlg.h"
 
-CHostTransferPage::CHostTransferPage(CHostSettings* pSettings, bool* pbResult)
+CHostTransferPage::CHostTransferPage(CEasySFTPHostSetting* pSettings, bool* pbResult)
 	: CMyPropertyPage(IDD)
 	, m_pSettings(pSettings)
 	, m_pbResult(pbResult)
 {
+	pSettings->AddRef();
 }
 
 CHostTransferPage::~CHostTransferPage(void)
 {
+	m_pSettings->Release();
 }
 
 LRESULT CHostTransferPage::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
@@ -110,6 +112,6 @@ LRESULT CHostTransferPage::OnApply(WPARAM wParam, LPARAM lParam)
 LRESULT CHostTransferPage::OnSetActive(WPARAM wParam, LPARAM lParam)
 {
 	// disables IDC_KEEP_SEND_MODIFY_TIME if the mode is FTP
-	::EnableDlgItem(m_hWnd, IDC_KEEP_SEND_MODIFY_TIME, m_pSettings->bSFTPMode);
+	::EnableDlgItem(m_hWnd, IDC_KEEP_SEND_MODIFY_TIME, m_pSettings->ConnectionMode == EasySFTPConnectionMode::SFTP);
 	return 0;
 }

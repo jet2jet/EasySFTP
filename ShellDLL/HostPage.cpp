@@ -8,16 +8,18 @@
 #include "ShellDLL.h"
 #include "HostPage.h"
 
-CHostGeneralSettingPage::CHostGeneralSettingPage(CHostSettings* pSettings, bool* pbResult)
+CHostGeneralSettingPage::CHostGeneralSettingPage(CEasySFTPHostSetting* pSettings, bool* pbResult)
 	: CMyPropertyPage(IDD)
 	, m_pSettings(pSettings)
 	, m_pbResult(pbResult)
 	, m_bNoModeChange(false)
 {
+	pSettings->AddRef();
 }
 
 CHostGeneralSettingPage::~CHostGeneralSettingPage()
 {
+	m_pSettings->Release();
 }
 
 LRESULT CHostGeneralSettingPage::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
@@ -37,12 +39,12 @@ bool CHostGeneralSettingPage::OnInitDialog(HWND hWndFocus)
 	str.LoadString(IDS_CONNECTMODE_FTP);
 	i = ::AddDlgComboBoxStringW(m_hWnd, IDC_CONNECT_MODE, str);
 	::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM) IntToPtr(i), (LPARAM) IntToPtr(0));
-	if (!m_pSettings->bSFTPMode)
+	if (m_pSettings->ConnectionMode == EasySFTPConnectionMode::FTP)
 		::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETCURSEL, (WPARAM) IntToPtr(i), 0);
 	str.LoadString(IDS_CONNECTMODE_SFTP);
 	i = ::AddDlgComboBoxStringW(m_hWnd, IDC_CONNECT_MODE, str);
 	::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM) IntToPtr(i), (LPARAM) IntToPtr(1));
-	if (m_pSettings->bSFTPMode)
+	if (m_pSettings->ConnectionMode == EasySFTPConnectionMode::SFTP)
 		::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETCURSEL, (WPARAM) IntToPtr(i), 0);
 	if (m_bNoModeChange)
 		::EnableDlgItem(m_hWnd, IDC_CONNECT_MODE, m_bNoModeChange);
@@ -51,7 +53,7 @@ bool CHostGeneralSettingPage::OnInitDialog(HWND hWndFocus)
 	::SyncDialogData(m_hWnd, IDC_HOST_NAME, m_pSettings->strHostName, false);
 	::SyncDialogData(m_hWnd, IDC_PORT, m_pSettings->nPort, false);
 	{
-		register int nDefPort = m_pSettings->bSFTPMode ? 22 : 21;
+		register int nDefPort = m_pSettings->ConnectionMode == EasySFTPConnectionMode::SFTP ? 22 : 21;
 		::EnableDlgItem(m_hWnd, IDC_PORT, m_pSettings->nPort != nDefPort);
 		::CheckDlgButton(m_hWnd, IDC_DEF_PORT, m_pSettings->nPort == nDefPort ? BST_CHECKED : BST_UNCHECKED);
 	}
@@ -129,12 +131,12 @@ LRESULT CHostGeneralSettingPage::OnApply(WPARAM wParam, LPARAM lParam)
 	//}
 
 	int nPort;
-	bool bSFTP;
+	EasySFTPConnectionMode mode;
 	::SyncDialogData(m_hWnd, IDC_PORT, nPort, true);
 	int i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETCURSEL, 0, 0));
 	if (i != CB_ERR)
 		i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETITEMDATA, (WPARAM) IntToPtr(i), 0));
-	bSFTP = (i == 1);
+	mode = (i == 1) ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP;
 
 	m_pSettings->strDisplayName = strName;
 	m_pSettings->strHostName = strHost;
@@ -143,7 +145,7 @@ LRESULT CHostGeneralSettingPage::OnApply(WPARAM wParam, LPARAM lParam)
 	::SyncDialogData(m_hWnd, IDC_SERVER_PATH, m_pSettings->strInitServerPath, true);
 	::SyncDialogData(m_hWnd, IDC_USE_THUMBNAIL, m_pSettings->bUseThumbnailPreview, true);
 	if (!m_bNoModeChange)
-		m_pSettings->bSFTPMode = bSFTP;
+		m_pSettings->ConnectionMode = mode;
 	m_pSettings->nPort = nPort;
 	*m_pbResult = true;
 
@@ -156,6 +158,6 @@ LRESULT CHostGeneralSettingPage::OnKillActive(WPARAM wParam, LPARAM lParam)
 	int i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETCURSEL, 0, 0));
 	if (i != CB_ERR)
 		i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETITEMDATA, (WPARAM) IntToPtr(i), 0));
-	m_pSettings->bSFTPMode = (i == 1);
+	m_pSettings->ConnectionMode = (i == 1) ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP;
 	return FALSE;
 }

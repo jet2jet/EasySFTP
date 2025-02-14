@@ -29,9 +29,9 @@ CConnectDialog::CConnectDialog(void)
 {
 	m_bPasswordDialog = false;
 	m_nPort = 21;
-	m_bSFTPMode = false;
+	m_ConnectionMode = EasySFTPConnectionMode::SFTP;
 	m_pPKey = NULL;
-	m_nAuthType = AUTHTYPE_PASSWORD;
+	m_nAuthType = EasySFTPAuthenticationMode::Password;
 }
 
 CConnectDialog::~CConnectDialog(void)
@@ -40,10 +40,53 @@ CConnectDialog::~CConnectDialog(void)
 		EVP_PKEY_free(m_pPKey);
 }
 
-void CConnectDialog::UpdateSFTPMode(bool bSFTPMode)
+HRESULT CConnectDialog::SetToAuthentication(IEasySFTPAuthentication* pUser)
+{
+	auto name = MyStringToBSTR(m_strUserName);
+	if (!name)
+		return E_OUTOFMEMORY;
+	{
+		CMyStringW str;
+		m_strPassword.GetString(str);
+		auto password = MyStringToBSTR(str);
+		_SecureStringW::SecureEmptyString(str);
+		if (!password)
+		{
+			::SysFreeString(name);
+			return E_OUTOFMEMORY;
+		}
+		pUser->put_UserName(name);
+		pUser->put_Password(password);
+		_SecureStringW::SecureEmptyBStr(password);
+		::SysFreeString(password);
+		::SysFreeString(name);
+	}
+	pUser->put_Type(m_nAuthType);
+	if (m_pPKey)
+	{
+		auto pkey = MyStringToBSTR(m_strPKeyFileName);
+		if (pkey)
+		{
+			pUser->put_PublicKeyFileName(pkey);
+			::SysFreeString(pkey);
+		}
+	}
+	else if (m_nAuthType == EasySFTPAuthenticationMode::Pageant || m_nAuthType == EasySFTPAuthenticationMode::WinOpenSSH)
+	{
+		// do nothing
+	}
+	else if (m_nAuthType != EasySFTPAuthenticationMode::Password)
+	{
+		pUser->put_Type(EasySFTPAuthenticationMode::Password);
+	}
+	return S_OK;
+}
+
+void CConnectDialog::UpdateConnectionMode(EasySFTPConnectionMode ConnectionMode)
 {
 	char nAuthType;
-	::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, true);
+	bool bSFTPMode = ConnectionMode == EasySFTPConnectionMode::SFTP;
+	::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, false);
 	if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PASSWORD) == BST_CHECKED)
 		nAuthType = AUTHTYPE_PASSWORD;
 	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PKEY) == BST_CHECKED)
@@ -76,23 +119,24 @@ bool CConnectDialog::OnInitDialog(HWND hWndFocus)
 	{
 		while (true)
 		{
-			if (m_bDisableAuthPassword && m_nAuthType == AUTHTYPE_PASSWORD)
+			if (m_bDisableAuthPassword && m_nAuthType == EasySFTPAuthenticationMode::Password)
 				;
-			else if (m_bDisableAuthPublicKey && m_nAuthType == AUTHTYPE_PUBLICKEY)
+			else if (m_bDisableAuthPublicKey && m_nAuthType == EasySFTPAuthenticationMode::PublicKey)
 				;
-			else if (m_bDisableAuthPublicKey && m_nAuthType == AUTHTYPE_PAGEANT)
+			else if (m_bDisableAuthPublicKey && m_nAuthType == EasySFTPAuthenticationMode::Pageant)
 				;
-			else if (m_bDisableAuthPublicKey && m_nAuthType == AUTHTYPE_WINSSHAGENT)
+			else if (m_bDisableAuthPublicKey && m_nAuthType == EasySFTPAuthenticationMode::WinOpenSSH)
 				;
 			else
 				break;
-			m_nAuthType++;
+			(*reinterpret_cast<std::underlying_type<EasySFTPAuthenticationMode>::type*>(&m_nAuthType))++;
 		}
 	}
 	else //if (!m_bPasswordDialog)
 		m_bDisableAuthPassword = m_bDisableAuthPublicKey = false;
 
-	UpdateSFTPMode(m_bSFTPMode);
+	UpdateConnectionMode(m_ConnectionMode);
+	bool bSFTPMode = m_ConnectionMode == EasySFTPConnectionMode::SFTP;
 
 	if (!m_bPasswordDialog)
 	{
@@ -104,16 +148,17 @@ bool CConnectDialog::OnInitDialog(HWND hWndFocus)
 	::SyncDialogData(m_hWnd, IDC_USER_NAME, m_strUserName, false);
 	m_strPassword.SetStringToWindowText(::GetDlgItem(m_hWnd, IDC_PASSWORD));
 	if (!m_bPasswordDialog)
-		::SyncDialogData(m_hWnd, IDC_USE_SFTP, m_bSFTPMode, false);
-	::CheckRadioButton(m_hWnd, IDC_AUTH_PASSWORD, IDC_AUTH_WIN_SSHAGENT, IDC_AUTH_PASSWORD + m_nAuthType - AUTHTYPE_PASSWORD);
+		::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, false);
+	::CheckRadioButton(m_hWnd, IDC_AUTH_PASSWORD, IDC_AUTH_WIN_SSHAGENT,
+		IDC_AUTH_PASSWORD + static_cast<int>(m_nAuthType) - static_cast<int>(EasySFTPAuthenticationMode::Password));
 	::SyncDialogData(m_hWnd, IDC_PKEY_FILE, m_strPKeyFileName, false);
 
-	::EnableDlgItem(m_hWnd, IDC_AUTH_PASSWORD, m_bSFTPMode && !m_bDisableAuthPassword);
-	::EnableDlgItem(m_hWnd, IDC_AUTH_PKEY, m_bSFTPMode && !m_bDisableAuthPublicKey);
-	::EnableDlgItem(m_hWnd, IDC_AUTH_PAGEANT, m_bSFTPMode && !m_bDisableAuthPublicKey);
-	::EnableDlgItem(m_hWnd, IDC_AUTH_WIN_SSHAGENT, m_bSFTPMode && !m_bDisableAuthPublicKey);
-	::EnableDlgItem(m_hWnd, IDC_PKEY_FILE, m_bSFTPMode && !m_bDisableAuthPublicKey && (m_nAuthType == AUTHTYPE_PUBLICKEY));
-	::EnableDlgItem(m_hWnd, IDC_PKEY_SEARCH, m_bSFTPMode && !m_bDisableAuthPublicKey && (m_nAuthType == AUTHTYPE_PUBLICKEY));
+	::EnableDlgItem(m_hWnd, IDC_AUTH_PASSWORD, bSFTPMode && !m_bDisableAuthPassword);
+	::EnableDlgItem(m_hWnd, IDC_AUTH_PKEY, bSFTPMode && !m_bDisableAuthPublicKey);
+	::EnableDlgItem(m_hWnd, IDC_AUTH_PAGEANT, bSFTPMode && !m_bDisableAuthPublicKey);
+	::EnableDlgItem(m_hWnd, IDC_AUTH_WIN_SSHAGENT, bSFTPMode && !m_bDisableAuthPublicKey);
+	::EnableDlgItem(m_hWnd, IDC_PKEY_FILE, bSFTPMode && !m_bDisableAuthPublicKey && (m_nAuthType == EasySFTPAuthenticationMode::PublicKey));
+	::EnableDlgItem(m_hWnd, IDC_PKEY_SEARCH, bSFTPMode && !m_bDisableAuthPublicKey && (m_nAuthType == EasySFTPAuthenticationMode::PublicKey));
 
 	if ((m_bPasswordDialog || !m_strHostName.IsEmpty()))
 	{
@@ -141,7 +186,7 @@ LRESULT CConnectDialog::OnSFTPModeChecked(WPARAM wParam, LPARAM lParam)
 {
 	bool bSFTPMode;
 	::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, true);
-	UpdateSFTPMode(bSFTPMode);
+	UpdateConnectionMode(bSFTPMode ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP);
 	return 0;
 }
 
@@ -150,7 +195,7 @@ LRESULT CConnectDialog::OnAuthTypeChecked(WPARAM wParam, LPARAM lParam)
 	bool bSFTPMode;
 	char nAuthType;
 	if (m_bPasswordDialog)
-		bSFTPMode = m_bSFTPMode;
+		bSFTPMode = m_ConnectionMode == EasySFTPConnectionMode::SFTP;
 	else
 		::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, true);
 	if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PASSWORD) == BST_CHECKED)
@@ -181,8 +226,9 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 	CMyStringW strHost, strUser, strPKey;
 	_SecureStringW strPassword;
 	int nPort;
+	EasySFTPConnectionMode mode;
 	bool bSFTPMode;
-	char nAuthType;
+	EasySFTPAuthenticationMode nAuthType;
 	EVP_PKEY* pPKey;
 
 	if (!m_bPasswordDialog)
@@ -200,9 +246,13 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 			return 0;
 		}
 		::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, true);
+		mode = bSFTPMode ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP;
 	}
 	else
-		bSFTPMode = m_bSFTPMode;
+	{
+		bSFTPMode = m_ConnectionMode == EasySFTPConnectionMode::SFTP;
+		mode = m_ConnectionMode;
+	}
 	::SyncDialogData(m_hWnd, IDC_USER_NAME, strUser, true);
 	if (strUser.IsEmpty())
 	{
@@ -218,16 +268,16 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 	if (bSFTPMode)
 	{
 		if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PASSWORD) == BST_CHECKED)
-			nAuthType = AUTHTYPE_PASSWORD;
+			nAuthType = EasySFTPAuthenticationMode::Password;
 		else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PKEY) == BST_CHECKED)
-			nAuthType = AUTHTYPE_PUBLICKEY;
+			nAuthType = EasySFTPAuthenticationMode::PublicKey;
 		else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PAGEANT) == BST_CHECKED)
-			nAuthType = AUTHTYPE_PAGEANT;
+			nAuthType = EasySFTPAuthenticationMode::Pageant;
 		else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_WIN_SSHAGENT) == BST_CHECKED)
-			nAuthType = AUTHTYPE_WINSSHAGENT;
+			nAuthType = EasySFTPAuthenticationMode::WinOpenSSH;
 		else
-			nAuthType = AUTHTYPE_PASSWORD;
-		if (nAuthType == AUTHTYPE_PUBLICKEY)
+			nAuthType = EasySFTPAuthenticationMode::Password;
+		if (nAuthType == EasySFTPAuthenticationMode::PublicKey)
 		{
 			::SyncDialogData(m_hWnd, IDC_PKEY_FILE, strPKey, true);
 			if (strPKey.IsEmpty())
@@ -257,7 +307,7 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 				return 0;
 			}
 		}
-		else if (nAuthType == AUTHTYPE_PAGEANT)
+		else if (nAuthType == EasySFTPAuthenticationMode::Pageant)
 		{
 			if (!CPageantAgent::IsAvailable())
 			{
@@ -266,7 +316,7 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 			}
 			pPKey = NULL;
 		}
-		else if (nAuthType == AUTHTYPE_WINSSHAGENT)
+		else if (nAuthType == EasySFTPAuthenticationMode::WinOpenSSH)
 		{
 			if (!CWinOpenSSHAgent::IsAvailable())
 			{
@@ -280,7 +330,7 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 	}
 	else
 	{
-		nAuthType = AUTHTYPE_PASSWORD;
+		nAuthType = EasySFTPAuthenticationMode::Password;
 		pPKey = NULL;
 	}
 
@@ -288,7 +338,7 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 	{
 		m_strHostName = strHost;
 		m_nPort = nPort;
-		m_bSFTPMode = bSFTPMode;
+		m_ConnectionMode = mode;
 	}
 	m_strUserName = strUser;
 	m_strPassword = strPassword;

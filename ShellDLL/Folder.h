@@ -11,6 +11,7 @@
 #include "SFilePrp.h"
 #include "LinkDlg.h"
 #include "SvInfo.h"
+#include "RefDelg.h"
 
 #define PID_FTPITEM_BASE           200
 #define STRING_ID_TO_MY_PID(u)     (PID_FTPITEM_BASE + (u) - IDS_HEAD_FILE_NAME + 1)
@@ -30,6 +31,9 @@ constexpr int _GetAvailablePropKeyCount();
 HRESULT __stdcall _GetFileItemPropData(CFTPDirectoryBase* pDirectory, CFTPFileItem* p, const PROPERTYKEY& key, VARIANT* pv);
 void __stdcall FillFileItemInfo(CFTPFileItem* pItem);
 
+// in ShellDLL.cpp
+ITypeInfo* GetTypeInfo(const GUID& guid);
+
 ////////////////////////////////////////////////////////////////////////////////
 
 DECLARE_INTERFACE_IID_(IShellFolderPropertyInformation, IUnknown, "124bae2c-cb94-42cd-b5b8-4358789684ef")
@@ -40,72 +44,10 @@ DECLARE_INTERFACE_IID_(IShellFolderPropertyInformation, IUnknown, "124bae2c-cb94
 
 ////////////////////////////////////////////////////////////////////////////////
 
-//class CFolderViewWrapper : public IShellView3
-//{
-//public:
-//	CFolderViewWrapper(IShellView* pView);
-//	~CFolderViewWrapper();
-//
-//	// IUnknown
-//public:
-//	STDMETHOD(QueryInterface)(REFIID riid, void** ppv);
-//	STDMETHOD_(ULONG, AddRef)();
-//	STDMETHOD_(ULONG, Release)();
-//
-//	// IOleWindow
-//public:
-//	STDMETHOD(GetWindow)(HWND* phWnd);
-//	STDMETHOD(ContextSensitiveHelp)(BOOL fEnterMode);
-//
-//	// IShellView
-//public:
-//	STDMETHOD(TranslateAccelerator)(MSG* pmsg);
-//	STDMETHOD(EnableModeless)(BOOL fEnable);
-//	STDMETHOD(UIActivate)(UINT uState);
-//	STDMETHOD(Refresh)(void);
-//	STDMETHOD(CreateViewWindow)(IShellView* psvPrevious, LPCFOLDERSETTINGS pfs,
-//		IShellBrowser* psb, RECT* prcView, HWND* phWnd);
-//	STDMETHOD(DestroyViewWindow)(void);
-//	STDMETHOD(GetCurrentInfo)(LPFOLDERSETTINGS pfs);
-//	STDMETHOD(AddPropertySheetPages)(DWORD dwReserved, LPFNSVADDPROPSHEETPAGE pfn, LPARAM lParam);
-//	STDMETHOD(SaveViewState)(void);
-//	STDMETHOD(SelectItem)(PCUITEMID_CHILD pidlItem, SVSIF uFlags);
-//	STDMETHOD(GetItemObject)(UINT uItem, REFIID riid, void** ppv);
-//
-//	// IShellView2
-//public:
-//	STDMETHOD(GetView)(SHELLVIEWID* pvid, ULONG uView);
-//	STDMETHOD(CreateViewWindow2)(LPSV2CVW2_PARAMS lpParams);
-//	STDMETHOD(HandleRename)(PCUITEMID_CHILD pidlNew);
-//	STDMETHOD(SelectAndPositionItem)(PCUITEMID_CHILD pidlItem, UINT uFlags, POINT* ppt);
-//
-//	// IShellView3
-//public:
-//	STDMETHOD(CreateViewWindow3)(IShellBrowser* psbOwner, IShellView* psvPrev,
-//		SV3CVW3_FLAGS dwViewFlags, FOLDERFLAGS dwMask, FOLDERFLAGS dwFlags,
-//		FOLDERVIEWMODE fvMode, const SHELLVIEWID* pvid, const RECT* prcView,
-//		HWND* phWndView);
-//
-//public:
-//	inline IShellBrowser* GetBrowser() const { return m_pBrowser; }
-//
-//protected:
-//	ULONG m_uRef;
-//	union
-//	{
-//		IShellView* m_pView;
-//		IShellView2* m_pView2;
-//		IShellView3* m_pView3;
-//	};
-//	BYTE m_nAvailableVersion;
-//	IShellBrowser* m_pBrowser;
-//};
-
-////////////////////////////////////////////////////////////////////////////////
-
 // struct CFTPDirectoryItem is defined in ShellDLL.h
 
 class CFTPDirectoryBase : public CFolderBase,
+	public IProvideClassInfo,
 	public IStorage,
 	public IThumbnailHandlerFactory,
 	public IShellFolderPropertyInformation,
@@ -116,15 +58,20 @@ public:
 	CFTPDirectoryBase(CDelegateMallocData* pMallocData,
 		CFTPDirectoryItem* pItemMe,
 		CFTPDirectoryBase* pParent,
-		CFTPDirectoryRootBase* pRoot,
 		LPCWSTR lpszDirectory);
 	virtual ~CFTPDirectoryBase();
 
+	virtual ULONG DetachAndRelease();
+
 	// IUnknown
 public:
-	STDMETHOD(QueryInterface)(REFIID riid, void** ppv);
-	STDMETHOD_(ULONG, AddRef)();
-	STDMETHOD_(ULONG, Release)();
+	STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override;
+	STDMETHOD_(ULONG, AddRef)() override;
+	STDMETHOD_(ULONG, Release)() override;
+
+	// IProvideClassInfo
+public:
+	STDMETHOD(GetClassInfo)(ITypeInfo** ppTI) override;
 
 	// IShellFolder
 public:
@@ -168,6 +115,31 @@ public:
 
 	// IEasySFTPDirectory
 public:
+#define STDMETHODNOVIRTUAL(n) COM_DECLSPEC_NOTHROW HRESULT STDMETHODCALLTYPE n
+	STDMETHODNOVIRTUAL(get_Name)(BSTR* pRet);
+	STDMETHODNOVIRTUAL(get_RootDirectory)(IEasySFTPRootDirectory** ppRootDirectory);
+	STDMETHODNOVIRTUAL(OpenDirectory)(VARIANT file, IEasySFTPDirectory** ppRet);
+	STDMETHODNOVIRTUAL(get_Files)(IEasySFTPFiles** ppFiles);
+	STDMETHODNOVIRTUAL(OpenTransferDialog)(INT_PTR hWndOwner);
+	STDMETHODNOVIRTUAL(CloseTransferDialog)();
+	STDMETHODNOVIRTUAL(OpenFile)(BSTR lpszRelativeFileName, VARIANT_BOOL bIsWrite, EasySFTPTextMode nTextMode, IEasySFTPStream** ppStream);
+	STDMETHODNOVIRTUAL(UploadFrom)(BSTR lpszDestinationRelativeName, BSTR lpszSourceLocalName, EasySFTPTextMode nTextMode);
+	STDMETHODNOVIRTUAL(UploadFromStream)(BSTR lpszDestinationRelativeFileName, IUnknown* pStream, EasySFTPTextMode nTextMode);
+	STDMETHODNOVIRTUAL(UploadFromDataObject)(IUnknown* pObject, EasySFTPTextMode nTextMode);
+	STDMETHODNOVIRTUAL(DownloadTo)(VARIANT file, BSTR lpszTargetLocalName, EasySFTPTextMode nTextMode);
+	STDMETHODNOVIRTUAL(DownloadToStream)(VARIANT file, IUnknown* pStream, EasySFTPTextMode nTextMode);
+	STDMETHODNOVIRTUAL(UploadFiles)(SAFEARRAY* LocalFiles, EasySFTPTextMode nTextMode);
+	STDMETHODNOVIRTUAL(DownloadFiles)(SAFEARRAY* RemoteFiles, BSTR bstrDestinationDirectory, EasySFTPTextMode nTextMode);
+	STDMETHODNOVIRTUAL(Move)(VARIANT file, BSTR lpszTargetName);
+	STDMETHODNOVIRTUAL(Remove)(VARIANT file);
+	STDMETHODNOVIRTUAL(UpdateFileTime)(VARIANT file, DATE modifyTime, DATE createTime, DATE accessTime = 0);
+	STDMETHODNOVIRTUAL(UpdateAttributes)(VARIANT file, long attr);
+	STDMETHODNOVIRTUAL(CreateShortcut)(BSTR LinkName, BSTR TargetName);
+	STDMETHODNOVIRTUAL(get_FullPath)(BSTR* pRet);
+	STDMETHODNOVIRTUAL(get_Url)(BSTR* pRet);
+
+	// IEasySFTPOldDirectory
+public:
 	STDMETHOD(GetRootDirectory)(IEasySFTPOldDirectory** ppRootDirectory);
 	STDMETHOD(GetHostInfo)(VARIANT_BOOL FAR* pbIsSFTP, int FAR* pnPort, BSTR FAR* pbstrHostName);
 	STDMETHOD(GetTextMode)(LONG FAR* pnTextMode);
@@ -200,22 +172,29 @@ public:
 	//// IFTPDataObjectListener
 public:
 	HRESULT CreateStream(CFTPFileItem* pItem, IStream** ppStream);
+	HRESULT OpenStream2(const OLECHAR* pwcsName, DWORD grfMode, BYTE bTextMode, IStream** ppstm, IEasySFTPFile** ppFile = NULL);
 	HRESULT DeleteFTPItem(CFTPFileItem* pItem);
 	void AfterPaste(CFTPDataObject* pObject, DWORD dwEffects);
+	void MakeUrl(const CMyStringW& strFileName, CMyStringW& rstrUrl, bool* pbLastIsNotDelimiter = NULL);
 
 public:
-	STDMETHOD(CreateInstance)(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent, CFTPDirectoryRootBase* pRoot,
+	STDMETHOD(CreateInstance)(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent,
 		LPCWSTR lpszDirectory, CFTPDirectoryBase** ppResult) = 0;
 	STDMETHOD(ParseDisplayName2)(PIDLIST_RELATIVE pidlParent, HWND hWnd, LPBC pbc,
 		LPWSTR pszDisplayName, ULONG* pchEaten, PIDLIST_RELATIVE* ppidl, ULONG* pdwAttributes);
 	STDMETHOD_(void, UpdateItem)(PCUITEMID_CHILD pidlOld, PCUITEMID_CHILD pidlNew, LONG lEvent);
 	STDMETHOD_(void, UpdateItem)(CFTPFileItem* pOldItem, LPCWSTR lpszNewItem, LONG lEvent);
-	STDMETHOD_(IShellFolder*, GetParentFolder)() { return m_pParent; }
+
+	virtual HRESULT InitializeParent() override { return S_OK; }
+	virtual IShellFolder* GetParentFolder() override { return m_pParent; }
+	virtual HRESULT SetParentFolder(IShellFolder* pFolder) override;
+	inline CFTPDirectoryBase* GetParent() const { return m_pParent; }
+	CFTPDirectoryRootBase* GetRoot();
 
 public:
 	CFTPDirectoryBase* m_pParent;
-	CFTPDirectoryRootBase* m_pRoot;
 	CLSID m_clsidThis;
+	ULONG m_uRef;
 	DWORD m_grfMode;
 	DWORD m_grfStateBits;
 	bool m_bIsRoot;
@@ -225,12 +204,9 @@ public:
 	CMyPtrArrayT<CFTPDirectoryItem> m_aDirectories;
 
 protected:
-	CFTPDirectoryBase(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe);
+	CFTPDirectoryBase(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, ITypeInfo* pInfo);
 	void CommonConstruct();
-	void RemoveAllFiles();
 
-	CRITICAL_SECTION m_csRefs;
-	ULONG m_uRef;
 public:
 	CRITICAL_SECTION m_csFiles;
 protected:
@@ -245,7 +221,7 @@ public:
 public:
 	// utility methods
 	HRESULT OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirectoryBase** ppDirectory);
-	CFTPDirectoryItem* GetAlreadyOpenedDirectory(PCUIDLIST_RELATIVE pidlChild);
+	CFTPDirectoryItem* GetAlreadyOpenedDirectory(PCUIDLIST_RELATIVE pidlChild, PCUIDLIST_RELATIVE* ppidlNext);
 	inline void NotifyUpdate(LONG wEventId, PCUITEMID_CHILD pidlChild1, PCUITEMID_CHILD pidlChild2)
 	{
 		CFolderBase::NotifyUpdate(wEventId, pidlChild1, pidlChild2);
@@ -266,4 +242,57 @@ public:
 	}
 
 	HRESULT CopyFileItemToStorage(CFTPFileItem* pFile, DWORD ciidExclude, const IID* rgiidExclude, SNB snbExclude, IStorage* pstgDest);
+
+	virtual IEasySFTPDirectory* GetThisDirectory() = 0;
 };
+
+template <class T>
+class CFTPDirectoryT : public CFTPDirectoryBase, public CDispatchImplNoUnknownT<T>
+{
+public:
+	CFTPDirectoryT(CDelegateMallocData* pMallocData,
+		CFTPDirectoryItem* pItemMe,
+		CFTPDirectoryBase* pParent,
+		LPCWSTR lpszDirectory)
+		: CFTPDirectoryBase(pMallocData, pItemMe, pParent, lpszDirectory)
+		, CDispatchImplNoUnknownT(::GetTypeInfo(IID_IEasySFTPDirectory))
+	{
+		static_assert(std::is_base_of<IEasySFTPDirectory, T>::value, "T is not derived from IEasySFTPDirectory");
+	}
+protected:
+	CFTPDirectoryT(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, ITypeInfo* pInfo)
+		: CFTPDirectoryBase(pMallocData, pItemMe, pInfo)
+		, CDispatchImplNoUnknownT(pInfo) {}
+
+public:
+	virtual ~CFTPDirectoryT() {}
+
+	FORWARD_UNKNOWN_IMPL_BASE(CFTPDirectoryBase)
+
+public:
+	STDMETHOD(get_Name)(BSTR* pRet) override { return CFTPDirectoryBase::get_Name(pRet); }
+	STDMETHOD(get_RootDirectory)(IEasySFTPRootDirectory** ppRootDirectory) override { return CFTPDirectoryBase::get_RootDirectory( ppRootDirectory); }
+	STDMETHOD(OpenDirectory)(VARIANT file, IEasySFTPDirectory** ppRet) override { return CFTPDirectoryBase::OpenDirectory(file, ppRet); }
+	STDMETHOD(get_Files)(IEasySFTPFiles** ppFiles) override { return CFTPDirectoryBase::get_Files( ppFiles); }
+	STDMETHOD(OpenTransferDialog)(LONG_PTR hWndOwner) override { return CFTPDirectoryBase::OpenTransferDialog(hWndOwner); }
+	STDMETHOD(CloseTransferDialog)() override { return CFTPDirectoryBase::CloseTransferDialog(); }
+	STDMETHOD(OpenFile)(BSTR lpszRelativeFileName, VARIANT_BOOL bIsWrite, EasySFTPTextMode nTextMode, IEasySFTPStream** ppStream) override { return CFTPDirectoryBase::OpenFile(lpszRelativeFileName, bIsWrite, nTextMode, ppStream); }
+	STDMETHOD(UploadFrom)(BSTR lpszDestinationRelativeName, BSTR lpszSourceLocalName, EasySFTPTextMode nTextMode) override { return CFTPDirectoryBase::UploadFrom(lpszDestinationRelativeName, lpszSourceLocalName, nTextMode); }
+	STDMETHOD(UploadFromStream)(BSTR lpszDestinationRelativeFileName, IUnknown* pStream, EasySFTPTextMode nTextMode) override { return CFTPDirectoryBase::UploadFromStream(lpszDestinationRelativeFileName, pStream, nTextMode); }
+	STDMETHOD(UploadFromDataObject)(IUnknown* pObject, EasySFTPTextMode nTextMode) override { return CFTPDirectoryBase::UploadFromDataObject(pObject, nTextMode); }
+	STDMETHOD(DownloadTo)(VARIANT file, BSTR lpszTargetLocalName, EasySFTPTextMode nTextMode) override { return CFTPDirectoryBase::DownloadTo(file, lpszTargetLocalName, nTextMode); }
+	STDMETHOD(DownloadToStream)(VARIANT file, IUnknown* pStream, EasySFTPTextMode nTextMode) override { return CFTPDirectoryBase::DownloadToStream(file, pStream, nTextMode); }
+	STDMETHOD(UploadFiles)(SAFEARRAY* LocalFiles, EasySFTPTextMode nTextMode) override { return CFTPDirectoryBase::UploadFiles(LocalFiles, nTextMode); }
+	STDMETHOD(DownloadFiles)(SAFEARRAY* RemoteFiles, BSTR bstrDestinationDirectory, EasySFTPTextMode nTextMode) override { return CFTPDirectoryBase::DownloadFiles(RemoteFiles, bstrDestinationDirectory, nTextMode); }
+	STDMETHOD(Move)(VARIANT file, BSTR lpszTargetName) override { return CFTPDirectoryBase::Move(file, lpszTargetName); }
+	STDMETHOD(Remove)(VARIANT file) override { return CFTPDirectoryBase::Remove(file); }
+	STDMETHOD(UpdateFileTime)(VARIANT file, DATE modifyTime, DATE createTime, DATE accessTime = 0) override { return CFTPDirectoryBase::UpdateFileTime(file, modifyTime, createTime, accessTime); }
+	STDMETHOD(UpdateAttributes)(VARIANT file, long attr) override { return CFTPDirectoryBase::UpdateAttributes(file, attr); }
+	STDMETHOD(CreateShortcut)(BSTR LinkName, BSTR TargetName) override { return CFTPDirectoryBase::CreateShortcut(LinkName, TargetName); }
+	STDMETHOD(get_FullPath)(BSTR* pRet) override { return CFTPDirectoryBase::get_FullPath(pRet); }
+	STDMETHOD(get_Url)(BSTR* pRet) override { return CFTPDirectoryBase::get_Url(pRet); }
+
+	virtual IEasySFTPDirectory* GetThisDirectory() { return this; }
+};
+
+using CFTPDirectory = CFTPDirectoryT<IEasySFTPDirectory>;

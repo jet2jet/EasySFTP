@@ -5,9 +5,11 @@
  */
 
 #include "stdafx.h"
+#include "ShellDLL.h"
 #include "MyFunc.h"
 #include "FileList.h"
 
+#include "Folder.h"
 #include "SFTPChan.h"
 
 #ifdef _DEBUG
@@ -402,7 +404,7 @@ static bool __stdcall ParseUnixDate(LPCWSTR& lpszString, FILETIME* pftDateTime)
 	return true;
 }
 
-extern "C" CFTPFileItem* __stdcall PickupUnixFileList(LPCWSTR lpszString, LPCWSTR lpszFileName, CFTPFileItem* pItem)
+extern "C" CFTPFileItem* __stdcall PickupUnixFileList(CFTPDirectoryBase* pDirectory, LPCWSTR lpszString, LPCWSTR lpszFileName, CFTPFileItem* pItem)
 {
 	CFTPFileItem* pRet;
 	LPCWSTR lpw;
@@ -479,7 +481,7 @@ extern "C" CFTPFileItem* __stdcall PickupUnixFileList(LPCWSTR lpszString, LPCWST
 	if (pItem)
 		pRet = pItem;
 	else
-		pRet = new CFTPFileItem();
+		pRet = new CFTPFileItem(pDirectory);
 	if (!pRet)
 		return NULL;
 	pRet->iIconIndex = -1;
@@ -510,12 +512,14 @@ extern "C" CFTPFileItem* __stdcall PickupUnixFileList(LPCWSTR lpszString, LPCWST
 	pRet->permissions.append = pRet->permissions.readable = pRet->permissions.writable =
 		pRet->permissions.deletable = pRet->permissions.renameAllowed = 1;
 
+	if (pDirectory)
+		pDirectory->MakeUrl(pRet->strFileName, pRet->strUrl);
 	return pRet;
 }
 
-extern "C" CFTPFileItem* __stdcall ParseUnixFileList(LPCWSTR lpszString)
+extern "C" CFTPFileItem* __stdcall ParseUnixFileList(CFTPDirectoryBase* pDirectory, LPCWSTR lpszString)
 {
-	return PickupUnixFileList(lpszString, NULL, NULL);
+	return PickupUnixFileList(pDirectory, lpszString, NULL, NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -663,7 +667,7 @@ static bool __stdcall ParseDOSDate(LPCWSTR& lpszString, FILETIME* pft, char& nYe
 }
 
 // *pnYearFollows ... year flags (>0 ... yy-mm-dd formats, <0 ... mm-dd-yy formats)
-extern "C" CFTPFileItem* __stdcall PickupDOSFileList(LPCWSTR lpszString, LPCWSTR lpszFileName, CFTPFileItem* pItem, char* pnYearFollows, bool* pbY2KProblem)
+extern "C" CFTPFileItem* __stdcall PickupDOSFileList(CFTPDirectoryBase* pDirectory, LPCWSTR lpszString, LPCWSTR lpszFileName, CFTPFileItem* pItem, char* pnYearFollows, bool* pbY2KProblem)
 {
 	CFTPFileItem* pRet;
 	LPCWSTR lpw;
@@ -699,7 +703,7 @@ extern "C" CFTPFileItem* __stdcall PickupDOSFileList(LPCWSTR lpszString, LPCWSTR
 	if (pItem)
 		pRet = pItem;
 	else
-		pRet = new CFTPFileItem();
+		pRet = new CFTPFileItem(pDirectory);
 	if (!pRet)
 		return NULL;
 	pRet->iIconIndex = -1;
@@ -728,13 +732,15 @@ extern "C" CFTPFileItem* __stdcall PickupDOSFileList(LPCWSTR lpszString, LPCWSTR
 	pRet->permissions.append = pRet->permissions.readable = pRet->permissions.writable =
 		pRet->permissions.deletable = pRet->permissions.renameAllowed = 1;
 
+	if (pDirectory)
+		pDirectory->MakeUrl(pRet->strFileName, pRet->strUrl);
 	return pRet;
 }
 
 // *pnYearFollows ... year flags (>0 ... yy-mm-dd formats, <0 ... mm-dd-yy formats)
-extern "C" CFTPFileItem* __stdcall ParseDOSFileList(LPCWSTR lpszString, char* pnYearFollows, bool* pbY2KProblem)
+extern "C" CFTPFileItem* __stdcall ParseDOSFileList(CFTPDirectoryBase* pDirectory, LPCWSTR lpszString, char* pnYearFollows, bool* pbY2KProblem)
 {
-	return PickupDOSFileList(lpszString, NULL, NULL, pnYearFollows, pbY2KProblem);
+	return PickupDOSFileList(pDirectory, lpszString, NULL, NULL, pnYearFollows, pbY2KProblem);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -844,12 +850,12 @@ extern "C" bool __stdcall _ParseToFileTime(LPCWSTR lpszString, LPCWSTR lpszStop,
 	return true;
 }
 
-extern "C" CFTPFileItem* __stdcall ParseMLSxData(LPCWSTR lpszString)
+extern "C" CFTPFileItem* __stdcall ParseMLSxData(CFTPDirectoryBase* pDirectory, LPCWSTR lpszString)
 {
-	return ParseMLSxDataEx(lpszString, NULL);
+	return ParseMLSxDataEx(pDirectory, lpszString, NULL);
 }
 
-extern "C" CFTPFileItem* __stdcall ParseMLSxDataEx(LPCWSTR lpszString, CFTPFileItem* pItem)
+extern "C" CFTPFileItem* __stdcall ParseMLSxDataEx(CFTPDirectoryBase* pDirectory, LPCWSTR lpszString, CFTPFileItem* pItem)
 {
 	LPCWSTR lp, lpEq, lp2;
 	CFTPFileItem* pRet;
@@ -860,7 +866,7 @@ extern "C" CFTPFileItem* __stdcall ParseMLSxDataEx(LPCWSTR lpszString, CFTPFileI
 	if (pItem)
 		pRet = pItem;
 	else
-		pRet = new CFTPFileItem();
+		pRet = new CFTPFileItem(pDirectory);
 	pRet->iIconIndex = -1;
 	pRet->bWinAttr = false;
 	pRet->type = fitypeFile;
@@ -935,6 +941,8 @@ extern "C" CFTPFileItem* __stdcall ParseMLSxDataEx(LPCWSTR lpszString, CFTPFileI
 			break;
 		}
 	}
+	if (pDirectory)
+		pDirectory->MakeUrl(pRet->strFileName, pRet->strUrl);
 	return pRet;
 }
 
@@ -1037,14 +1045,388 @@ extern "C" void __stdcall ParseSFTPAttributes(ULONG uServerVersion, CFTPFileItem
 		pItem->permissions.deletable = pItem->permissions.renameAllowed = 1;
 }
 
-extern "C" CFTPFileItem* __stdcall ParseSFTPData(ULONG uServerVersion, const CSFTPFileData* pFileData)
+extern "C" CFTPFileItem* __stdcall ParseSFTPData(CFTPDirectoryBase* pDirectory, ULONG uServerVersion, const CSFTPFileData* pFileData)
 {
 	CFTPFileItem* pRet;
 
-	pRet = new CFTPFileItem();
+	pRet = new CFTPFileItem(pDirectory);
 	pRet->iIconIndex = -1;
 	pRet->bWinAttr = false;
 	pRet->strFileName = pFileData->strFileName;
 	ParseSFTPAttributes(uServerVersion, pRet, &pFileData->attr);
+	if (pDirectory)
+		pDirectory->MakeUrl(pRet->strFileName, pRet->strUrl);
 	return pRet;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+CFTPFileItem::CFTPFileItem(CFTPDirectoryBase* pParent)
+	: CDispatchImplNoUnknownT(theApp.GetTypeInfo(IID_IEasySFTPFile))
+	, CReferenceDelegationChild(pParent)
+	, pTargetFile(NULL)
+{
+}
+
+CFTPFileItem::~CFTPFileItem()
+{
+	if (pTargetFile)
+		pTargetFile->Release();
+}
+
+STDMETHODIMP CFTPFileItem::QueryInterface(REFIID riid, void** ppv)
+{
+	if (!ppv)
+		return E_POINTER;
+	*ppv = NULL;
+	if (!IsEqualIID(riid, IID_IUnknown) && !IsEqualIID(riid, IID_IDispatch) &&
+		!IsEqualIID(riid, IID_IEasySFTPFile))
+		return E_NOINTERFACE;
+	*ppv = static_cast<IEasySFTPFile*>(this);
+	AddRef();
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_FileName(BSTR* pFileName)
+{
+	if (!pFileName)
+		return E_POINTER;
+	*pFileName = MyStringToBSTR(strFileName);
+	return *pFileName ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPFileItem::get_IsDirectory(VARIANT_BOOL* pbRet)
+{
+	if (!pbRet)
+		return E_POINTER;
+	*pbRet = IsDirectory() ? VARIANT_TRUE : VARIANT_FALSE;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_IsHidden(VARIANT_BOOL* pbRet)
+{
+	if (!pbRet)
+		return E_POINTER;
+	*pbRet = IsHidden() ? VARIANT_TRUE : VARIANT_FALSE;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_IsShortcut(VARIANT_BOOL* pbRet)
+{
+	if (!pbRet)
+		return E_POINTER;
+	*pbRet = IsShortcut() ? VARIANT_TRUE : VARIANT_FALSE;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_CreateTime(DATE* pdRet)
+{
+	if (!pdRet)
+		return E_POINTER;
+	SYSTEMTIME st;
+	if (!::FileTimeToSystemTime(&ftCreateTime, &st))
+		*pdRet = 0;
+	else if (!::SystemTimeToVariantTime(&st, pdRet))
+		*pdRet = 0;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_ModifyTime(DATE* pdRet)
+{
+	if (!pdRet)
+		return E_POINTER;
+	SYSTEMTIME st;
+	if (!::FileTimeToSystemTime(&ftModifyTime, &st))
+		*pdRet = 0;
+	else if (!::SystemTimeToVariantTime(&st, pdRet))
+		*pdRet = 0;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_Size(hyper* piRet)
+{
+	if (!piRet)
+		return E_POINTER;
+	*piRet = static_cast<hyper>(uliSize.QuadPart);
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_Size32Bit(long* piRet)
+{
+	if (!piRet)
+		return E_POINTER;
+	if (uliSize.QuadPart > 0x7fffffff)
+		*piRet = 0x7fffffff;
+	else
+		*piRet = static_cast<long>(uliSize.QuadPart);
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_Uid(long* piRet)
+{
+	if (!piRet)
+		return E_POINTER;
+	*piRet = static_cast<long>(uUID);
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_Gid(long* piRet)
+{
+	if (!piRet)
+		return E_POINTER;
+	*piRet = static_cast<long>(uGID);
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_OwnerName(BSTR* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = MyStringToBSTR(strOwner);
+	return *pRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPFileItem::get_GroupName(BSTR* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = MyStringToBSTR(strGroup);
+	return *pRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPFileItem::get_ItemType(BSTR* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = MyStringToBSTR(strType);
+	return *pRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPFileItem::get_Url(BSTR* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = MyStringToBSTR(strUrl);
+	return *pRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPFileItem::get_Directory(IEasySFTPDirectory** ppRet)
+{
+	if (!ppRet)
+		return E_POINTER;
+	auto* pParent = GetParent();
+	if (!pParent)
+	{
+		*ppRet = NULL;
+		return S_OK;
+	}
+	return pParent->QueryInterface(IID_IEasySFTPDirectory, reinterpret_cast<void**>(ppRet));
+}
+
+STDMETHODIMP CFTPFileItem::get_HasWinAttribute(VARIANT_BOOL* pbRet)
+{
+	if (!pbRet)
+		return E_POINTER;
+	*pbRet = bWinAttr ? VARIANT_TRUE : VARIANT_FALSE;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_WinAttribute(long* piRet)
+{
+	if (!piRet)
+		return E_POINTER;
+	*piRet = bWinAttr ? static_cast<long>(dwAttributes) : 0;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItem::get_UnixAttribute(long* piRet)
+{
+	if (!piRet)
+		return E_POINTER;
+	*piRet = bWinAttr ? 0 : static_cast<long>(nUnixMode);
+	return S_OK;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+CFTPFileItemList::CFTPFileItemList(CFTPDirectoryBase* pDirectory)
+	: CDispatchImplT(theApp.GetTypeInfo(IID_IEasySFTPFiles))
+	, m_pDirectory(pDirectory)
+{
+	pDirectory->AddRef();
+}
+
+CFTPFileItemList::~CFTPFileItemList()
+{
+	m_pDirectory->Release();
+}
+
+STDMETHODIMP CFTPFileItemList::QueryInterface(REFIID riid, void** ppv)
+{
+	if (!ppv)
+		return E_POINTER;
+	*ppv = NULL;
+	if (!IsEqualIID(riid, IID_IUnknown) && !IsEqualIID(riid, IID_IDispatch) &&
+		!IsEqualIID(riid, IID_IEasySFTPFiles))
+		return E_NOINTERFACE;
+	*ppv = static_cast<IEasySFTPFiles*>(this);
+	AddRef();
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItemList::get_Item(VARIANT key, IEasySFTPFile** ppFile)
+{
+	if (!ppFile)
+		return E_POINTER;
+	if (key.vt == VT_BSTR)
+	{
+		CMyStringW str;
+		MyBSTRToString(key.bstrVal, str);
+		for (int i = 0; i < m_pDirectory->m_aFiles.GetCount(); ++i)
+		{
+			auto* p = m_pDirectory->m_aFiles.GetItem(i);
+			if (p->strFileName.Compare(str) == 0)
+			{
+				return p->QueryInterface(IID_IEasySFTPFile, reinterpret_cast<void**>(ppFile));
+			}
+		}
+		return DISP_E_BADINDEX;
+	}
+	else
+	{
+		ULONGLONG i = 0;
+		switch (key.vt)
+		{
+		case VT_I1:
+			if (key.cVal < 0)
+				return DISP_E_BADINDEX;
+			i = static_cast<ULONGLONG>(key.cVal);
+			break;
+		case VT_I2:
+			if (key.iVal < 0)
+				return DISP_E_BADINDEX;
+			i = static_cast<ULONGLONG>(key.iVal);
+			break;
+		case VT_I4:
+			if (key.lVal < 0)
+				return DISP_E_BADINDEX;
+			i = static_cast<ULONGLONG>(key.lVal);
+			break;
+		case VT_INT:
+			if (key.intVal < 0)
+				return DISP_E_BADINDEX;
+			i = static_cast<ULONGLONG>(key.intVal);
+			break;
+		case VT_I8:
+			if (key.llVal < 0)
+				return DISP_E_BADINDEX;
+			i = static_cast<ULONGLONG>(key.llVal);
+			break;
+		case VT_UI1:
+			i = static_cast<ULONGLONG>(key.bVal);
+			break;
+		case VT_UI2:
+			i = static_cast<ULONGLONG>(key.uiVal);
+			break;
+		case VT_UI4:
+			i = static_cast<ULONGLONG>(key.ulVal);
+			break;
+		case VT_UINT:
+			i = static_cast<ULONGLONG>(key.uintVal);
+			break;
+		case VT_UI8:
+			i = static_cast<ULONGLONG>(key.ullVal);
+			break;
+		default:
+			return DISP_E_TYPEMISMATCH;
+		}
+		if (i >= m_pDirectory->m_aFiles.GetCount())
+			return DISP_E_BADINDEX;
+		return m_pDirectory->m_aFiles.GetItem(static_cast<int>(i))->QueryInterface(IID_IEasySFTPFile, reinterpret_cast<void**>(ppFile));
+	}
+}
+
+STDMETHODIMP CFTPFileItemList::get_Count(long* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = m_pDirectory->m_aFiles.GetCount();
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItemList::get__NewEnum(IUnknown** ppRet)
+{
+	if (!ppRet)
+		return E_POINTER;
+	*ppRet = new CEnum(this);
+	return *ppRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPFileItemList::CEnum::QueryInterface(REFIID riid, void** ppv)
+{
+	if (!ppv)
+		return E_POINTER;
+	*ppv = NULL;
+	if (!IsEqualIID(riid, IID_IUnknown) &&
+		!IsEqualIID(riid, IID_IEnumVARIANT))
+		return E_NOINTERFACE;
+	*ppv = static_cast<IEnumVARIANT*>(this);
+	AddRef();
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItemList::CEnum::Next(ULONG celt, VARIANT* rgelt, ULONG* pceltFetched)
+{
+	if (!rgelt)
+		return E_POINTER;
+	if (!celt)
+		return S_OK;
+	if (pceltFetched)
+		*pceltFetched = 0;
+	auto count = static_cast<ULONG>(m_pList->m_pDirectory->m_aFiles.GetCount());
+	while (m_uPos < count)
+	{
+		CFTPFileItem* pItem = m_pList->m_pDirectory->m_aFiles.GetItem((int)(m_uPos++));
+		rgelt->vt = VT_DISPATCH;
+		rgelt->pdispVal = static_cast<IDispatch*>(pItem);
+		pItem->AddRef();
+		if (pceltFetched)
+			(*pceltFetched)++;
+		rgelt++;
+		if (!--celt)
+			return S_OK;
+	}
+	return S_FALSE;
+}
+
+STDMETHODIMP CFTPFileItemList::CEnum::Skip(ULONG celt)
+{
+	if (!celt)
+		return S_OK;
+	auto count = static_cast<ULONG>(m_pList->m_pDirectory->m_aFiles.GetCount());
+	if (m_uPos + celt > count)
+	{
+		m_uPos = count;
+		return S_FALSE;
+	}
+	m_uPos += celt;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItemList::CEnum::Reset()
+{
+	m_uPos = 0;
+	return S_OK;
+}
+
+STDMETHODIMP CFTPFileItemList::CEnum::Clone(IEnumVARIANT** ppEnum)
+{
+	if (!ppEnum)
+		return E_POINTER;
+	CEnum* pEnum = new CEnum(m_pList);
+	if (!pEnum)
+		return E_OUTOFMEMORY;
+	pEnum->m_uPos = m_uPos;
+	*ppEnum = pEnum;
+	return S_OK;
 }

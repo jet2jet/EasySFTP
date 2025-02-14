@@ -86,7 +86,7 @@ bool CPageantAgent::Query(const void* dataSend, size_t dataSendSize, void** data
 	char mapname[23];
 	HANDLE filemap;
 	unsigned char* p, * ret;
-	int id, retlen;
+	int retlen;
 	COPYDATASTRUCT cds;
 	SECURITY_ATTRIBUTES sa, * psa;
 	PSECURITY_DESCRIPTOR psd = NULL;
@@ -145,9 +145,16 @@ bool CPageantAgent::Query(const void* dataSend, size_t dataSendSize, void** data
 		return false;	       /* *dataReceived == NULL, so failure */
 	}
 	p = (unsigned char*) MapViewOfFile(filemap, FILE_MAP_WRITE, 0, 0, 0);
+	if (!p)
+	{
+		CloseHandle(filemap);
+		if (psd)
+			LocalFree(psd);
+		return false;
+	}
 	memcpy(p, dataSend, dataSendSize);
 	cds.dwData = AGENT_COPYDATA_ID;
-	cds.cbData = 1 + strlen(mapname);
+	cds.cbData = 1 + static_cast<DWORD>(strlen(mapname));
 	cds.lpData = mapname;
 
 	/*
@@ -155,7 +162,7 @@ bool CPageantAgent::Query(const void* dataSend, size_t dataSendSize, void** data
 	 * query is required to be synchronous) or CreateThread failed.
 	 * Either way, we need a synchronous request.
 	 */
-	id = SendMessage(hwnd, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&cds);
+	auto id = SendMessage(hwnd, WM_COPYDATA, (WPARAM)NULL, (LPARAM)&cds);
 	if (id > 0) {
 		uint32_t length_field = GET_32BIT_MSB_FIRST(p);
 		if (length_field > 0 && length_field <= AGENT_MAX_MSGLEN - 4)

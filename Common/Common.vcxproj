@@ -167,6 +167,7 @@
     <ClInclude Include="AppClass.h" />
     <ClInclude Include="Array.h" />
     <ClInclude Include="Convert.h" />
+    <ClInclude Include="Dispatch.h" />
     <ClInclude Include="EnmArray.h" />
     <ClInclude Include="ESFTPFld.h" />
     <ClInclude Include="IDList.h" />
@@ -177,6 +178,7 @@
     <ClInclude Include="MyFunc.h" />
     <ClInclude Include="MyProp.h" />
     <ClInclude Include="MyWindow.h" />
+    <ClInclude Include="RefDelg.h" />
     <ClInclude Include="Splitter.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="SUString.h" />

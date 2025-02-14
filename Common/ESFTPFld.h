@@ -68,7 +68,7 @@ DECLARE_INTERFACE_IID_(IEasySFTPOldDirectory, IUnknown, "AD29C042-B9E3-463e-9DF6
 	STDMETHOD_(ULONG, AddRef)(THIS) PURE;
 	STDMETHOD_(ULONG, Release)(THIS) PURE;
 
-	// *** IEasySFTPDirectory methods ***
+	// *** IEasySFTPOldDirectory methods ***
 	STDMETHOD(GetRootDirectory)(THIS_ IEasySFTPOldDirectory FAR* FAR* ppRootDirectory) PURE;
 
 	STDMETHOD(GetHostInfo)(THIS_ VARIANT_BOOL FAR* pbIsSFTP, int FAR* pnPort, BSTR FAR* pbstrHostName) PURE;

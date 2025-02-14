@@ -7,6 +7,7 @@
 #include "stdafx.h"
 
 #include "ESFTPFld.h"
+#include "../ShellDLL/EasySFTP_h.h"
 #include "Array.h"
 #include "UString.h"
 
@@ -522,7 +523,9 @@ EXTERN_C bool __stdcall InitRegHook()
 	{
 		if (!InitOldRegFunctions())
 			return false;
+	}
 
+	{
 		HMODULE hInstKernel32 = ::GetModuleHandle(_T("kernel32.dll"));
 		T_CreateToolhelp32Snapshot pfnCreateToolhelp32Snapshot;
 
@@ -567,8 +570,11 @@ EXTERN_C bool __stdcall InitRegHook()
 		}
 	}
 
-	s_pRegData = new CMySimpleArray<CMyHookRegKeyData*>();
-	::InitializeCriticalSection(&s_csRegData);
+	if (!s_pRegData)
+	{
+		s_pRegData = new CMySimpleArray<CMyHookRegKeyData*>();
+		::InitializeCriticalSection(&s_csRegData);
+	}
 	return true;
 }
 
@@ -651,10 +657,10 @@ static void __stdcall _ExpandRegEnvs(CMyStringW& rstrData)
 			if (_wcsicmp(lp, L"CLSID") == 0)
 			{
 				str2.Format(L"{%08lX-%04X-%04x-%02X%02X-%02X%02X%02X%02X%02X%02X}",
-					CLSID_EasySFTPOld.Data1, (int) CLSID_EasySFTPOld.Data2, (int) CLSID_EasySFTPOld.Data3,
-					(int) CLSID_EasySFTPOld.Data4[0], (int) CLSID_EasySFTPOld.Data4[1], (int) CLSID_EasySFTPOld.Data4[2],
-					(int) CLSID_EasySFTPOld.Data4[3], (int) CLSID_EasySFTPOld.Data4[4], (int) CLSID_EasySFTPOld.Data4[5],
-					(int) CLSID_EasySFTPOld.Data4[6], (int) CLSID_EasySFTPOld.Data4[7]);
+					CLSID_EasySFTPRoot.Data1, (int) CLSID_EasySFTPRoot.Data2, (int) CLSID_EasySFTPRoot.Data3,
+					(int) CLSID_EasySFTPRoot.Data4[0], (int) CLSID_EasySFTPRoot.Data4[1], (int) CLSID_EasySFTPRoot.Data4[2],
+					(int) CLSID_EasySFTPRoot.Data4[3], (int) CLSID_EasySFTPRoot.Data4[4], (int) CLSID_EasySFTPRoot.Data4[5],
+					(int) CLSID_EasySFTPRoot.Data4[6], (int) CLSID_EasySFTPRoot.Data4[7]);
 				rstrData += str2;
 			}
 			else if (_wcsicmp(lp, L"MODULE") == 0)

@@ -11,13 +11,13 @@
 class CHostTransferPage : public CMyPropertyPage
 {
 public:
-	CHostTransferPage(CHostSettings* pSettings, bool* pbResult);
+	CHostTransferPage(CEasySFTPHostSetting* pSettings, bool* pbResult);
 	virtual ~CHostTransferPage(void);
 
 	enum { IDD = IDD_PROP_TRANSFER };
 
 protected:
-	CHostSettings* m_pSettings;
+	CEasySFTPHostSetting* m_pSettings;
 	bool* m_pbResult;
 	CMyStringArrayW m_arrTextFileType;
 
@@ -25,8 +25,6 @@ protected:
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 	LRESULT OnAddFileClicked(WPARAM wParam, LPARAM lParam);
 	LRESULT OnDelFileClicked(WPARAM wParam, LPARAM lParam);
-	LRESULT OnConnectModeChanged(WPARAM wParam, LPARAM lParam);
-	LRESULT OnLocalPathSearch(WPARAM wParam, LPARAM lParam);
 	LRESULT OnApply(WPARAM wParam, LPARAM lParam);
 	LRESULT OnSetActive(WPARAM wParam, LPARAM lParam);
 };

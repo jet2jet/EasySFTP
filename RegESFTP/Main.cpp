@@ -15,8 +15,24 @@
 #include "resource.h"
 
 // in EasySFTP.dll
-STDAPI EasySFTPRegisterServer();
-STDAPI EasySFTPUnregisterServer();
+STDAPI EasySFTPRegisterServer(bool bForUser);
+STDAPI EasySFTPUnregisterServer(bool bForUser);
+
+static bool __stdcall _IsElevated()
+{
+	auto hProcess = ::GetCurrentProcess();
+	HANDLE hToken;
+	if (!::OpenProcessToken(hProcess, TOKEN_QUERY, &hToken))
+		return false;
+	DWORD dw = 0, dwLen = 0;
+	if (!::GetTokenInformation(hToken, TokenElevation, &dw, sizeof(dw), &dwLen) || dwLen != sizeof(dw))
+	{
+		::CloseHandle(hToken);
+		return false;
+	}
+	::CloseHandle(hToken);
+	return dw != 0;
+}
 
 EXTERN_C int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 {
@@ -38,7 +54,8 @@ EXTERN_C int WINAPI _tWinMain(HINSTANCE, HINSTANCE, LPTSTR, int)
 		}
 	}
 
-	hr = (bUnregister ? EasySFTPUnregisterServer() : EasySFTPRegisterServer());
+	bool bForUser = !_IsElevated();
+	hr = (bUnregister ? EasySFTPUnregisterServer(bForUser) : EasySFTPRegisterServer(bForUser));
 
 	CMyStringW strMsg, strCaption;
 	strCaption.LoadString(IDS_APP_TITLE);

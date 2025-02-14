@@ -4,7 +4,9 @@ EXPORTS
 	DllGetClassObject	PRIVATE
 	DllRegisterServer	PRIVATE
 	DllUnregisterServer	PRIVATE
+	DllInstall			PRIVATE
 
-	EasySFTPCreateRoot  @1
+	EasySFTPCreateRoot  @1 NONAME
+	EasySFTPCreate      @2
 	EasySFTPRegisterServer		@201 NONAME
 	EasySFTPUnregisterServer	@202 NONAME

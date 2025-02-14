@@ -42,6 +42,10 @@ public:
 
 	static void __stdcall SecureEmptyString(CMyStringW& string);
 	static void __stdcall SecureEmptyBuffer(LPVOID lpBuffer, size_t nSize);
+	static void __stdcall SecureEmptyBStr(BSTR bstr)
+	{
+		SecureEmptyBuffer(bstr, sizeof(*bstr) * ::SysStringLen(bstr));
+	}
 
 private:
 	LPWSTR m_lpszBuffer;

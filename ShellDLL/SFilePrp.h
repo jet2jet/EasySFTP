@@ -19,11 +19,11 @@ public:
 public:
 	CMyStringW m_strDirectory;
 	CMyPtrArrayT<CServerFileAttrData> m_aAttrs;
-	// [inout] in: true if the owner can be changed / out: the owner was changed
+	// [in] in: true if the owner can be changed
 	bool m_bChangeOwner;
 	// [in] true if the owner value can be a string
 	bool m_bSupportedName;
-	// [inout] in: true if the attributes can be changed / out: some attributes were changed
+	// [in] in: true if the attributes can be changed
 	bool m_bChangeAttr;
 
 protected:

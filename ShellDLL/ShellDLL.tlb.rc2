@@ -1,0 +1,11 @@
+/*
+ EasySFTP - Copyright (C) 2025 Kuri-Applications
+
+ ShellDLL.tlb.rc2 - bundle tlb file into the resource
+ */
+
+#ifndef _TLB_FILE
+#error _TLB_FILE must be defined
+#endif
+
+1 TYPELIB _TLB_FILE

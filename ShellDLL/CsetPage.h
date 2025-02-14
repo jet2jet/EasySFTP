@@ -11,13 +11,13 @@
 class CHostCharsetPage : public CMyPropertyPage
 {
 public:
-	CHostCharsetPage(CHostSettings* pSettings, bool* pbResult);
+	CHostCharsetPage(CEasySFTPHostSetting* pSettings, bool* pbResult);
 	virtual ~CHostCharsetPage();
 
 	enum { IDD = IDD_PROP_CHARSET };
 
 protected:
-	CHostSettings* m_pSettings;
+	CEasySFTPHostSetting* m_pSettings;
 	bool* m_pbResult;
 
 	virtual bool OnInitDialog(HWND hWndFocus);

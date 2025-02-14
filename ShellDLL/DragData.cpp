@@ -913,11 +913,10 @@ STDMETHODIMP CFTPDataObject::GetData(FORMATETC* pfmtIn, STGMEDIUM* pmdm)
 		hglb = ::GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, nSize);
 		if (!hglb)
 			return STG_E_MEDIUMFULL;
+		auto* pRoot = m_pDirectory->GetRoot();
 		pGroup = (FILEGROUPDESCRIPTOR_UNION*) ::GlobalLock(hglb);
-		//pGroup->a.cItems = m_aFiles.GetCount();
 		pGroup->a.cItems = uCount;
 		pDesc = (FILEDESCRIPTOR_UNION*) (((LPBYTE) pGroup) + CCSIZEOF_STRUCT(FILEGROUPDESCRIPTORW, cItems));
-		//for (i = 0; i < m_aFiles.GetCount(); i++)
 		for (i = 0; i < uCount; i++)
 		{
 			//pItem = m_aFiles.GetItem(i);
@@ -928,7 +927,7 @@ STDMETHODIMP CFTPDataObject::GetData(FORMATETC* pfmtIn, STGMEDIUM* pmdm)
 				pDesc->w.dwFlags = FD_ATTRIBUTES | FD_WRITESTIME | FD_PROGRESSUI | FD_UNICODE;
 				if (TEXTMODE_IS_NO_CONVERTION(m_fTextMode) || pData->pDirectory->IsTextFile(pItem->strFileName) != S_OK)
 					pDesc->w.dwFlags |= FD_FILESIZE;
-				if (m_pDirectory->m_pRoot->m_bAdjustRecvModifyTime)
+				if (pRoot->m_bAdjustRecvModifyTime)
 				{
 					pDesc->w.dwFlags |= FD_CREATETIME;
 					::GetSystemTimeAsFileTime(&pDesc->w.ftCreationTime);

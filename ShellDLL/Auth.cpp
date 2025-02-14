@@ -7,6 +7,7 @@
 #include "StdAfx.h"
 #include "Auth.h"
 
+#include "ShellDLL.h"
 #include "ExBuffer.h"
 #include "Pageant.h"
 #include "WinOpSSH.h"
@@ -15,190 +16,328 @@
 #define new DEBUG_NEW
 #endif
 
-CPasswordAuthentication::~CPasswordAuthentication()
+CAuthSession::~CAuthSession()
 {
-	if (m_lpszPassword)
+	if (pAgent)
 	{
-		_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
-		free(m_lpszPassword);
+		if (lpPageantKeyList)
+			pAgent->FreeKeyList(lpPageantKeyList);
+		delete pAgent;
 	}
 }
 
-AuthReturnType CPasswordAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
+CAuthentication::CAuthentication()
+	: CDispatchImplT(theApp.GetTypeInfo(IID_IEasySFTPAuthentication))
+	, m_Mode(EasySFTPAuthenticationMode::None)
+	, m_pSession(NULL)
 {
-	if (!m_lpszUser)
+}
+
+CAuthentication::~CAuthentication()
+{
+	if (m_pSession != NULL)
 	{
-		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String(&m_dwUserLen));
+		auto* p = static_cast<CAuthSession*>(m_pSession);
+		if (p->dwSignature == AUTH_SESSION_SIGNATURE)
+			delete p;
 	}
-	if (!m_lpszPassword)
+}
+
+STDMETHODIMP CAuthentication::QueryInterface(REFIID riid, void** ppv)
+{
+	if (!ppv)
+		return E_POINTER;
+	*ppv = NULL;
+	if (!IsEqualIID(riid, IID_IUnknown) && !IsEqualIID(riid, IID_IDispatch) &&
+		!IsEqualIID(riid, IID_IEasySFTPAuthentication))
 	{
-		CMyStringW str;
-		pUser->strPassword.GetString(str);
-		m_lpszPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(&m_dwPasswordLen));
-		_SecureStringW::SecureEmptyString(str);
-		if (!m_lpszPassword)
+		return E_NOINTERFACE;
+	}
+	*ppv = static_cast<IEasySFTPAuthentication*>(this);
+	AddRef();
+	return S_OK;
+}
+
+STDMETHODIMP CAuthentication::get_UserName(BSTR* p)
+{
+	if (!p)
+		return E_POINTER;
+	*p = MyStringToBSTR(m_strUserName);
+	return *p ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CAuthentication::put_UserName(BSTR p)
+{
+	MyBSTRToString(p, m_strUserName);
+	return S_OK;
+}
+
+STDMETHODIMP CAuthentication::get_Password(BSTR* p)
+{
+	if (!p)
+		return E_POINTER;
+	CMyStringW str;
+	m_strPassword.GetString(str);
+	*p = MyStringToBSTR(str);
+	_SecureStringW::SecureEmptyString(str);
+	return *p ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CAuthentication::put_Password(BSTR p)
+{
+	CMyStringW str;
+	MyBSTRToString(p, str);
+	m_strPassword = str;
+	_SecureStringW::SecureEmptyString(str);
+	return S_OK;
+}
+
+STDMETHODIMP CAuthentication::get_PublicKeyFileName(BSTR* p)
+{
+	if (!p)
+		return E_POINTER;
+	*p = MyStringToBSTR(m_strPublicKeyFileName);
+	return *p ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CAuthentication::put_PublicKeyFileName(BSTR p)
+{
+	MyBSTRToString(p, m_strPublicKeyFileName);
+	return S_OK;
+}
+
+STDMETHODIMP CAuthentication::get_Type(EasySFTPAuthenticationMode* pMode)
+{
+	if (!pMode)
+		return E_POINTER;
+	*pMode = m_Mode;
+	return S_OK;
+}
+
+STDMETHODIMP CAuthentication::put_Type(EasySFTPAuthenticationMode mode)
+{
+	if (mode < EasySFTPAuthenticationMode::None || mode > EasySFTPAuthenticationMode::WinOpenSSH)
+		return E_INVALIDARG;
+	m_Mode = mode;
+	return S_OK;
+}
+
+STDMETHODIMP CAuthentication::get_AuthSession(LONG_PTR* pOut)
+{
+	if (!pOut)
+		return E_POINTER;
+	*pOut = reinterpret_cast<INT_PTR>(m_pSession);
+	return S_OK;
+}
+
+STDMETHODIMP CAuthentication::put_AuthSession(LONG_PTR session)
+{
+	m_pSession = reinterpret_cast<void*>(session);
+	return S_OK;
+}
+
+AuthReturnType CAuthentication::SSHAuthenticate(IEasySFTPAuthentication* pAuth, LIBSSH2_SESSION* pSession, LPCSTR lpszService, char** ppAuthList)
+{
+	EasySFTPAuthenticationMode mode;
+	if (FAILED(pAuth->get_Type(&mode)))
+		return AuthReturnType::Error;
+	CMyStringW strUserName;
+	BSTR bstr;
+	if (FAILED(pAuth->get_UserName(&bstr)))
+		return AuthReturnType::Error;
+	MyBSTRToString(bstr, strUserName);
+	::SysFreeString(bstr);
+	size_t nUserLen = 0;
+	auto* pUser = reinterpret_cast<LPCSTR>(strUserName.AllocUTF8String(&nUserLen));
+	switch (mode)
+	{
+		case EasySFTPAuthenticationMode::None:
+		{
+			auto ret = libssh2_userauth_list(pSession, pUser, static_cast<UINT>(nUserLen));
+			if (ret)
+			{
+				if (ppAuthList)
+				{
+					auto len = strlen(ret) + 1;
+					auto* lpAuthList = static_cast<char*>(malloc(sizeof(char) * (len + 1)));
+					if (!lpAuthList)
+						return AuthReturnType::Error;
+					for (size_t i = 0; i < len; ++i)
+					{
+						if (ret[i] == ',')
+							lpAuthList[i] = 0;
+						else
+							lpAuthList[i] = ret[i];
+					}
+					lpAuthList[len] = 0;
+					*ppAuthList = lpAuthList;
+				}
+				return AuthReturnType::Error;
+			}
+			else
+			{
+				if (ppAuthList)
+					*ppAuthList = NULL;
+				if (libssh2_userauth_authenticated(pSession))
+					return AuthReturnType::Success;
+				auto err = libssh2_session_last_errno(pSession);
+				if (err == LIBSSH2_ERROR_EAGAIN)
+					return AuthReturnType::Again;
+				return AuthReturnType::Error;
+			}
+		}
+		break;
+		case EasySFTPAuthenticationMode::Password:
+		{
+			if (FAILED(pAuth->get_Password(&bstr)))
+				return AuthReturnType::Error;
+			CMyStringW str;
+			MyBSTRToString(bstr, str);
+			_SecureStringW::SecureEmptyBStr(bstr);
+			::SysFreeString(bstr);
+			size_t nPasswordLen = 0;
+			auto* lpszPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(&nPasswordLen));
+			_SecureStringW::SecureEmptyString(str);
+			if (!lpszPassword)
+				return AuthReturnType::Error;
+
+			auto ret = libssh2_userauth_password_ex(pSession, pUser, static_cast<UINT>(nUserLen),
+				lpszPassword, static_cast<UINT>(nPasswordLen), NULL);
+			_SecureStringW::SecureEmptyBuffer(lpszPassword, sizeof(char) * nPasswordLen);
+			free(lpszPassword);
+			if (ret == LIBSSH2_ERROR_EAGAIN)
+				return AuthReturnType::Again;
+
+			if (ret != 0)
+				return AuthReturnType::Error;
+			return AuthReturnType::Success;
+		}
+		break;
+		case EasySFTPAuthenticationMode::PublicKey:
+		{
+			if (FAILED(pAuth->get_PublicKeyFileName(&bstr)))
+				return AuthReturnType::Error;
+			CMyStringW strPublicKeyFileName;
+			MyBSTRToString(bstr, strPublicKeyFileName);
+			::SysFreeString(bstr);
+			auto* lpszPKeyFileName = reinterpret_cast<LPCSTR>(strPublicKeyFileName.AllocUTF8String());
+			if (FAILED(pAuth->get_Password(&bstr)))
+				return AuthReturnType::Error;
+			CMyStringW str;
+			MyBSTRToString(bstr, str);
+			_SecureStringW::SecureEmptyBStr(bstr);
+			::SysFreeString(bstr);
+			size_t nPasswordLen = 0;
+			auto* lpszPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(&nPasswordLen));
+			_SecureStringW::SecureEmptyString(str);
+			if (!lpszPassword)
+				return AuthReturnType::Error;
+
+			auto ret = libssh2_userauth_publickey_fromfile_ex(pSession, pUser, static_cast<UINT>(nUserLen), NULL, lpszPKeyFileName, lpszPassword);
+			_SecureStringW::SecureEmptyBuffer(lpszPassword, sizeof(char) * nPasswordLen);
+			free(lpszPassword);
+			if (ret == LIBSSH2_ERROR_EAGAIN)
+				return AuthReturnType::Again;
+
+			if (ret != 0)
+				return AuthReturnType::Error;
+			return AuthReturnType::Success;
+		}
+		break;
+		case EasySFTPAuthenticationMode::Pageant:
+			return SSHAuthenticateWithAgent(pAuth, strUserName, pSession, lpszService, []() -> CSSHAgent* { return new CPageantAgent(); });
+		case EasySFTPAuthenticationMode::WinOpenSSH:
+			return SSHAuthenticateWithAgent(pAuth, strUserName, pSession, lpszService, []() -> CSSHAgent* { return new CWinOpenSSHAgent(); });
+		default:
 			return AuthReturnType::Error;
 	}
-
-	auto ret = libssh2_userauth_password_ex(pSession, m_lpszUser, static_cast<UINT>(m_dwUserLen),
-		m_lpszPassword, static_cast<UINT>(m_dwPasswordLen), NULL);
-	if (ret == LIBSSH2_ERROR_EAGAIN)
-		return AuthReturnType::Again;
-
-	m_lpszUser = NULL;
-	_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
-	free(m_lpszPassword);
-	m_lpszPassword = NULL;
-
-	if (ret != 0)
-		return AuthReturnType::Error;
-	return AuthReturnType::Success;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-CChangePasswordAuthentication::~CChangePasswordAuthentication()
+bool CAuthentication::CanRetry(IEasySFTPAuthentication* pAuth)
 {
-	if (m_lpszPassword)
+	EasySFTPAuthenticationMode mode;
+	if (FAILED(pAuth->get_Type(&mode)))
+		return false;
+	if (mode != EasySFTPAuthenticationMode::Pageant && mode != EasySFTPAuthenticationMode::WinOpenSSH)
+		return false;
+	CAuthSession* pAuthSession = NULL;
 	{
-		_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
-		free(m_lpszPassword);
+		void* p = NULL;
+		if (SUCCEEDED(pAuth->get_AuthSession(reinterpret_cast<LONG_PTR*>(&p))) && p)
+		{
+			if (*static_cast<DWORD*>(p) == AUTH_SESSION_SIGNATURE)
+				pAuthSession = static_cast<CAuthSession*>(p);
+		}
 	}
+	if (!pAuthSession)
+		return false;
+
+	if (!pAuthSession->lpPageantKeyList)
+		return false;
+	pAuthSession->dwKeyIndex++;
+	if (pAuthSession->dwKeyIndex >= pAuthSession->dwKeyCount)
+	{
+		pAuth->put_AuthSession(reinterpret_cast<__int3264>(nullptr));
+		delete pAuthSession;
+		return false;
+	}
+
+	DWORD dw = ConvertEndian(*reinterpret_cast<DWORD*>(pAuthSession->lpCurrentKey));
+	pAuthSession->lpCurrentKey += dw + 4;
+	dw = ConvertEndian(*reinterpret_cast<DWORD*>(pAuthSession->lpCurrentKey));
+	pAuthSession->lpCurrentKey += dw + 4;
+	return true;
 }
 
-AuthReturnType CChangePasswordAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
+AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication* pAuth, CMyStringW& strUserName, LIBSSH2_SESSION* pSession, LPCSTR lpszService, CSSHAgent* (*CreateAgent)())
 {
-	if (!m_lpszUser)
-	{
-		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String(&m_dwUserLen));
-	}
-	if (!m_lpszPassword)
-	{
-		CMyStringW str;
-		pUser->strPassword.GetString(str);
-		m_lpszPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(&m_dwPasswordLen));
-		_SecureStringW::SecureEmptyString(str);
-		if (!m_lpszPassword)
-			return AuthReturnType::Error;
-	}
+	size_t nUserLen = 0;
+	auto* lpszUser = reinterpret_cast<LPCSTR>(strUserName.AllocUTF8String(&nUserLen));
 
-	auto cb = [](LIBSSH2_SESSION* pSession, char** newPassword, int* newPasswordLen, void** ppUserPtr) -> void
+	CAuthSession* pAuthSession = NULL;
 	{
-		auto pUser = static_cast<CUserInfo*>(*ppUserPtr);
-		CMyStringW str;
-		pUser->strNewPassword.GetString(str);
-		*newPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(reinterpret_cast<size_t*>(newPasswordLen)));
-		_SecureStringW::SecureEmptyString(str);
-	};
-	*libssh2_session_abstract(pSession) = pUser;
-	auto ret = libssh2_userauth_password_ex(pSession, m_lpszUser, static_cast<UINT>(m_dwUserLen),
-		m_lpszPassword, static_cast<UINT>(m_dwPasswordLen),
-		cb);
-	if (ret == LIBSSH2_ERROR_EAGAIN)
-		return AuthReturnType::Again;
-
-	m_lpszUser = NULL;
-	_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
-	free(m_lpszPassword);
-	m_lpszPassword = NULL;
-
-	if (ret != 0)
-		return AuthReturnType::Error;
-	return AuthReturnType::Success;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-CPublicKeyAuthentication::~CPublicKeyAuthentication()
-{
-	if (m_lpszPassword)
-	{
-		_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
-		free(m_lpszPassword);
-	}
-}
-
-AuthReturnType CPublicKeyAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
-{
-	if (!m_lpszUser)
-	{
-		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String(&m_dwUserLen));
-	}
-	if (!m_lpszPKeyFileName)
-	{
-		m_lpszPKeyFileName = reinterpret_cast<LPCSTR>(pUser->strPKeyFileName.AllocUTF8String());
-	}
-	if (!m_lpszPassword)
-	{
-		CMyStringW str;
-		pUser->strPassword.GetString(str);
-		m_lpszPassword = reinterpret_cast<LPSTR>(str.AllocUTF8StringC(&m_dwPasswordLen));
-		_SecureStringW::SecureEmptyString(str);
-		if (!m_lpszPassword)
-			return AuthReturnType::Error;
+		void* p = NULL;
+		if (SUCCEEDED(pAuth->get_AuthSession(reinterpret_cast<LONG_PTR*>(&p))) && p)
+		{
+			if (*static_cast<DWORD*>(p) == AUTH_SESSION_SIGNATURE)
+				pAuthSession = static_cast<CAuthSession*>(p);
+		}
 	}
 
-	auto ret = libssh2_userauth_publickey_fromfile_ex(pSession, m_lpszUser, static_cast<UINT>(m_dwUserLen), NULL, m_lpszPKeyFileName, m_lpszPassword);
-	if (ret == LIBSSH2_ERROR_EAGAIN)
-		return AuthReturnType::Again;
-
-	m_lpszUser = NULL;
-	_SecureStringW::SecureEmptyBuffer(m_lpszPassword, sizeof(char) * m_dwPasswordLen);
-	free(m_lpszPassword);
-	m_lpszPassword = NULL;
-
-	if (ret != 0)
-		return AuthReturnType::Error;
-	return AuthReturnType::Success;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-CSSHAgentAuthentication::CSSHAgentAuthentication(CSSHAgent* pAgent)
-	: m_pAgent(pAgent)
-	, m_lpszUser(NULL)
-	, m_lpPageantKeyList(NULL)
-	, m_lpCurrentKey(NULL)
-	, m_dwKeyCount(0)
-	, m_dwKeyIndex(0)
-{
-}
-
-CSSHAgentAuthentication::~CSSHAgentAuthentication()
-{
-	if (m_lpPageantKeyList)
-		m_pAgent->FreeKeyList(m_lpPageantKeyList);
-	delete m_pAgent;
-}
-
-AuthReturnType CSSHAgentAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
-{
-	if (!m_lpszUser)
-	{
-		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String());
-	}
-	if (!m_lpPageantKeyList)
+	if (!pAuthSession || !pAuthSession->lpPageantKeyList)
 	{
 		LPBYTE lpKeyList = NULL;
-		auto r = m_pAgent->GetKeyList2(&lpKeyList);
+		auto* pAgent = CreateAgent();
+		auto r = pAgent->GetKeyList2(&lpKeyList);
 		if (!lpKeyList)
+		{
+			delete pAgent;
 			return AuthReturnType::Error;
-		m_lpPageantKeyList = lpKeyList;
-		m_dwKeyCount = ConvertEndian(*((DWORD*) m_lpPageantKeyList));
-		m_dwKeyIndex = 0;
-		m_lpCurrentKey = m_lpPageantKeyList + 4;
+		}
+		pAuthSession = new CAuthSession();
+		pAuthSession->dwSignature = AUTH_SESSION_SIGNATURE;
+		pAuthSession->pAgent = pAgent;
+		pAuthSession->lpPageantKeyList = lpKeyList;
+		pAuthSession->dwKeyCount = ConvertEndian(*((DWORD*)lpKeyList));
+		pAuthSession->dwKeyIndex = 0;
+		pAuthSession->lpCurrentKey = lpKeyList + 4;
+		if (FAILED(pAuth->put_AuthSession(reinterpret_cast<__int3264>(pAuthSession))))
+		{
+			delete pAuthSession;
+			return AuthReturnType::Error;
+		}
 	}
-	LPBYTE p = m_lpCurrentKey;
+	LPBYTE p = pAuthSession->lpCurrentKey;
 
 	LPCSTR lpszKeyType;
 	LPCBYTE pBlob;
 	size_t nBlobLen;
 
 	// get key type data (in the head of blob data)
-	DWORD dwKeyTypeLen = ConvertEndian(*((DWORD*) (p + 4)));
-	lpszKeyType = (LPCSTR) (p + 8);
+	DWORD dwKeyTypeLen = ConvertEndian(*((DWORD*)(p + 4)));
+	lpszKeyType = (LPCSTR)(p + 8);
 
-	nBlobLen = (size_t) ConvertEndian(*((DWORD*) p));
+	nBlobLen = (size_t)ConvertEndian(*((DWORD*)p));
 	pBlob = (p + 4);
 	p += nBlobLen + 4;
 
@@ -215,16 +354,16 @@ AuthReturnType CSSHAgentAuthentication::Authenticate(LIBSSH2_SESSION* pSession, 
 	}
 #endif
 
-	void* abstract = this;
-	auto ret = libssh2_userauth_publickey(pSession, m_lpszUser, pBlob, nBlobLen,
+	void* abstract = pAuthSession;
+	auto ret = libssh2_userauth_publickey(pSession, lpszUser, pBlob, nBlobLen,
 		[](LIBSSH2_SESSION*, LPBYTE* sig, size_t* sig_len, LPCBYTE data, size_t data_len, void** abstract) -> int
 		{
 			*sig = NULL;
 			*sig_len = 0;
-			CSSHAgentAuthentication* pThis = static_cast<CSSHAgentAuthentication*>(*abstract);
-			LPBYTE lpCurrentKey = pThis->m_lpCurrentKey;
+			CAuthSession* pAuthSession = static_cast<CAuthSession*>(*abstract);
+			LPBYTE lpCurrentKey = pAuthSession->lpCurrentKey;
 			size_t nSignedLen;
-			auto buff = pThis->m_pAgent->SignSSH2Key(lpCurrentKey, data, data_len, &nSignedLen);
+			auto buff = pAuthSession->pAgent->SignSSH2Key(lpCurrentKey, data, data_len, &nSignedLen);
 			LPBYTE pSignedData = static_cast<LPBYTE>(buff);
 			if (nSignedLen < 4 || !buff)
 			{
@@ -233,7 +372,7 @@ AuthReturnType CSSHAgentAuthentication::Authenticate(LIBSSH2_SESSION* pSession, 
 				return LIBSSH2_ERROR_AGENT_PROTOCOL;
 			}
 			// skip signature length
-			auto entireLen = ConvertEndian(*((DWORD*) pSignedData));
+			auto entireLen = ConvertEndian(*((DWORD*)pSignedData));
 			pSignedData += 4;
 			nSignedLen -= 4;
 			// skip signing method
@@ -242,7 +381,7 @@ AuthReturnType CSSHAgentAuthentication::Authenticate(LIBSSH2_SESSION* pSession, 
 				free(buff);
 				return LIBSSH2_ERROR_AGENT_PROTOCOL;
 			}
-			auto methodLen = ConvertEndian(*((DWORD*) pSignedData));
+			auto methodLen = ConvertEndian(*((DWORD*)pSignedData));
 			pSignedData += 4;
 			nSignedLen -= 4;
 			if (nSignedLen < methodLen)
@@ -259,7 +398,7 @@ AuthReturnType CSSHAgentAuthentication::Authenticate(LIBSSH2_SESSION* pSession, 
 				free(buff);
 				return LIBSSH2_ERROR_AGENT_PROTOCOL;
 			}
-			auto signatureLen = ConvertEndian(*((DWORD*) pSignedData));
+			auto signatureLen = ConvertEndian(*((DWORD*)pSignedData));
 			pSignedData += 4;
 			nSignedLen -= 4;
 			if (nSignedLen < signatureLen)
@@ -281,89 +420,14 @@ AuthReturnType CSSHAgentAuthentication::Authenticate(LIBSSH2_SESSION* pSession, 
 			return 0;
 		},
 		&abstract);
-	
+
 	if (ret == LIBSSH2_ERROR_EAGAIN)
 		return AuthReturnType::Again;
 
-	m_lpszUser = NULL;
-
 	if (ret != 0)
 		return AuthReturnType::Error;
+
+	delete pAuthSession;
+	pAuth->put_AuthSession(reinterpret_cast<__int3264>(nullptr));
 	return AuthReturnType::Success;
-}
-
-bool CSSHAgentAuthentication::CanRetry()
-{
-	if (!m_lpPageantKeyList)
-		return false;
-	m_dwKeyIndex++;
-	if (m_dwKeyIndex >= m_dwKeyCount)
-	{
-		m_pAgent->FreeKeyList(m_lpPageantKeyList);
-		m_lpPageantKeyList = NULL;
-		m_dwKeyCount = 0;
-		return false;
-	}
-
-	DWORD dw = ConvertEndian(*((DWORD*) m_lpCurrentKey));
-	m_lpCurrentKey += dw + 4;
-	dw = ConvertEndian(*((DWORD*) m_lpCurrentKey));
-	m_lpCurrentKey += dw + 4;
-	return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-CPageantAuthentication::CPageantAuthentication()
-	: CSSHAgentAuthentication(new CPageantAgent())
-{
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-CWinOpenSSHAgentAuthentication::CWinOpenSSHAgentAuthentication()
-	: CSSHAgentAuthentication(new CWinOpenSSHAgent())
-{
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-CNoneAuthentication::~CNoneAuthentication()
-{
-	if (m_lpAuthList)
-		free(m_lpAuthList);
-}
-
-AuthReturnType CNoneAuthentication::Authenticate(LIBSSH2_SESSION* pSession, CUserInfo* pUser, LPCSTR lpszService)
-{
-	if (!m_lpszUser)
-	{
-		m_lpszUser = reinterpret_cast<LPCSTR>(pUser->strName.AllocUTF8String(&m_dwUserLen));
-	}
-
-	auto ret = libssh2_userauth_list(pSession, m_lpszUser, static_cast<UINT>(m_dwUserLen));
-	if (!ret)
-	{
-		if (libssh2_userauth_authenticated(pSession))
-			return AuthReturnType::Success;
-		auto err = libssh2_session_last_errno(pSession);
-		if (err == LIBSSH2_ERROR_EAGAIN)
-			return AuthReturnType::Again;
-		m_lpAuthList = NULL;
-		return AuthReturnType::Error;
-	}
-
-	auto len = strlen(ret) + 1;
-	m_lpAuthList = static_cast<char*>(malloc(sizeof(char) * (len + 1)));
-	if (!m_lpAuthList)
-		return AuthReturnType::Error;
-	for (size_t i = 0; i < len; ++i)
-	{
-		if (ret[i] == ',')
-			m_lpAuthList[i] = 0;
-		else
-			m_lpAuthList[i] = ret[i];
-	}
-	m_lpAuthList[len] = 0;
-	return AuthReturnType::Error;
 }

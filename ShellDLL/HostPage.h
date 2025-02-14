@@ -11,7 +11,7 @@
 class CHostGeneralSettingPage : public CMyPropertyPage
 {
 public:
-	CHostGeneralSettingPage(CHostSettings* pSettings, bool* pbResult);
+	CHostGeneralSettingPage(CEasySFTPHostSetting* pSettings, bool* pbResult);
 	virtual ~CHostGeneralSettingPage();
 
 	enum { IDD = IDD_PROP_HOST };
@@ -19,7 +19,7 @@ public:
 	bool m_bNoModeChange;
 
 protected:
-	CHostSettings* m_pSettings;
+	CEasySFTPHostSetting* m_pSettings;
 	bool* m_pbResult;
 
 	virtual bool OnInitDialog(HWND hWndFocus);

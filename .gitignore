@@ -15,3 +15,7 @@ obj
 ipch
 ShellDLL/work
 EasySFTP/work
+
+# auto-generated file
+version-hash.txt
+version-hash.h

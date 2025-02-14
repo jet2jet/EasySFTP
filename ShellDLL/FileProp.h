@@ -7,7 +7,7 @@
 #pragma once
 
 class CFTPDirectoryBase;
-struct CFTPFileItem;
+class CFTPFileItem;
 
 class CFTPFileItemPropertyStore : public CUnknownImplT<IPropertyStore>
 {

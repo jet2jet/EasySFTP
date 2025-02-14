@@ -24,7 +24,7 @@ public:
 	virtual bool __stdcall CheckFingerPrint(const BYTE* pFingerPrint, size_t nLen) = 0;
 };
 
-class CSSH2Client : public CUnknownImpl
+class CSSH2Client : public CReferenceCountClassBase
 {
 public:
 	CSSH2Client(void);
@@ -35,7 +35,7 @@ public:
 	bool OnFirstReceive();
 	// <0 : error, =0 : wait for first kex, >0 : succeeded
 	int OnHandshake(CSSH2FingerPrintHandler* pHandler);
-	AuthReturnType Authenticate(char nAuthType, CUserInfo* pUserInfo);
+	AuthReturnType Authenticate(IEasySFTPAuthentication* pAuth);
 	bool CanRetryAuthenticate();
 	void EndAuthenticate();
 	LPSTR AvailableAuthTypes();
@@ -48,7 +48,8 @@ public:
 private:
 	LIBSSH2_SESSION* m_pSession;
 	CExBuffer m_bufferMyProposal, m_bufferSvProposal;
-	CAuthentication* m_pAuth;
-	char m_nAuthType;
+	IEasySFTPAuthentication* m_pAuth;
+	char* m_lpAuthList;
+	EasySFTPAuthenticationMode m_nAuthType;
 	bool StartKeyExchange();
 };

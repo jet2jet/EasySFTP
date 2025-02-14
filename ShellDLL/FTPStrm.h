@@ -6,6 +6,12 @@
 
 #pragma once
 
+#include "Dispatch.h"
+#include "TferStat.h"
+#include "Transfer.h"
+
+EXTERN_C HRESULT __stdcall CopyStream(IStream* pSource, IStream* pDestination, void* pvObject, CTransferStatus* pStatus);
+
 class CFTPDirectoryRootBase;
 
 class CFTPFileStream : public CUnknownImplT<IStream>
@@ -39,4 +45,31 @@ public:
 private:
 	CFTPDirectoryRootBase* m_pRoot;
 	HANDLE m_hFile;
+};
+
+class CEasySFTPStream : public CDispatchImplT<IEasySFTPStream>
+{
+public:
+	CEasySFTPStream(IStream* pStreamBase, IEasySFTPFile* pFile, CTransferDialog* pTransferDialog, CTransferDialog::CTransferItem* pTransfer);
+	virtual ~CEasySFTPStream();
+
+	STDMETHOD(QueryInterface)(REFIID riid, void** ppvObject);
+
+	STDMETHOD(Read)(void* buffer, long length, long* piRead);
+	STDMETHOD(Write)(const void* buffer, long length, long* piWritten);
+	STDMETHOD(ReadAsUtf8String)(long length, BSTR* pbRet);
+	STDMETHOD(WriteAsUtf8String)(BSTR bstrString, long* piWritten);
+	STDMETHOD(Seek)(long pos, EasySFTPSeekOrigin origin, long* pNew);
+	STDMETHOD(Seek64)(hyper pos, EasySFTPSeekOrigin origin, hyper* pNew);
+	STDMETHOD(get_File)(IEasySFTPFile** ppFile);
+
+private:
+	void UpdatePos(ULONGLONG newPos);
+
+private:
+	IStream* m_pStreamBase;
+	IEasySFTPFile* m_pFile;
+	CTransferDialog* m_pTransferDialog;
+	CTransferDialog::CTransferItem* m_pTransfer;
+	ULONGLONG m_uliPos;
 };

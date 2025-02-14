@@ -264,6 +264,8 @@ static void __stdcall FileAttributesToString(DWORD dwAttribute, CMyStringW& ret)
 
 HRESULT __stdcall _GetFileItemPropData(CFTPDirectoryBase* pDirectory, CFTPFileItem* p, const PROPERTYKEY& key, VARIANT* pv)
 {
+	if (p->iIconIndex == -1)
+		FillFileItemInfo(p);
 	switch (_MyPropertyKeyToStringID(key))
 	{
 	case IDS_HEAD_NAME:
@@ -420,22 +422,60 @@ HRESULT __stdcall _GetFileItemPropData(CFTPDirectoryBase* pDirectory, CFTPFileIt
 	return S_OK;
 }
 
+static HRESULT _PickFileNameFromVariant(const VARIANT& file, CMyStringW& str, CFTPDirectoryBase* pDirCheck = NULL)
+{
+	if (file.vt == VT_DISPATCH || file.vt == VT_UNKNOWN)
+	{
+		if (!file.punkVal)
+			return DISP_E_TYPEMISMATCH;
+		IEasySFTPFile* pFile;
+		auto hr = file.punkVal->QueryInterface(IID_IEasySFTPFile, reinterpret_cast<void**>(&pFile));
+		if (FAILED(hr))
+			return DISP_E_TYPEMISMATCH;
+		if (pDirCheck)
+		{
+			IEasySFTPDirectory* pDir;
+			hr = pFile->get_Directory(&pDir);
+			if (FAILED(hr))
+				return E_INVALIDARG;
+			pDir->Release();
+			if (pDir != pDirCheck->GetThisDirectory())
+				return E_INVALIDARG;
+		}
+		BSTR bstr;
+		hr = pFile->get_FileName(&bstr);
+		if (FAILED(hr))
+			return hr;
+		MyBSTRToString(bstr, str);
+		::SysFreeString(bstr);
+		return S_OK;
+	}
+	else if (file.vt == VT_BSTR)
+	{
+		if (!file.bstrVal)
+			return E_INVALIDARG;
+		MyBSTRToString(file.bstrVal, str);
+		return S_OK;
+	}
+	else
+	{
+		return DISP_E_TYPEMISMATCH;
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 CFTPDirectoryBase::CFTPDirectoryBase(
 	CDelegateMallocData* pMallocData,
 	CFTPDirectoryItem* pItemMe,
 	CFTPDirectoryBase* pParent,
-	CFTPDirectoryRootBase* pRoot,
 	LPCWSTR lpszDirectory)
 	: CFolderBase(pMallocData)
-	, m_pItemMe(pItemMe)
 	, m_pParent(pParent)
-	, m_pRoot(pRoot)
+	, m_pItemMe(pItemMe)
 	, m_strDirectory(lpszDirectory)
 {
 	pParent->AddRef();
-	pRoot->AddRef();
 	m_bIsRoot = false;
 
 	CommonConstruct();
@@ -443,12 +483,12 @@ CFTPDirectoryBase::CFTPDirectoryBase(
 
 CFTPDirectoryBase::CFTPDirectoryBase(
 	CDelegateMallocData* pMallocData,
-	CFTPDirectoryItem* pItemMe)
+	CFTPDirectoryItem* pItemMe,
+	ITypeInfo* pInfo)
 	: CFolderBase(pMallocData)
+	, m_pParent(NULL)
 	, m_pItemMe(pItemMe)
 {
-	m_pParent = NULL;
-	m_pRoot = NULL;
 	m_bIsRoot = true;
 
 	CommonConstruct();
@@ -464,10 +504,8 @@ void CFTPDirectoryBase::CommonConstruct()
 	if (m_pItemMe)
 	{
 		m_pItemMe->AddRef();
-		m_pItemMe->pDirectory = this;
 	}
 
-	::InitializeCriticalSection(&m_csRefs);
 	::InitializeCriticalSection(&m_csFiles);
 	CMyStringW str;
 	str.Format(L"CFTPDirectoryBase::CommonConstruct() for (0x%p), count = 1\n",
@@ -477,78 +515,77 @@ void CFTPDirectoryBase::CommonConstruct()
 
 CFTPDirectoryBase::~CFTPDirectoryBase()
 {
-	if (m_pParent)
-		m_pParent->Release();
 	if (m_pItemMe)
-	{
-		m_pItemMe->pDirectory = NULL;
 		m_pItemMe->Release();
-	}
 	//#ifdef _DEBUG
 	//	m_pParent = NULL;
 	//	m_pItemMe = NULL;
 	//#endif
-	register int i = m_aDirectories.GetCount();
-	while (i--)
-	{
-		CFTPDirectoryItem* p = m_aDirectories.GetItem(i);
-		m_aDirectories.RemoveItem(i);
-		//if (p->pDirectory)
-		//	p->pDirectory->Release();
-		//delete p;
-		p->Release();
-	}
 	//#ifdef _DEBUG
 	//	m_aDirectories.RemoveAll();
 	//#endif
-	::EnterCriticalSection(&m_csFiles);
-	i = m_aFiles.GetCount();
-	while (i--)
-	{
-		CFTPFileItem* pItem = m_aFiles.GetItem(i);
-		pItem->Release();
-	}
-	m_aFiles.RemoveAll();
-	::LeaveCriticalSection(&m_csFiles);
-	if (!m_bIsRoot)
-		m_pRoot->Release();
 	//#ifdef _DEBUG
 	//	m_pRoot = NULL;
 	//#endif
 
 	::DeleteCriticalSection(&m_csFiles);
-	::DeleteCriticalSection(&m_csRefs);
+
+	//if (m_pParent)
+	//	m_pParent->Release();
+}
+
+ULONG CFTPDirectoryBase::DetachAndRelease()
+{
+	if (m_pParent)
+	{
+		ULONG c = m_uRef;
+		for (ULONG u = 0; u < c; ++u)
+			m_pParent->Release();
+		m_pParent = NULL;
+	}
+	auto i = m_aDirectories.GetCount();
+	while (i--)
+	{
+		CFTPDirectoryItem* p = m_aDirectories.GetItem(i);
+		m_aDirectories.RemoveItem(i);
+		if (p->pDirectory)
+			p->pDirectory->DetachAndRelease();
+		p->Release();
+	}
+	::EnterCriticalSection(&m_csFiles);
+	i = m_aFiles.GetCount();
+	while (i--)
+	{
+		CFTPFileItem* pItem = m_aFiles.GetItem(i);
+		pItem->DetachParent();
+		pItem->Release();
+	}
+	m_aFiles.RemoveAll();
+	::LeaveCriticalSection(&m_csFiles);
+
+	return Release();
 }
 
 STDMETHODIMP_(ULONG) CFTPDirectoryBase::AddRef()
 {
-	::EnterCriticalSection(&m_csRefs);
-	//ULONG ret = (ULONG) ::InterlockedIncrement((LONG*) &m_uRef);
-	ULONG ret = ++m_uRef;
-	::LeaveCriticalSection(&m_csRefs);
+	ULONG ret = ::InterlockedIncrement(&m_uRef);
 	//#ifdef _DEBUG
 	//	CMyStringW str;
 	//	str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p), count = %lu\n",
 	//		(LPCWSTR) m_strDirectory, (void*) this, ret);
 	//	OutputDebugString(str);
 	//#endif
+	if (m_pParent)
+		m_pParent->AddRef();
 	return ret;
-	//return (ULONG) ::InterlockedIncrement((LONG*) &m_uRef);
 }
 
 STDMETHODIMP_(ULONG) CFTPDirectoryBase::Release()
 {
-	::EnterCriticalSection(&m_csRefs);
+	if (m_pParent)
+		m_pParent->Release();
 	ULONG ret;
-	//ret = (ULONG) ::InterlockedDecrement((LONG*) &m_uRef);
-	ret = --m_uRef;
-	if (!ret && m_pItemMe)
-	{
-		m_pItemMe->pDirectory = NULL;
-		m_pItemMe->Release();
-		m_pItemMe = NULL;
-	}
-	::LeaveCriticalSection(&m_csRefs);
+	ret = ::InterlockedDecrement(&m_uRef);
 
 	//#ifdef _DEBUG
 	//	CMyStringW str;
@@ -570,29 +607,54 @@ STDMETHODIMP CFTPDirectoryBase::QueryInterface(REFIID riid, void** ppv)
 		return CreateViewObject(NULL, riid, ppv);
 	else if (IsEqualIID(riid, IID_IThumbnailHandlerFactory))
 	{
-		*ppv = (IThumbnailHandlerFactory*)this;
+		*ppv = static_cast<IThumbnailHandlerFactory*>(this);
 		AddRef();
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, __uuidof(IShellFolderPropertyInformation)))
 	{
-		*ppv = (IShellFolderPropertyInformation*)this;
+		*ppv = static_cast<IShellFolderPropertyInformation*>(this);
+		AddRef();
+		return S_OK;
+	}
+	else if (IsEqualIID(riid, IID_IUnknown) ||
+		IsEqualIID(riid, IID_IDispatch) ||
+		IsEqualIID(riid, IID_IEasySFTPDirectory))
+	{
+		*ppv = GetThisDirectory();
+		AddRef();
+		return S_OK;
+	}
+	else if (IsEqualIID(riid, IID_CFTPDirectoryBase))
+	{
+		*ppv = static_cast<CFTPDirectoryBase*>(this);
 		AddRef();
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, IID_IEasySFTPOldDirectory))
 	{
-		*ppv = (IEasySFTPOldDirectory*)this;
+		*ppv = static_cast<IEasySFTPOldDirectory*>(this);
 		AddRef();
 		return S_OK;
 	}
 	else if (IsEqualIID(riid, IID_IStorage))
 	{
-		*ppv = (IStorage*)this;
+		*ppv = static_cast<IStorage*>(this);
+		AddRef();
+		return S_OK;
+	}
+	else if (IsEqualIID(riid, IID_IProvideClassInfo))
+	{
+		*ppv = static_cast<IProvideClassInfo*>(this);
 		AddRef();
 		return S_OK;
 	}
 	return CFolderBase::QueryInterface(riid, ppv);
+}
+
+STDMETHODIMP CFTPDirectoryBase::GetClassInfo(ITypeInfo** ppTI)
+{
+	return theApp.m_pTypeLib->GetTypeInfoOfGuid(CLSID_EasySFTPDirectory, ppTI);
 }
 
 STDMETHODIMP CFTPDirectoryBase::EnumObjects(HWND hWnd, SHCONTF grfFlags, IEnumIDList** ppenumIDList)
@@ -603,9 +665,10 @@ STDMETHODIMP CFTPDirectoryBase::EnumObjects(HWND hWnd, SHCONTF grfFlags, IEnumID
 	{
 		if (!(grfFlags & SHCONTF_FASTITEMS))
 		{
+			auto* pRoot = GetRoot();
 			m_hWndOwnerCache = hWnd;
-			m_pRoot->m_hWndOwnerCache = hWnd;
-			if (!m_pRoot->ReceiveDirectory(hWnd, this, m_strDirectory, &m_bDirReceived))
+			pRoot->m_hWndOwnerCache = hWnd;
+			if (!pRoot->ReceiveDirectory(hWnd, this, m_strDirectory, &m_bDirReceived))
 			{
 				*ppenumIDList = NULL;
 				return S_FALSE;
@@ -674,24 +737,28 @@ STDMETHODIMP CFTPDirectoryBase::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc, 
 		!IsEqualIID(riid, IID_IStorage))
 		return E_NOINTERFACE;
 
-	CFTPDirectoryItem* pDirItem = GetAlreadyOpenedDirectory(pidl);
+	PCUIDLIST_RELATIVE pidlNext = NULL;
+	auto* pRoot = GetRoot();
+	CFTPDirectoryItem* pDirItem = GetAlreadyOpenedDirectory(pidl, &pidlNext);
+	CMyStringW strRealPath;
 	if (pDirItem)
 	{
-		HRESULT hr = pDirItem->pDirectory->QueryInterface(riid, ppv);
-		pDirItem->Release();
-		return hr;
+		// strRealPath includes the child item only, so use BindToObject later with pidlNext
+		strRealPath = pDirItem->strRealPath;
 	}
-	CMyStringW strRealPath;
-	if (!m_pRoot->ValidateDirectory(m_strDirectory, pidl, strRealPath))
-		return E_INVALIDARG;
-	if (strRealPath.IsEmpty())
-		return E_INVALIDARG;
+	else
+	{
+		if (!pRoot->ValidateDirectory(m_strDirectory, pidl, strRealPath))
+			return E_INVALIDARG;
+		if (strRealPath.IsEmpty())
+			return E_INVALIDARG;
+	}
 
 	LPCWSTR lpw = strRealPath;
 	CFTPDirectoryBase* pParent;
 	if (*lpw == L'/')
 	{
-		pParent = m_pRoot;
+		pParent = pRoot;
 		lpw++;
 	}
 	else
@@ -700,12 +767,10 @@ STDMETHODIMP CFTPDirectoryBase::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc, 
 	HRESULT hr = pParent->OpenNewDirectory(lpw, &pRet);
 	if (FAILED(hr))
 		return hr;
-	//{
-	//	PIDLIST_ABSOLUTE pidlChild = ::AppendItemIDList(m_pidlMe, pidl);
-	//	hr = pRet->Initialize(pidlChild);
-	//	::CoTaskMemFree(pidlChild);
-	//}
-	hr = pRet->QueryInterface(riid, ppv);
+	if (pidlNext)
+		hr = pRet->BindToObject(pidlNext, pbc, riid, ppv);
+	else
+		hr = pRet->QueryInterface(riid, ppv);
 	pRet->Release();
 
 	return hr;
@@ -722,14 +787,6 @@ STDMETHODIMP CFTPDirectoryBase::BindToStorage(PCUIDLIST_RELATIVE pidl, LPBC pbc,
 		!IsEqualIID(riid, IID_ISequentialStream) &&
 		!IsEqualIID(riid, IID_IStream))
 		return E_NOINTERFACE;
-
-	CFTPDirectoryItem* pDirItem = GetAlreadyOpenedDirectory(pidl);
-	if (pDirItem)
-	{
-		HRESULT hr = pDirItem->pDirectory->QueryInterface(riid, ppv);
-		pDirItem->Release();
-		return hr;
-	}
 
 	CFTPDirectoryBase* pDir;
 	CFTPFileItem* p = GetFileItem(pidl, &pDir);
@@ -802,7 +859,7 @@ STDMETHODIMP CFTPDirectoryBase::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pid
 	{
 		if (!m_bDirReceived)
 		{
-			if (!m_pRoot->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
+			if (!GetRoot()->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
 				return E_UNEXPECTED;
 		}
 		pItem1 = GetFileItem(str1);
@@ -923,9 +980,9 @@ STDMETHODIMP CFTPDirectoryBase::CompareIDs(LPARAM lParam, PCUIDLIST_RELATIVE pid
 					r = (pItem2->IsDirectory() ? 0 : -1);
 				else if (pItem2->IsDirectory())
 					r = 1;
-				else if (IsTextFile(pItem1->strFileName))
-					r = (IsTextFile(pItem2->strFileName) ? 0 : -1);
-				else if (IsTextFile(pItem2->strFileName))
+				else if (IsTextFile(pItem1->strFileName) == S_OK)
+					r = (IsTextFile(pItem2->strFileName) == S_OK ? 0 : -1);
+				else if (IsTextFile(pItem2->strFileName) == S_OK)
 					r = 1;
 				else
 					r = 0;
@@ -978,10 +1035,11 @@ STDMETHODIMP CFTPDirectoryBase::CreateViewObject(HWND hWndOwner, REFIID riid, vo
 {
 	if (IsEqualIID(riid, IID_IExtractIconA) || IsEqualIID(riid, IID_IExtractIconW))
 	{
-		CFTPFileItem* pItem = new CFTPFileItem();
+		CFTPFileItem* pItem = new CFTPFileItem(this);
 		pItem->bWinAttr = false;
 		pItem->nUnixMode = S_IFDIR;
 		pItem->strFileName = m_pItemMe->strName;
+		MakeUrl(CMyStringW(), pItem->strUrl);
 		pItem->iIconIndex = -1;
 		CFTPFileItemIcon* pIcon = new CFTPFileItemIcon(pItem);
 		HRESULT hr = pIcon->QueryInterface(riid, ppv);
@@ -1035,17 +1093,6 @@ STDMETHODIMP CFTPDirectoryBase::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY
 		if ((req & (SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER | SFGAO_HIDDEN | SFGAO_LINK | SFGAO_HASSTORAGE | SFGAO_STREAM)) != 0)
 		{
 			CFTPFileItem* p;
-			//CSFTPFileItem UNALIGNED* pData = (CSFTPFileItem UNALIGNED*) apidl[u];
-			//if (pData->bHasAttribute)
-			//{
-			//	if (pData->bIsDirectory)
-			//		f |= SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER;
-			//	if (pData->bIsHidden)
-			//		f |= SFGAO_HIDDEN;
-			//	if (pData->bIsShortcut)
-			//		f |= SFGAO_LINK;
-			//}
-			//else
 
 			CSFTPFileItem UNALIGNED* pFItem = (CSFTPFileItem UNALIGNED*) apidl[u];
 			if ((req & ~(SFGAO_BROWSABLE | SFGAO_FOLDER | SFGAO_DROPTARGET | SFGAO_HASSUBFOLDER | SFGAO_HASSTORAGE | SFGAO_STREAM | (pFItem->bHasAttribute ? (SFGAO_HIDDEN | SFGAO_LINK) : 0))) == 0)
@@ -1067,9 +1114,10 @@ STDMETHODIMP CFTPDirectoryBase::GetAttributesOf(UINT cidl, PCUITEMID_CHILD_ARRAY
 			{
 				if (!m_bDirReceived)
 				{
+					auto* pRoot = GetRoot();
 					if (!m_hWndOwnerCache)
-						m_hWndOwnerCache = m_pRoot->m_hWndOwnerCache;
-					if (!m_pRoot->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
+						m_hWndOwnerCache = pRoot->m_hWndOwnerCache;
+					if (!pRoot->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
 						return E_UNEXPECTED;
 				}
 				p = GetFileItem(str);
@@ -1135,6 +1183,7 @@ STDMETHODIMP CFTPDirectoryBase::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUITEM
 
 	CMyPtrArrayT<CFTPFileItem> aItems;
 	CMyStringW str;
+	auto* pRoot = GetRoot();
 	for (UINT u = 0; u < cidl; u++)
 	{
 		if (!::PickupFileName(apidl[u], str))
@@ -1142,8 +1191,8 @@ STDMETHODIMP CFTPDirectoryBase::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUITEM
 		if (!m_bDirReceived && !bIsIcon)
 		{
 			m_hWndOwnerCache = hWndOwner;
-			m_pRoot->m_hWndOwnerCache = hWndOwner;
-			if (!m_pRoot->ReceiveDirectory(hWndOwner, this, m_strDirectory, &m_bDirReceived))
+			pRoot->m_hWndOwnerCache = hWndOwner;
+			if (!pRoot->ReceiveDirectory(hWndOwner, this, m_strDirectory, &m_bDirReceived))
 				return E_UNEXPECTED;
 		}
 		if (m_bDirReceived)
@@ -1198,7 +1247,7 @@ STDMETHODIMP CFTPDirectoryBase::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUITEM
 	}
 	else if (IsEqualIID(riid, IID_IThumbnailProvider))
 	{
-		if (!m_pRoot->m_bUseThumbnailPreview)
+		if (!pRoot->m_bUseThumbnailPreview)
 			return E_NOINTERFACE;
 		if (aItems.GetCount() != 1)
 			return E_INVALIDARG;
@@ -1232,7 +1281,7 @@ STDMETHODIMP CFTPDirectoryBase::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUITEM
 
 	CFTPDataObject* pObj;
 	AddRef();
-	hr = m_pRoot->GetFTPItemUIObjectOf(hWndOwner, this, aItems, &pObj);
+	hr = pRoot->GetFTPItemUIObjectOf(hWndOwner, this, aItems, &pObj);
 	Release();
 	if (SUCCEEDED(hr))
 	{
@@ -1272,56 +1321,26 @@ STDMETHODIMP CFTPDirectoryBase::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uF
 		//	return E_INVALIDARG;
 		if (uFlags & (SHGDN_FORPARSING | SHGDN_FORADDRESSBAR))
 		{
-			CMyStringW strHost(m_pRoot->m_strHostName); // avoid multithreaded-free for LPCSTR
 			CMyStringW str2;
-			int nDefPort;
-			str = m_pRoot->GetProtocolName(nDefPort);
-			str += L"://";
-			GetHostNameForUrl(strHost, str2);
-			str += str2;
-			if (m_pRoot->m_nPort != nDefPort)
-			{
-				str2.Format(L"%d", m_pRoot->m_nPort);
-				str += L':';
-				str += str2;
-			}
-			//str2.Empty();
-			//CFTPDirectoryBase* pd = this;
-			//while (pd)
-			//{
-			//	if (pd == (CFTPDirectoryBase*) m_pRoot)
-			//		break;
-			//	str2.InsertString(pd->m_strDirectory, 0);
-			//	str2.InsertChar(L'/', 0);
-			//	pd = pd->m_pParent;
-			//}
-			//str += str2;
-			str += m_strDirectory;
-			if (((LPCWSTR)m_strDirectory)[m_strDirectory.GetLength() - 1] != L'/')
-				str += L'/';
 			bool bLastIsNotDelimiter = false;
 			if (p)
 			{
-				str += p->strFileName;
-				bLastIsNotDelimiter = true;
+				str2 = p->strFileName;
 			}
 			else if (pidl)
 			{
 				if (!::PickupFileName(pidl, str2))
 					return E_INVALIDARG;
-				str += str2;
-				bLastIsNotDelimiter = true;
 			}
-			else
-				break;
-			while (true)
+			MakeUrl(str2, str, &bLastIsNotDelimiter);
+			while (pidl != NULL)
 			{
 				pidl = (PCUITEMID_CHILD)(((DWORD_PTR)pidl) + pidl->mkid.cb);
 				if (!pidl->mkid.cb)
 					break;
 				if (!::PickupFileName(pidl, str2))
 					return E_INVALIDARG;
-				if (bLastIsNotDelimiter)
+				if (!bLastIsNotDelimiter)
 					str += L'/';
 				else
 					bLastIsNotDelimiter = true;
@@ -1329,35 +1348,12 @@ STDMETHODIMP CFTPDirectoryBase::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uF
 			}
 			break;
 		}
-		//else
-		//{
-		//	//CMyStringW str2;
-		//	//str2.Empty();
-		//	//CFTPDirectoryBase* pd = this;
-		//	//while (pd)
-		//	//{
-		//	//	if (pd == (CFTPDirectoryBase*) m_pRoot)
-		//	//		break;
-		//	//	str2.InsertString(pd->m_strDirectory, 0);
-		//	//	str2.InsertChar(L'/', 0);
-		//	//	pd = pd->m_pParent;
-		//	//}
-		//	//str += str2;
-		//	//str += L'/';
-		//	str = m_strDirectory;
-		//	if (p)
-		//	{
-		//		if (((LPCWSTR) m_strDirectory)[m_strDirectory.GetLength() - 1] != L'/')
-		//			str += L'/';
-		//		str += p->strFileName;
-		//	}
-		//}
-		//break;
+		// fall through
 	case SHGDN_INFOLDER:
 		if (!pidl)
 		{
-			if (this == (CFTPDirectoryBase*)m_pRoot)
-				str = m_pRoot->m_strHostName;
+			if (m_bIsRoot)
+				str = static_cast<CFTPDirectoryRootBase*>(this)->m_strHostName;
 			else
 				str = m_strDirectory;
 		}
@@ -1373,7 +1369,12 @@ STDMETHODIMP CFTPDirectoryBase::GetDisplayNameOf(PCUITEMID_CHILD pidl, SHGDNF uF
 	SIZE_T nSize = sizeof(WCHAR) * (str.GetLength() + 1);
 	pName->uType = STRRET_WSTR;
 	pName->pOleStr = (LPWSTR) ::CoTaskMemAlloc(nSize);
-	memcpy(pName->pOleStr, (LPCWSTR)str, nSize);
+	if (!pName->pOleStr)
+		return E_OUTOFMEMORY;
+	if (str.IsEmpty())
+		*pName->pOleStr = 0;
+	else
+		memcpy(pName->pOleStr, (LPCWSTR)str, nSize);
 	return S_OK;
 }
 
@@ -1401,7 +1402,7 @@ STDMETHODIMP CFTPDirectoryBase::SetNameOf(HWND hWnd, PCUITEMID_CHILD pidl, LPCOL
 	}
 
 	AddRef();
-	HRESULT hr = m_pRoot->SetFTPItemNameOf(hWnd, this, p, pszName, uFlags);
+	HRESULT hr = GetRoot()->SetFTPItemNameOf(hWnd, this, p, pszName, uFlags);
 	if (SUCCEEDED(hr))
 	{
 		UpdateRenameFile(p->strFileName, pszName, p->IsDirectory());
@@ -1669,7 +1670,11 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 			int i;
 			i = m_aFiles.GetCount();
 			while (i--)
-				m_aFiles.GetItem(i)->Release();
+			{
+				auto* p = m_aFiles.GetItem(i);
+				p->DetachParent();
+				p->Release();
+			}
 			m_aFiles.RemoveAll();
 			m_bDirReceived = false;
 			::LeaveCriticalSection(&m_csFiles);
@@ -1728,7 +1733,8 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 		{
 		case ID_ROOT_SERVER_INFO:
 		{
-			m_pRoot->ShowServerInfoDialog(m_pRoot->m_hWndOwnerCache);
+			auto* pRoot = GetRoot();
+			pRoot->ShowServerInfoDialog(pRoot->m_hWndOwnerCache);
 		}
 		return S_OK;
 		}
@@ -1754,7 +1760,7 @@ STDMETHODIMP CFTPDirectoryBase::IsFastProperty(PCUITEMID_CHILD pidlChild, REFPRO
 }
 
 // in propsys.dll
-typedef HRESULT(STDMETHODCALLTYPE* T_PSCreatePropertyKeyStore)(PROPERTYKEY*, int, REFIID riid, void** ppv);
+typedef _Check_return_ HRESULT(STDMETHODCALLTYPE* T_PSCreatePropertyKeyStore)(_In_opt_ PROPERTYKEY*, _In_ int, _In_ REFIID riid, _COM_Outptr_ _At_(*ppv, _Post_readable_size_(_Inexpressible_(varies))) void** ppv);
 
 STDMETHODIMP CFTPDirectoryBase::GetFastProperties(PCUITEMID_CHILD pidlChild, REFIID riid, void** ppv)
 {
@@ -1786,38 +1792,589 @@ STDMETHODIMP CFTPDirectoryBase::GetFastProperties(PCUITEMID_CHILD pidlChild, REF
 
 ///////////////////////////////////////////////////////////////////////////////
 
-STDMETHODIMP CFTPDirectoryBase::CreateStream(const OLECHAR* pwcsName, DWORD grfMode, DWORD reserved1, DWORD reserved2, IStream** ppstm)
+STDMETHODIMP CFTPDirectoryBase::get_Name(BSTR* pRet)
 {
-	auto* pStream = new CFTPFileStream(m_pRoot);
-	if (!pStream)
+	if (!pRet)
+		return E_POINTER;
+	auto* p = wcsrchr(m_strDirectory, L'/');
+	if (!p)
+		p = m_strDirectory;
+	else
+		++p;
+	*pRet = ::SysAllocString(p);
+	return *pRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPDirectoryBase::get_RootDirectory(IEasySFTPRootDirectory** ppRootDirectory)
+{
+	if (!ppRootDirectory)
+		return E_POINTER;
+	return GetRoot()->QueryInterface(IID_IEasySFTPRootDirectory, reinterpret_cast<void**>(ppRootDirectory));
+}
+
+STDMETHODIMP CFTPDirectoryBase::OpenDirectory(VARIANT file, IEasySFTPDirectory** ppRet)
+{
+	if (!ppRet)
+		return E_POINTER;
+	CMyStringW str;
+	auto hr = _PickFileNameFromVariant(file, str, this);
+	if (FAILED(hr))
+		return hr;
+	CFTPDirectoryBase* pDir = NULL;
+	hr = OpenNewDirectory(str, &pDir);
+	if (FAILED(hr))
+		return hr;
+	hr = pDir->QueryInterface(IID_IEasySFTPDirectory, reinterpret_cast<void**>(ppRet));
+	pDir->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::get_Files(IEasySFTPFiles** ppFiles)
+{
+	if (!ppFiles)
+		return E_POINTER;
+	if (!m_bDirReceived)
+	{
+		if (!GetRoot()->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
+		{
+			// nothing to be retrieved; do nothing
+		}
+	}
+	*ppFiles = new CFTPFileItemList(this);
+	return *ppFiles ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPDirectoryBase::OpenTransferDialog(INT_PTR hWndOwner)
+{
+	GetRoot()->OpenTransferDialogImpl(reinterpret_cast<HWND>(hWndOwner));
+	return S_OK;
+}
+
+STDMETHODIMP CFTPDirectoryBase::CloseTransferDialog()
+{
+	GetRoot()->CloseTransferDialogImpl();
+	return S_OK;
+}
+
+STDMETHODIMP CFTPDirectoryBase::OpenFile(BSTR lpszRelativeFileName, VARIANT_BOOL bIsWrite, EasySFTPTextMode nTextMode, IEasySFTPStream** ppStream)
+{
+	if (!ppStream)
+		return E_POINTER;
+	if (!lpszRelativeFileName)
+		return E_INVALIDARG;
+	IStream* pStream = NULL;
+	IEasySFTPFile* pFile = NULL;
+	auto* pRoot = GetRoot();
+	auto hr = OpenStream2(lpszRelativeFileName,
+		bIsWrite ? STGM_WRITE : STGM_READ,
+		!TEXTMODE_IS_NO_CONVERTION(nTextMode) ? static_cast<BYTE>(nTextMode) :
+			pRoot->IsTextFile(lpszRelativeFileName) == S_OK ? pRoot->m_bTextMode : 0,
+		&pStream,
+		&pFile);
+	if (FAILED(hr))
+		return hr;
+	STATSTG statstg = {};
+	if (FAILED(pStream->Stat(&statstg, STATFLAG_NONAME)))
+		statstg.cbSize.QuadPart = 0;
+	CTransferDialog::CTransferItem* pTransfer = NULL;
+	if (pRoot->m_pTransferDialog)
+	{
+		pTransfer = pRoot->m_pTransferDialog->AddTransferItem(statstg.cbSize.QuadPart, lpszRelativeFileName);
+	}
+	*ppStream = new CEasySFTPStream(pStream, pFile, pRoot->m_pTransferDialog, pTransfer);
+	pStream->Release();
+	pFile->Release();
+	return *ppStream ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPDirectoryBase::UploadFrom(BSTR lpszDestinationRelativeName, BSTR lpszSourceLocalName, EasySFTPTextMode nTextMode)
+{
+	auto* pFileToken = wcsrchr(lpszDestinationRelativeName, L'/');
+	if (pFileToken && pFileToken[1] == 0)
+		return E_INVALIDARG;
+	CFTPDirectoryBase* pDir = NULL;
+	HRESULT hr;
+	if (pFileToken)
+	{
+		CMyStringW strDir;
+		strDir.SetString(lpszDestinationRelativeName, pFileToken - lpszDestinationRelativeName);
+		lpszDestinationRelativeName = pFileToken + 1;
+		hr = OpenNewDirectory(strDir, &pDir);
+		if (FAILED(hr))
+			return hr;
+	}
+	else
+	{
+		pDir = this;
+		AddRef();
+	}
+	auto* pRoot = GetRoot();
+	auto* pOperation = new CFTPDropHandlerOperation(pDir, NULL, NULL, pRoot->m_pTransferDialog, true);
+	pDir->Release();
+	if (!pOperation)
 		return E_OUTOFMEMORY;
-	HANDLE handle;
-	auto hr = m_pRoot->OpenFile(this, pwcsName, grfMode, &handle);
+	BYTE bTextMode = !TEXTMODE_IS_NO_CONVERTION(nTextMode) ? static_cast<BYTE>(nTextMode) : pRoot->m_bTextMode;
+	hr = pOperation->RetrieveFileNameSingle(lpszSourceLocalName, NULL, lpszDestinationRelativeName, false, bTextMode);
+	delete pOperation;
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::UploadFromStream(BSTR lpszDestinationRelativeFileName, IUnknown* pStream_, EasySFTPTextMode nTextMode)
+{
+	auto* pFileToken = wcsrchr(lpszDestinationRelativeFileName, L'/');
+	if (pFileToken && pFileToken[1] == 0)
+		return E_INVALIDARG;
+	CFTPDirectoryBase* pDir = NULL;
+	IStream* pStream = NULL;
+	HRESULT hr = pStream_->QueryInterface(IID_IStream, reinterpret_cast<void**>(&pStream));
+	if (FAILED(hr))
+		return DISP_E_TYPEMISMATCH;
+	if (pFileToken)
+	{
+		CMyStringW strDir;
+		strDir.SetString(lpszDestinationRelativeFileName, pFileToken - lpszDestinationRelativeFileName);
+		lpszDestinationRelativeFileName = pFileToken + 1;
+		hr = OpenNewDirectory(strDir, &pDir);
+		if (FAILED(hr))
+		{
+			pStream->Release();
+			return hr;
+		}
+	}
+	else
+	{
+		pDir = this;
+		AddRef();
+	}
+	auto* pRoot = GetRoot();
+	auto* pOperation = new CFTPDropHandlerOperation(pDir, NULL, NULL, pRoot->m_pTransferDialog, true);
+	pDir->Release();
+	if (!pOperation)
+	{
+		pStream->Release();
+		return E_OUTOFMEMORY;
+	}
+	BYTE bTextMode = !TEXTMODE_IS_NO_CONVERTION(nTextMode) ? static_cast<BYTE>(nTextMode) : pRoot->m_bTextMode;
+	hr = pOperation->RetrieveFileNameSingle(NULL, pStream, lpszDestinationRelativeFileName, false, bTextMode);
+	delete pOperation;
+	pStream->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::UploadFromDataObject(IUnknown* pObject_, EasySFTPTextMode nTextMode)
+{
+	IDataObject* pObject;
+	auto hr = pObject_->QueryInterface(IID_IDataObject, reinterpret_cast<void**>(&pObject));
+	if (FAILED(hr))
+		return hr;
+	auto* pRoot = GetRoot();
+	auto* pOperation = new CFTPDropHandlerOperation(this, NULL, pObject, pRoot->m_pTransferDialog, true);
+	if (!pOperation)
+	{
+		pObject->Release();
+		return E_OUTOFMEMORY;
+	}
+	BYTE bTextMode = !TEXTMODE_IS_NO_CONVERTION(nTextMode) ? static_cast<BYTE>(nTextMode) : pRoot->m_bTextMode;
+	hr = pOperation->RetrieveFileContents(pObject, bTextMode);
+	delete pOperation;
+	pObject->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::DownloadTo(VARIANT file, BSTR lpszTargetLocalName, EasySFTPTextMode nTextMode)
+{
+	CMyStringW str;
+	auto hr = _PickFileNameFromVariant(file, str, this);
+	if (FAILED(hr))
+		return hr;
+	CFTPDirectoryBase* pDir;
+	auto* pItem = GetFileItem(str, &pDir);
+	if (!pItem)
+		return STG_E_FILENOTFOUND;
+	IStream* pSource = NULL;
+	auto* pRoot = GetRoot();
+	hr = pRoot->CreateFTPItemStream(pDir, pItem, &pSource);
+	pDir->Release();
+	if (FAILED(hr))
+		return hr;
+	BYTE bTextMode = !TEXTMODE_IS_NO_CONVERTION(nTextMode) ? static_cast<BYTE>(nTextMode) : pRoot->m_bTextMode;
+	IStream* pDest;
+	hr = MyOpenTextFileToStream(lpszTargetLocalName, true, bTextMode, &pDest);
 	if (FAILED(hr))
 	{
-		delete pStream;
+		pSource->Release();
 		return hr;
 	}
-	pStream->SetHandle(handle);
-	*ppstm = pStream;
-	return S_OK;
+	auto* pvObject = pRoot->m_pTransferDialog ? pRoot->m_pTransferDialog->AddTransferItem(pItem->uliSize.QuadPart, lpszTargetLocalName) : NULL;
+	hr = CopyStream(pSource, pDest, pvObject, pRoot);
+	if (pvObject && pRoot->m_pTransferDialog)
+		pRoot->m_pTransferDialog->RemoveTransferItem(pvObject, FAILED(hr));
+	pDest->Release();
+	pSource->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::DownloadToStream(VARIANT file, IUnknown* pStream_, EasySFTPTextMode nTextMode)
+{
+	CMyStringW str;
+	auto hr = _PickFileNameFromVariant(file, str, this);
+	if (FAILED(hr))
+		return hr;
+	CFTPDirectoryBase* pDir;
+	auto* pItem = GetFileItem(str, &pDir);
+	if (!pItem)
+		return STG_E_FILENOTFOUND;
+	IStream* pStream = NULL;
+	hr = pStream_->QueryInterface(IID_IStream, reinterpret_cast<void**>(&pStream));
+	if (FAILED(hr))
+		return DISP_E_TYPEMISMATCH;
+	auto* pRoot = GetRoot();
+	IStream* pSource = NULL;
+	hr = pRoot->CreateFTPItemStream(pDir, pItem, &pSource);
+	pDir->Release();
+	if (FAILED(hr))
+	{
+		pStream->Release();
+		return hr;
+	}
+	BYTE bTextMode = !TEXTMODE_IS_NO_CONVERTION(nTextMode) ? static_cast<BYTE>(nTextMode) : pRoot->m_bTextMode;
+	IStream* pDest;
+	if (!TEXTMODE_IS_NO_CONVERTION(bTextMode) && pRoot->IsTextFile(str))
+	{
+		hr = MyCreateTextStream(pStream, TEXTMODE_FOR_RECV(bTextMode), &pDest);
+		pStream->Release();
+		if (FAILED(hr))
+		{
+			pSource->Release();
+			return hr;
+		}
+	}
+	else
+	{
+		pDest = pStream;
+	}
+	auto* pvObject = pRoot->m_pTransferDialog ? pRoot->m_pTransferDialog->AddTransferItem(pItem->uliSize.QuadPart, str) : NULL;
+	hr = CopyStream(pSource, pDest, pvObject, pRoot);
+	if (pvObject && pRoot->m_pTransferDialog)
+		pRoot->m_pTransferDialog->RemoveTransferItem(pvObject, FAILED(hr));
+	pDest->Release();
+	pSource->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::UploadFiles(SAFEARRAY* LocalFiles, EasySFTPTextMode nTextMode)
+{
+	HRESULT hr;
+	VARTYPE vt;
+	hr = SafeArrayGetVartype(LocalFiles, &vt);
+	if (FAILED(hr))
+		return hr;
+	if (vt != VT_BSTR)
+		return DISP_E_TYPEMISMATCH;
+	if (LocalFiles->cDims != 1)
+		return E_INVALIDARG;
+	void* pvData;
+	hr = SafeArrayAccessData(LocalFiles, &pvData);
+	if (FAILED(hr))
+		return hr;
+	CMyStringArrayW astrFiles;
+	auto c = LocalFiles->cbElements;
+	while (c--)
+	{
+		auto bstr = *reinterpret_cast<BSTR*&>(pvData)++;
+		if (!bstr || !::SysStringLen(bstr))
+		{
+			hr = E_INVALIDARG;
+			break;
+		}
+		if (!::MyIsExistFileW(bstr))
+		{
+			hr = STG_E_FILENOTFOUND;
+			break;
+		}
+		astrFiles.Add(bstr);
+	}
+	SafeArrayUnaccessData(LocalFiles);
+	if (FAILED(hr))
+	{
+		return hr;
+	}
+	auto* pRoot = GetRoot();
+	auto* pOperation = new CFTPDropHandlerOperation(this, NULL, NULL, pRoot->m_pTransferDialog, true);
+	if (!pOperation)
+	{
+		return E_OUTOFMEMORY;
+	}
+	BYTE bTextMode = !TEXTMODE_IS_NO_CONVERTION(nTextMode) ? static_cast<BYTE>(nTextMode) : pRoot->m_bTextMode;
+	hr = pOperation->RetrieveFileNameMultiple(astrFiles, false, bTextMode);
+	delete pOperation;
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::DownloadFiles(SAFEARRAY* RemoteFiles, BSTR bstrDestinationDirectory, EasySFTPTextMode nTextMode)
+{
+	HRESULT hr;
+	VARTYPE vt;
+	hr = SafeArrayGetVartype(RemoteFiles, &vt);
+	if (FAILED(hr))
+		return hr;
+	if (RemoteFiles->cDims != 1)
+		return E_INVALIDARG;
+	void* pvData;
+	hr = SafeArrayAccessData(RemoteFiles, &pvData);
+	if (FAILED(hr))
+		return hr;
+	ULONG c = RemoteFiles->cbElements;
+	CMyStringArrayW aFiles;
+	hr = S_OK;
+	while (c--)
+	{
+		if (vt == VT_BSTR)
+		{
+			auto bstr = *(reinterpret_cast<BSTR*&>(pvData)++);
+			if (bstr == NULL || bstr[0] == 0)
+			{
+				hr = E_INVALIDARG;
+				break;
+			}
+			aFiles.Add(bstr);
+		}
+		else if (vt == VT_UNKNOWN || vt == VT_DISPATCH)
+		{
+			auto pUnk = *(reinterpret_cast<IUnknown**&>(pvData)++);
+			if (pUnk == NULL)
+			{
+				hr = E_INVALIDARG;
+				break;
+			}
+			IEasySFTPFile* pFile;
+			hr = pUnk->QueryInterface(IID_IEasySFTPFile, reinterpret_cast<void**>(&pFile));
+			if (FAILED(hr))
+			{
+				hr = DISP_E_TYPEMISMATCH;
+				break;
+			}
+			IEasySFTPDirectory* pDir;
+			hr = pFile->get_Directory(&pDir);
+			if (FAILED(hr))
+			{
+				pFile->Release();
+				break;
+			}
+			pDir->Release();
+			if (pDir != GetThisDirectory())
+			{
+				pFile->Release();
+				hr = E_INVALIDARG;
+				break;
+			}
+			hr = STG_E_FILENOTFOUND;
+			for (int i = 0; i < m_aFiles.GetCount(); ++i)
+			{
+				auto* p = m_aFiles.GetItem(i);
+				if (p == pFile)
+				{
+					hr = S_OK;
+					break;
+				}
+			}
+			if (FAILED(hr))
+			{
+				pFile->Release();
+				break;
+			}
+			BSTR bstr;
+			hr = pFile->get_FileName(&bstr);
+			pFile->Release();
+			if (FAILED(hr))
+				break;
+			aFiles.Add(bstr);
+			::SysFreeString(bstr);
+		}
+		else if (vt == VT_VARIANT)
+		{
+			auto& v = *(reinterpret_cast<VARIANT*&>(pvData)++);
+			CMyStringW str;
+			hr = _PickFileNameFromVariant(v, str, this);
+			if (FAILED(hr))
+				break;
+			aFiles.Add(str);
+		}
+		else
+		{
+			hr = DISP_E_TYPEMISMATCH;
+			break;
+		}
+	}
+	SafeArrayUnaccessData(RemoteFiles);
+	if (FAILED(hr))
+		return hr;
+
+	CMyStringW strDir;
+	MyBSTRToString(bstrDestinationDirectory, strDir);
+	auto* pRoot = GetRoot();
+	auto bTextMode = !TEXTMODE_IS_NO_CONVERTION(nTextMode) ? static_cast<BYTE>(nTextMode) : pRoot->m_bTextMode;
+	CMyPtrArrayT<CTransferDialog::CTransferItem> aTransfers;
+	for (int i = 0; i < aFiles.GetCount(); ++i)
+	{
+		CFTPDirectoryBase* pDir;
+		auto* pItem = GetFileItem(aFiles.GetItem(i), &pDir);
+		if (!pItem)
+			return STG_E_FILENOTFOUND;
+		pDir->Release();
+		CMyStringW strLocalName;
+		MyGetAbsolutePathStringW(pItem->strFileName, strDir, strLocalName);
+		auto* pvObject = pRoot->m_pTransferDialog ? pRoot->m_pTransferDialog->AddTransferItem(pItem->uliSize.QuadPart, strLocalName) : NULL;
+		aTransfers.Add(pvObject);
+	}
+	int done = -1;
+	for (int i = 0; i < aFiles.GetCount(); ++i)
+	{
+		CFTPDirectoryBase* pDir;
+		auto* pItem = GetFileItem(aFiles.GetItem(i), &pDir);
+		if (!pItem)
+		{
+			hr = STG_E_FILENOTFOUND;
+			break;
+		}
+		IStream* pSource = NULL;
+		hr = pRoot->CreateFTPItemStream(pDir, pItem, &pSource);
+		pDir->Release();
+		if (FAILED(hr))
+			break;
+		CMyStringW strLocalName;
+		MyGetAbsolutePathStringW(pItem->strFileName, strDir, strLocalName);
+		IStream* pDest;
+		hr = MyOpenTextFileToStream(strLocalName, true, bTextMode, &pDest);
+		if (FAILED(hr))
+		{
+			pSource->Release();
+			break;
+		}
+		auto* pvObject = aTransfers.GetItem(i);
+		hr = CopyStream(pSource, pDest, pvObject, pRoot);
+		if (pvObject && pRoot->m_pTransferDialog)
+			pRoot->m_pTransferDialog->RemoveTransferItem(pvObject, FAILED(hr));
+		pDest->Release();
+		pSource->Release();
+		done = i;
+		if (FAILED(hr))
+			break;
+	}
+	for (++done; done < aTransfers.GetCount(); ++done)
+	{
+		auto* pvObject = aTransfers.GetItem(done);
+		if (pvObject && pRoot->m_pTransferDialog)
+			pRoot->m_pTransferDialog->RemoveTransferItem(pvObject, true);
+	}
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::Move(VARIANT file, BSTR lpszTargetName)
+{
+	CMyStringW str;
+	auto hr = _PickFileNameFromVariant(file, str, this);
+	if (FAILED(hr))
+		return hr;
+	return RenameElement(str, lpszTargetName);
+}
+
+STDMETHODIMP CFTPDirectoryBase::Remove(VARIANT file)
+{
+	CMyStringW str;
+	auto hr = _PickFileNameFromVariant(file, str, this);
+	if (FAILED(hr))
+		return hr;
+	CFTPDirectoryBase* pDir;
+	auto* pItem = GetFileItem(str, &pDir);
+	if (!pItem)
+		return STG_E_FILENOTFOUND;
+	hr = pDir->DeleteFTPItem(pItem);
+	pDir->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::UpdateFileTime(VARIANT file, DATE modifyTime, DATE createTime, DATE accessTime)
+{
+	CMyStringW str;
+	auto hr = _PickFileNameFromVariant(file, str, this);
+	if (FAILED(hr))
+		return hr;
+	CFTPDirectoryBase* pDir;
+	auto* pItem = GetFileItem(str, &pDir);
+	if (!pItem)
+		return STG_E_FILENOTFOUND;
+	FILETIME ftModify = {}, ftCreate = {};
+	if (modifyTime != 0)
+	{
+		SYSTEMTIME st;
+		if (!VariantTimeToSystemTime(modifyTime, &st) || !SystemTimeToFileTime(&st, &ftModify))
+			return E_INVALIDARG;
+	}
+	if (createTime != 0)
+	{
+		SYSTEMTIME st;
+		if (!VariantTimeToSystemTime(createTime, &st) || !SystemTimeToFileTime(&st, &ftCreate))
+			return E_INVALIDARG;
+	}
+	str = pDir->m_strDirectory;
+	if (str.operator LPCWSTR()[str.GetLength() - 1] != L'/')
+		str += L'/';
+	str += pItem->strFileName;
+	hr = GetRoot()->SetFileTime(str, &ftCreate, NULL, &ftModify);
+	pDir->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::UpdateAttributes(VARIANT file, long attr)
+{
+	CMyStringW str;
+	auto hr = _PickFileNameFromVariant(file, str, this);
+	if (FAILED(hr))
+		return hr;
+	CFTPDirectoryBase* pDir;
+	auto* pItem = GetFileItem(str, &pDir);
+	if (!pItem)
+		return STG_E_FILENOTFOUND;
+	pDir->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::CreateShortcut(BSTR LinkName, BSTR TargetName)
+{
+	return GetRoot()->CreateShortcut(NULL, this, LinkName, TargetName, false);
+}
+
+STDMETHODIMP CFTPDirectoryBase::get_FullPath(BSTR* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = MyStringToBSTR(m_strDirectory);
+	return *pRet ? S_OK : E_OUTOFMEMORY;
+}
+
+STDMETHODIMP CFTPDirectoryBase::get_Url(BSTR* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	CMyStringW str;
+	MakeUrl(CMyStringW(), str);
+	*pRet = MyStringToBSTR(str);
+	return *pRet ? S_OK : E_OUTOFMEMORY;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+STDMETHODIMP CFTPDirectoryBase::CreateStream(const OLECHAR* pwcsName, DWORD grfMode, DWORD reserved1, DWORD reserved2, IStream** ppstm)
+{
+	auto* pRoot = GetRoot();
+	return OpenStream2(pwcsName, grfMode, pRoot->IsTextFile(pwcsName) == S_OK ? pRoot->m_bTextMode : 0, ppstm);
 }
 
 STDMETHODIMP CFTPDirectoryBase::OpenStream(const OLECHAR* pwcsName, void* reserved1, DWORD grfMode, DWORD reserved2, IStream** ppstm)
 {
-	auto* pStream = new CFTPFileStream(m_pRoot);
-	if (!pStream)
-		return E_OUTOFMEMORY;
-	HANDLE handle;
-	auto hr = m_pRoot->OpenFile(this, pwcsName, grfMode, &handle);
-	if (FAILED(hr))
-	{
-		delete pStream;
-		return hr;
-	}
-	pStream->SetHandle(handle);
-	*ppstm = pStream;
-	return S_OK;
+	auto* pRoot = GetRoot();
+	return OpenStream2(pwcsName, grfMode, pRoot->IsTextFile(pwcsName) == S_OK ? pRoot->m_bTextMode : 0, ppstm);
 }
 
 STDMETHODIMP CFTPDirectoryBase::CreateStorage(const OLECHAR* pwcsName, DWORD grfMode, DWORD reserved1, DWORD reserved2, IStorage** ppstg)
@@ -1826,7 +2383,7 @@ STDMETHODIMP CFTPDirectoryBase::CreateStorage(const OLECHAR* pwcsName, DWORD grf
 		return E_POINTER;
 	if (grfMode & (STGM_SHARE_DENY_READ | STGM_SHARE_DENY_WRITE | STGM_SHARE_EXCLUSIVE | STGM_PRIORITY | STGM_CONVERT | STGM_TRANSACTED | STGM_NOSCRATCH | STGM_NOSNAPSHOT | STGM_SIMPLE | STGM_DIRECT_SWMR | STGM_DELETEONRELEASE))
 		return STG_E_INVALIDFLAG;
-	auto hr = m_pRoot->CreateFTPDirectory(NULL, this, pwcsName);
+	auto hr = GetRoot()->CreateFTPDirectory(NULL, this, pwcsName);
 	if (FAILED(hr))
 		return hr;
 	CFTPDirectoryBase* pDir;
@@ -1849,7 +2406,7 @@ STDMETHODIMP CFTPDirectoryBase::OpenStorage(const OLECHAR* pwcsName, IStorage* p
 	HRESULT hr;
 	if (grfMode & STGM_CREATE)
 	{
-		hr = m_pRoot->CreateFTPDirectory(NULL, this, pwcsName);
+		hr = GetRoot()->CreateFTPDirectory(NULL, this, pwcsName);
 		if (FAILED(hr))
 			return hr;
 	}
@@ -1887,7 +2444,7 @@ STDMETHODIMP CFTPDirectoryBase::CopyTo(DWORD ciidExclude, const IID* rgiidExclud
 
 	if (!m_bDirReceived)
 	{
-		if (!m_pRoot->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
+		if (!GetRoot()->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
 		{
 			// nothing to be copied
 			return S_OK;
@@ -1925,40 +2482,49 @@ STDMETHODIMP CFTPDirectoryBase::CopyTo(DWORD ciidExclude, const IID* rgiidExclud
 
 STDMETHODIMP CFTPDirectoryBase::MoveElementTo(const OLECHAR* pwcsName, IStorage* pstgDest, const OLECHAR* pwcsNewName, DWORD grfFlags)
 {
-	IEasySFTPOldDirectory* pFTPDir;
-	if (SUCCEEDED(pstgDest->QueryInterface(&pFTPDir)))
+	auto* pMyRoot = GetRoot();
+	IEasySFTPDirectory* pFTPDir;
+	if (SUCCEEDED(pstgDest->QueryInterface(IID_IEasySFTPDirectory, reinterpret_cast<void**>(&pFTPDir))))
 	{
-		VARIANT_BOOL bIsSFTP = VARIANT_FALSE;
-		int nPort = 0;
-		BSTR hostName = NULL;
-		if (SUCCEEDED(pFTPDir->GetHostInfo(&bIsSFTP, &nPort, &hostName)))
+		IEasySFTPRootDirectory* pRoot;
+		if (SUCCEEDED(pFTPDir->get_RootDirectory(&pRoot)))
 		{
-			int nPortTemp = 0;
-			auto isSFTP = _wcsicmp(m_pRoot->GetProtocolName(nPortTemp), L"sftp") == 0;
-			auto isSameHost = nPortTemp == nPort && m_pRoot->m_strHostName.Compare(hostName, true) == 0 &&
-				isSFTP;
-			::SysFreeString(hostName);
-			if (isSameHost)
+			EasySFTPConnectionMode mode = EasySFTPConnectionMode::SFTP;
+			long nPort = 0;
+			BSTR hostName = NULL;
+			if (SUCCEEDED(pRoot->get_ConnectionMode(&mode)) && SUCCEEDED(pRoot->get_HostName(&hostName)) &&
+				SUCCEEDED(pRoot->get_Port(&nPort)))
 			{
-				CFTPDirectoryBase* pDir = static_cast<CFTPDirectoryBase*>(pFTPDir);
-				CMyStringW strFromName = m_strDirectory;
-				if (((LPCWSTR)strFromName)[strFromName.GetLength() - 1] != L'/')
-					strFromName += L'/';
-				strFromName += pwcsName;
-				CMyStringW strToName = pDir->m_strDirectory;
-				if (((LPCWSTR)strToName)[strToName.GetLength() - 1] != L'/')
-					strToName += L'/';
-				strToName = pwcsNewName;
-				auto hr = m_pRoot->RenameFTPItem(strFromName, strToName);
-				pFTPDir->Release();
-				return hr;
+				auto isSameHost = pMyRoot->m_nPort == nPort &&
+					pMyRoot->m_strHostName.Compare(hostName, true) == 0 &&
+					pMyRoot->GetProtocol() == mode;
+				::SysFreeString(hostName);
+				BSTR bstrDir;
+				if (isSameHost && SUCCEEDED(pFTPDir->get_FullPath(&bstrDir)))
+				{
+					CMyStringW strFromName = m_strDirectory;
+					if (((LPCWSTR)strFromName)[strFromName.GetLength() - 1] != L'/')
+						strFromName += L'/';
+					strFromName += pwcsName;
+					CMyStringW strToName;
+					MyBSTRToString(bstrDir, strToName);
+					::SysFreeString(bstrDir);
+					if (((LPCWSTR)strToName)[strToName.GetLength() - 1] != L'/')
+						strToName += L'/';
+					strToName += pwcsNewName;
+					auto hr = pMyRoot->RenameFTPItem(strFromName, strToName);
+					pFTPDir->Release();
+					return hr;
+				}
 			}
+			pRoot->Release();
 		}
+		pFTPDir->Release();
 	}
 
 	if (!m_bDirReceived)
 	{
-		if (!m_pRoot->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
+		if (!pMyRoot->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
 		{
 			return STG_E_FILENOTFOUND;
 		}
@@ -1973,7 +2539,7 @@ STDMETHODIMP CFTPDirectoryBase::MoveElementTo(const OLECHAR* pwcsName, IStorage*
 		return hr;
 
 	CMyStringArrayW astrMsgs;
-	return m_pRoot->DoDeleteFileOrDirectory(NULL, astrMsgs, pFile->IsDirectory(), pFile->strFileName, this);
+	return pMyRoot->DoDeleteFileOrDirectory(NULL, astrMsgs, pFile->IsDirectory(), pFile->strFileName, this);
 }
 
 STDMETHODIMP CFTPDirectoryBase::Commit(DWORD)
@@ -1991,14 +2557,15 @@ STDMETHODIMP CFTPDirectoryBase::EnumElements(DWORD reserved1, void* reserved2, D
 	if (!ppenum)
 		return E_POINTER;
 	*ppenum = NULL;
+	auto* pRoot = GetRoot();
 	if (!m_bDirReceived)
 	{
-		if (!m_pRoot->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
+		if (!pRoot->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
 		{
 			return STG_E_FILENOTFOUND;
 		}
 	}
-	auto* pEnum = new CEnumFTPItemStatstg(m_pMallocData, m_aFiles, m_pRoot->IsLockSupported(), static_cast<IShellFolder*>(this));
+	auto* pEnum = new CEnumFTPItemStatstg(m_pMallocData, m_aFiles, pRoot->IsLockSupported(), static_cast<IShellFolder*>(this));
 	if (!pEnum)
 	{
 		return E_OUTOFMEMORY;
@@ -2013,7 +2580,7 @@ STDMETHODIMP CFTPDirectoryBase::DestroyElement(const OLECHAR* pwcsName)
 		return E_POINTER;
 	if (!m_bDirReceived)
 	{
-		if (!m_pRoot->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
+		if (!GetRoot()->ReceiveDirectory(m_hWndOwnerCache, this, m_strDirectory, &m_bDirReceived))
 		{
 			return STG_E_FILENOTFOUND;
 		}
@@ -2045,15 +2612,23 @@ STDMETHODIMP CFTPDirectoryBase::DestroyElement(const OLECHAR* pwcsName)
 
 STDMETHODIMP CFTPDirectoryBase::RenameElement(const OLECHAR* pwcsOldName, const OLECHAR* pwcsNewName)
 {
-	CMyStringW strFromName = m_strDirectory;
-	if (((LPCWSTR)strFromName)[strFromName.GetLength() - 1] != L'/')
-		strFromName += L'/';
+	CMyStringW strFromName;
+	if (*pwcsOldName != L'/')
+	{
+		strFromName = m_strDirectory;
+		if (((LPCWSTR)strFromName)[strFromName.GetLength() - 1] != L'/')
+			strFromName += L'/';
+	}
 	strFromName += pwcsOldName;
-	CMyStringW strToName = m_strDirectory;
-	if (((LPCWSTR)strToName)[strToName.GetLength() - 1] != L'/')
-		strToName += L'/';
+	CMyStringW strToName;
+	if (*pwcsNewName != L'/')
+	{
+		strToName = m_strDirectory;
+		if (((LPCWSTR)strToName)[strToName.GetLength() - 1] != L'/')
+			strToName += L'/';
+	}
 	strToName += pwcsNewName;
-	return m_pRoot->RenameFTPItem(strFromName, strToName);
+	return GetRoot()->RenameFTPItem(strFromName, strToName);
 }
 
 STDMETHODIMP CFTPDirectoryBase::SetElementTimes(const OLECHAR* pwcsName, const FILETIME* pctime, const FILETIME* patime, const FILETIME* pmtime)
@@ -2062,7 +2637,7 @@ STDMETHODIMP CFTPDirectoryBase::SetElementTimes(const OLECHAR* pwcsName, const F
 	if (((LPCWSTR)strFromName)[strFromName.GetLength() - 1] != L'/')
 		strFromName += L'/';
 	strFromName += pwcsName;
-	return m_pRoot->SetFileTime(strFromName, pctime, patime, pmtime);
+	return GetRoot()->SetFileTime(strFromName, pctime, patime, pmtime);
 }
 
 STDMETHODIMP CFTPDirectoryBase::SetClass(REFCLSID clsid)
@@ -2080,30 +2655,31 @@ STDMETHODIMP CFTPDirectoryBase::SetStateBits(DWORD grfStateBits, DWORD grfMask)
 
 STDMETHODIMP CFTPDirectoryBase::Stat(STATSTG* pstatstg, DWORD grfStatFlag)
 {
-	return m_pRoot->StatDirectory(this, m_grfMode, pstatstg, grfStatFlag);
+	return GetRoot()->StatDirectory(this, m_grfMode, pstatstg, grfStatFlag);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 STDMETHODIMP CFTPDirectoryBase::GetRootDirectory(IEasySFTPOldDirectory** ppRootDirectory)
 {
-	return m_pRoot->QueryInterface(IID_IEasySFTPOldDirectory, (void**)ppRootDirectory);
+	return GetRoot()->QueryInterface(IID_IEasySFTPOldDirectory, (void**)ppRootDirectory);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 HRESULT CFTPDirectoryBase::CreateStream(CFTPFileItem* pItem, IStream** ppStream)
 {
-	HRESULT hr = m_pRoot->CreateFTPItemStream(this, pItem, ppStream);
+	auto* pRoot = GetRoot();
+	HRESULT hr = pRoot->CreateFTPItemStream(this, pItem, ppStream);
 	if (FAILED(hr))
 		return hr;
-	if (!TEXTMODE_IS_NO_CONVERTION(m_pRoot->m_bTextMode))
+	if (!TEXTMODE_IS_NO_CONVERTION(pRoot->m_bTextMode))
 	{
 		hr = IsTextFile(pItem->strFileName);
 		if (SUCCEEDED(hr) && hr == S_OK)
 		{
 			IStream* pstm2;
-			hr = MyCreateTextStream(*ppStream, TEXTMODE_FOR_RECV(m_pRoot->m_bTextMode), &pstm2);
+			hr = MyCreateTextStream(*ppStream, TEXTMODE_FOR_RECV(pRoot->m_bTextMode), &pstm2);
 			(*ppStream)->Release();
 			if (FAILED(hr))
 			{
@@ -2116,12 +2692,53 @@ HRESULT CFTPDirectoryBase::CreateStream(CFTPFileItem* pItem, IStream** ppStream)
 	return S_OK;
 }
 
+HRESULT CFTPDirectoryBase::OpenStream2(const OLECHAR* pwcsName, DWORD grfMode, BYTE bTextMode, IStream** ppstm, IEasySFTPFile** ppFile)
+{
+	auto* pRoot = GetRoot();
+	auto* pStream = new CFTPFileStream(pRoot);
+	if (!pStream)
+		return E_OUTOFMEMORY;
+	HANDLE handle;
+	IEasySFTPFile* pFile = NULL;
+	auto hr = pRoot->OpenFile(this, pwcsName, grfMode, &handle, &pFile);
+	if (FAILED(hr))
+	{
+		delete pStream;
+		return hr;
+	}
+	pStream->SetHandle(handle);
+	BYTE bMode = 0;
+	if (grfMode & (STGM_READWRITE | STGM_WRITE))
+		bMode = TEXTMODE_FOR_SEND(bTextMode);
+	if (grfMode & (STGM_READWRITE | STGM_READ))
+		bMode |= TEXTMODE_FOR_RECV(bTextMode);
+	if (!TEXTMODE_IS_NO_CONVERTION(bMode))
+	{
+		hr = MyCreateTextStream(pStream, bMode, ppstm);
+		pStream->Release();
+	}
+	else
+	{
+		*ppstm = pStream;
+		hr = S_OK;
+	}
+	if (SUCCEEDED(hr) && ppFile)
+	{
+		*ppFile = pFile;
+	}
+	else
+	{
+		pFile->Release();
+	}
+	return hr;
+}
+
 HRESULT CFTPDirectoryBase::DeleteFTPItem(CFTPFileItem* pItem)
 {
 	CMyPtrArrayT<CFTPFileItem> aItems;
 	aItems.Add(pItem);
 	pItem->AddRef();
-	auto hr = m_pRoot->DoDeleteFTPItems(m_hWndOwnerCache, this, aItems);
+	auto hr = GetRoot()->DoDeleteFTPItems(m_hWndOwnerCache, this, aItems);
 	if (FAILED(hr))
 	{
 		pItem->Release();
@@ -2142,6 +2759,32 @@ void CFTPDirectoryBase::AfterPaste(CFTPDataObject* pObject, DWORD dwEffects)
 	theApp.CheckClipboardForMoved(pObject, dwEffects);
 }
 
+void CFTPDirectoryBase::MakeUrl(const CMyStringW& strFileName, CMyStringW& rstrUrl, bool* pbLastIsNotDelimiter)
+{
+	auto* pRoot = GetRoot();
+	CMyStringW strHost(pRoot->m_strHostName); // avoid multithreaded-free for LPCSTR
+	CMyStringW str2;
+	int nDefPort = 0;
+	pRoot->GetProtocol(&nDefPort);
+	rstrUrl = pRoot->GetProtocolName();
+	rstrUrl += L"://";
+	GetHostNameForUrl(strHost, str2);
+	rstrUrl += str2;
+	if (pRoot->m_nPort != nDefPort)
+	{
+		str2.Format(L"%d", pRoot->m_nPort);
+		rstrUrl += L':';
+		rstrUrl += str2;
+	}
+	rstrUrl += m_strDirectory;
+	if (((LPCWSTR)m_strDirectory)[m_strDirectory.GetLength() - 1] != L'/')
+		rstrUrl += L'/';
+	if (pbLastIsNotDelimiter)
+		*pbLastIsNotDelimiter = !strFileName.IsEmpty();
+	if (!strFileName.IsEmpty())
+		rstrUrl += strFileName;
+}
+
 STDMETHODIMP CFTPDirectoryBase::ParseDisplayName2(PIDLIST_RELATIVE pidlParent,
 	HWND hWnd,
 	LPBC pbc,
@@ -2150,7 +2793,6 @@ STDMETHODIMP CFTPDirectoryBase::ParseDisplayName2(PIDLIST_RELATIVE pidlParent,
 	PIDLIST_RELATIVE* ppidl,
 	ULONG* pdwAttributes)
 {
-	//bool bSFTPMode;
 	ULONG uEaten;
 	if (!ppidl)
 		return E_POINTER;
@@ -2304,10 +2946,36 @@ STDMETHODIMP_(void) CFTPDirectoryBase::UpdateItem(CFTPFileItem* pOldItem, LPCWST
 	{
 		int i = m_aFiles.FindItem(pOldItem);
 		m_aFiles.RemoveItem(i);
+		pOldItem->DetachParent();
 		pOldItem->Release();
 	}
 	break;
 	}
+}
+
+
+HRESULT CFTPDirectoryBase::SetParentFolder(IShellFolder* pFolder)
+{
+	CFTPDirectoryBase* pParent = NULL;
+	if (pFolder)
+	{
+		auto hr = pFolder->QueryInterface(IID_CFTPDirectoryBase, reinterpret_cast<void**>(&pParent));
+		if (FAILED(hr))
+			return E_INVALIDARG;
+	}
+	if (m_pParent)
+	{
+		for (ULONG u = 0; u < m_uRef; ++u)
+			m_pParent->Release();
+	}
+	m_pParent = pParent;
+	if (pParent)
+	{
+		// already AddRef'd one time via QueryInterface
+		for (ULONG u = 1; u < m_uRef; ++u)
+			pParent->AddRef();
+	}
+	return S_OK;
 }
 
 
@@ -2352,59 +3020,59 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 	if (!bFound)
 	{
 		pDirItem = new CFTPDirectoryItem();
-		pDirItem->pDirectory = NULL;
 		pDirItem->strName = str;
+		pDirItem->strRealPath = m_strDirectory;
+		if ((m_strDirectory.operator LPCWSTR())[m_strDirectory.GetLength() - 1] != L'/')
+			pDirItem->strRealPath += L'/';
+		pDirItem->strRealPath += str;
 	}
-	if (!pDirItem->pDirectory)
+	CFTPDirectoryBase* pDirectory = NULL;
+	if (pDirItem->pDirectory)
+		pDirectory = pDirItem->pDirectory;
+	else
 	{
+		auto* pRoot = GetRoot();
 		PITEMID_CHILD pidlItem;
 		if (pItem)
-			pidlItem = ::CreateFileItem(m_pRoot->m_pMallocData->pMalloc, pItem);
+			pidlItem = ::CreateFileItem(pRoot->m_pMallocData->pMalloc, pItem);
 		else
-			pidlItem = ::CreateDummyFileItem(m_pRoot->m_pMallocData->pMalloc, str, true);
+			pidlItem = ::CreateDummyFileItem(pRoot->m_pMallocData->pMalloc, str, true);
 		if (!pidlItem)
 		{
-			pDirItem->pDirectory = NULL;
 			if (!bFound)
 				pDirItem->Release();
 			return E_OUTOFMEMORY;
 		}
-		//((CSFTPFileItem*) pidlItem)->bHasAttribute = true;
-		//((CSFTPFileItem*) pidlItem)->bIsDirectory = true;
 		if (m_strDirectory.GetLength() != 1 || *((LPCWSTR)m_strDirectory) != L'/')
 			str.InsertChar(L'/', 0);
 		str.InsertString(m_strDirectory, 0);
-		HRESULT hr = CreateInstance(pDirItem, this, m_pRoot, str, &pDirItem->pDirectory);
+		HRESULT hr = CreateInstance(pDirItem, this, str, &pDirectory);
 		if (FAILED(hr))
 		{
 			::CoTaskMemFree(pidlItem);
-			pDirItem->pDirectory = NULL;
 			if (!bFound)
 				pDirItem->Release();
 			return E_OUTOFMEMORY;
 		}
 		{
 			PIDLIST_ABSOLUTE pidlChild = ::AppendItemIDList(m_pidlMe, pidlItem);
-			hr = pDirItem->pDirectory->Initialize(pidlChild);
+			hr = pDirectory->Initialize(pidlChild);
 			::CoTaskMemFree(pidlChild);
 			::CoTaskMemFree(pidlItem);
 			if (FAILED(hr))
 			{
-				pDirItem->pDirectory->Release();
-				pDirItem->pDirectory = NULL;
+				pDirectory->Release();
 				if (!bFound)
 					pDirItem->Release();
 				return E_OUTOFMEMORY;
 			}
 		}
+		pDirItem->pDirectory = pDirectory;
 	}
-	else
-		pDirItem->pDirectory->AddRef();
 
 	if (lpszRelativePath)
 	{
-		HRESULT hr = pDirItem->pDirectory->OpenNewDirectory(lpszRelativePath, ppDirectory);
-		pDirItem->pDirectory->Release();
+		HRESULT hr = pDirectory->OpenNewDirectory(lpszRelativePath, ppDirectory);
 		if (SUCCEEDED(hr))
 		{
 			if (!bFound)
@@ -2412,7 +3080,6 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 		}
 		else
 		{
-			//pDirItem->pDirectory = NULL;
 			if (!bFound)
 				pDirItem->Release();
 		}
@@ -2420,15 +3087,15 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 	}
 	else
 	{
-		*ppDirectory = pDirItem->pDirectory;
-		//pDirItem->pDirectory->AddRef();
+		*ppDirectory = pDirectory;
+		pDirectory->AddRef();
 		if (!bFound)
 			m_aDirectories.Add(pDirItem);
 		return S_OK;
 	}
 }
 
-CFTPDirectoryItem* CFTPDirectoryBase::GetAlreadyOpenedDirectory(PCUIDLIST_RELATIVE pidlChild)
+CFTPDirectoryItem* CFTPDirectoryBase::GetAlreadyOpenedDirectory(PCUIDLIST_RELATIVE pidlChild, PCUIDLIST_RELATIVE* ppidlNext)
 {
 	CMyStringW str;
 	if (!::PickupFileName((PCUITEMID_CHILD)pidlChild, str))
@@ -2439,15 +3106,8 @@ CFTPDirectoryItem* CFTPDirectoryBase::GetAlreadyOpenedDirectory(PCUIDLIST_RELATI
 		CFTPDirectoryItem* pDirItem = m_aDirectories.GetItem(i);
 		if (pDirItem->strName.Compare(str) == 0)
 		{
-			if (!pDirItem->pDirectory)
-				return NULL;
-			if (pidlChild->mkid.cb)
-				return pDirItem->pDirectory->GetAlreadyOpenedDirectory(pidlChild);
-			else
-			{
-				pDirItem->AddRef();
-				return pDirItem;
-			}
+			*ppidlNext = pidlChild->mkid.cb ? pidlChild : NULL;
+			return pDirItem;
 		}
 	}
 	return NULL;
@@ -2470,9 +3130,10 @@ CFTPFileItem* CFTPDirectoryBase::GetFileItem(LPCWSTR lpszRelativeName, CFTPDirec
 		*ppParentDirectory = NULL;
 	if (*lpszRelativeName == L'/')
 	{
-		if (this != m_pRoot)
+		auto* pRoot = GetRoot();
+		if (this != pRoot)
 		{
-			return m_pRoot->GetFileItem(lpszRelativeName + 1, ppParentDirectory);
+			return pRoot->GetFileItem(lpszRelativeName + 1, ppParentDirectory);
 		}
 		++lpszRelativeName;
 	}
@@ -2495,9 +3156,13 @@ CFTPFileItem* CFTPDirectoryBase::GetFileItem(LPCWSTR lpszRelativeName, CFTPDirec
 		CFTPDirectoryItem* pDirItem = m_aDirectories.GetItem(i);
 		if (pDirItem->strName.Compare(str) == 0)
 		{
-			if (!pDirItem->pDirectory)
+			CFTPDirectoryBase* pDir;
+			auto hr = OpenNewDirectory(str, &pDir);
+			if (FAILED(hr))
 				return NULL;
-			return pDirItem->pDirectory->GetFileItem(lpszRelativeName, ppParentDirectory);
+			auto* p = pDir->GetFileItem(lpszRelativeName, ppParentDirectory);
+			pDir->Release();
+			return p;
 		}
 	}
 	return NULL;
@@ -2526,9 +3191,13 @@ CFTPFileItem* CFTPDirectoryBase::GetFileItem(PCUIDLIST_RELATIVE pidlChild, CFTPD
 		CFTPDirectoryItem* pDirItem = m_aDirectories.GetItem(i);
 		if (pDirItem->strName.Compare(str) == 0)
 		{
-			if (!pDirItem->pDirectory)
+			CFTPDirectoryBase* pDir;
+			auto hr = OpenNewDirectory(str, &pDir);
+			if (FAILED(hr))
 				return NULL;
-			return pDirItem->pDirectory->GetFileItem(pidlChild, ppParentDirectory);
+			auto* p = pDir->GetFileItem(pidlChild, ppParentDirectory);
+			pDir->Release();
+			return p;
 		}
 	}
 	return NULL;
@@ -2536,10 +3205,11 @@ CFTPFileItem* CFTPDirectoryBase::GetFileItem(PCUIDLIST_RELATIVE pidlChild, CFTPD
 
 void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR lpszFile2)
 {
+	auto* pRoot = GetRoot();
 	PIDLIST_RELATIVE pidlR1 = lpszFile1 ? ::CreateFullPathFileItem(m_pMallocData->pMalloc, lpszFile1) : NULL;
 	PIDLIST_RELATIVE pidlR2 = lpszFile2 ? ::CreateFullPathFileItem(m_pMallocData->pMalloc, lpszFile2) : NULL;
-	PIDLIST_ABSOLUTE pidl1 = pidlR1 ? ::AppendItemIDList(*lpszFile1 == L'/' ? m_pRoot->m_pidlMe : m_pidlMe, pidlR1) : NULL;
-	PIDLIST_ABSOLUTE pidl2 = pidlR2 ? ::AppendItemIDList(*lpszFile2 == L'/' ? m_pRoot->m_pidlMe : m_pidlMe, pidlR2) : NULL;
+	PIDLIST_ABSOLUTE pidl1 = pidlR1 ? ::AppendItemIDList(*lpszFile1 == L'/' ? pRoot->m_pidlMe : m_pidlMe, pidlR1) : NULL;
+	PIDLIST_ABSOLUTE pidl2 = pidlR2 ? ::AppendItemIDList(*lpszFile2 == L'/' ? pRoot->m_pidlMe : m_pidlMe, pidlR2) : NULL;
 	theApp.MyChangeNotify(wEventId, SHCNF_IDLIST | SHCNF_NOTIFYRECURSIVE | SHCNF_FLUSHNOWAIT, pidl1, pidl2);
 	if (pidl1)
 		::CoTaskMemFree(pidl1);
@@ -2551,7 +3221,7 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 	{
 		// pidlR1 and pidlR2 are not actual PITEMID_CHILDren, so
 		// we need to parse id-lists to pass real PITEMID_CHILDren to their parents
-		CFTPDirectoryBase* pParent = lpszFile1 && *lpszFile1 == L'/' ? m_pRoot : this;
+		CFTPDirectoryBase* pParent = lpszFile1 && *lpszFile1 == L'/' ? pRoot : this;
 		PCUIDLIST_RELATIVE pidlUR1 = pidlR1;
 		PCUIDLIST_RELATIVE pidlUR2 = pidlR2;
 		CMyStringW str;
@@ -2682,7 +3352,7 @@ void CFTPDirectoryBase::UpdateNewFile(LPCWSTR lpszFileName, bool bDirectory)
 	{
 		return;
 	}
-	p = m_pRoot->RetrieveFileItem(this, lpszFileName);
+	p = GetRoot()->RetrieveFileItem(this, lpszFileName);
 	if (p)
 	{
 		::EnterCriticalSection(&m_csFiles);
@@ -2717,7 +3387,8 @@ void CFTPDirectoryBase::UpdateMoveFile(LPCWSTR lpszFromDir, LPCWSTR lpszFileName
 	CMyStringW strFP(lpszFromDir), strTP(m_strDirectory);
 	if (m_strDirectory.Compare(lpszFromDir) != 0)
 	{
-		CFTPFileItem* p = m_pRoot->RetrieveFileItem(this, lpszNewFileName);
+		auto* pRoot = GetRoot();
+		CFTPFileItem* p = pRoot->RetrieveFileItem(this, lpszNewFileName);
 		if (p)
 		{
 			::EnterCriticalSection(&m_csFiles);
@@ -2725,7 +3396,7 @@ void CFTPDirectoryBase::UpdateMoveFile(LPCWSTR lpszFromDir, LPCWSTR lpszFileName
 			::LeaveCriticalSection(&m_csFiles);
 		}
 		CFTPDirectoryBase* pDir;
-		if (SUCCEEDED(m_pRoot->OpenNewDirectory(lpszFromDir + 1, &pDir)))
+		if (SUCCEEDED(pRoot->OpenNewDirectory(lpszFromDir + 1, &pDir)))
 		{
 			for (auto i = 0; i < pDir->m_aFiles.GetCount(); ++i)
 			{
@@ -2733,6 +3404,7 @@ void CFTPDirectoryBase::UpdateMoveFile(LPCWSTR lpszFromDir, LPCWSTR lpszFileName
 				if (p->strFileName.Compare(lpszFileName) == 0)
 				{
 					pDir->m_aFiles.RemoveItem(i);
+					p->DetachParent();
 					p->Release();
 					break;
 				}
@@ -2766,27 +3438,20 @@ void CFTPDirectoryBase::UpdateRenameFile(LPCWSTR lpszOldFileName, LPCWSTR lpszNe
 	if (p)
 		p->strFileName = lpszNewFileName;
 	::LeaveCriticalSection(&m_csFiles);
-	//if (m_strDirectory.IsEmpty() || ((LPCWSTR) m_strDirectory)[m_strDirectory.GetLength() - 1] != L'/')
-	//{
-	//	strFP += L'/';
-	//	strTP += L'/';
-	//}
-	//strFP += lpszOldFileName;
-	//strTP += lpszNewFileName;
-	//NotifyUpdate(bDirectory ? SHCNE_RENAMEFOLDER : SHCNE_RENAMEITEM, strFP, strTP);
 	NotifyUpdate(bDirectory ? SHCNE_RENAMEFOLDER : SHCNE_RENAMEITEM, strFP, lpszNewFileName);
 }
 
 void CFTPDirectoryBase::UpdateFileAttrs(LPCWSTR lpszFileName, bool bDirectory)
 {
 	CMyStringW str(lpszFileName);
+	auto* pRoot = GetRoot();
 	::EnterCriticalSection(&m_csFiles);
 	for (int i = 0; i < m_aFiles.GetCount(); i++)
 	{
 		CFTPFileItem* p = m_aFiles.GetItem(i);
 		if (p->strFileName.Compare(lpszFileName) == 0)
 		{
-			CFTPFileItem* p2 = m_pRoot->RetrieveFileItem(this, lpszFileName);
+			CFTPFileItem* p2 = pRoot->RetrieveFileItem(this, lpszFileName);
 			if (p2)
 			{
 				m_aFiles.SetItem(i, p2);
@@ -2809,46 +3474,13 @@ void CFTPDirectoryBase::UpdateRemoveFile(LPCWSTR lpszFileName, bool bDirectory)
 		if (p->strFileName.Compare(lpszFileName) == 0)
 		{
 			m_aFiles.RemoveItem(i);
+			p->DetachParent();
 			p->Release();
 			break;
 		}
 	}
 	::LeaveCriticalSection(&m_csFiles);
 	NotifyUpdate(bDirectory ? SHCNE_RMDIR : SHCNE_DELETE, str, NULL);
-}
-
-void CFTPDirectoryBase::RemoveAllFiles()
-{
-	::EnterCriticalSection(&m_csFiles);
-	int i;
-	i = m_aFiles.GetCount();
-	while (i--)
-		m_aFiles.GetItem(i)->Release();
-	m_aFiles.RemoveAll();
-	::LeaveCriticalSection(&m_csFiles);
-	i = m_aDirectories.GetCount();
-	while (i--)
-	{
-		CFTPDirectoryItem* pItem = m_aDirectories.GetItem(i);
-		m_aDirectories.RemoveItem(i);
-		if (pItem->pDirectory)
-		{
-			pItem->pDirectory->RemoveAllFiles();
-			//pItem->pDirectory->Release();
-		}
-		if (!pItem->strName.IsEmpty())
-		{
-			PITEMID_CHILD pidlChild = ::CreateDummyFileItem(m_pMallocData->pMalloc, pItem->strName, pItem->pDirectory != NULL);
-			if (pidlChild)
-			{
-				NotifyUpdate(SHCNE_RMDIR, pidlChild, NULL);
-				m_pMallocData->pMalloc->Free(pidlChild);
-			}
-		}
-		pItem->Release();
-	}
-	//m_aDirectories.RemoveAll();
-	m_bDirReceived = false;
 }
 
 HRESULT CFTPDirectoryBase::CopyFileItemToStorage(CFTPFileItem* pFile, DWORD ciidExclude, const IID* rgiidExclude, SNB snbExclude, IStorage* pstgDest)

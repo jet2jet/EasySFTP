@@ -322,18 +322,19 @@ LRESULT CServerFilePropertyDialog::OnOK(WPARAM wParam, LPARAM lParam)
 	for (i = 0; i < m_aAttrs.GetCount(); i++)
 	{
 		CServerFileAttrData* pItem = m_aAttrs.GetItem(i);
+		pItem->wMask = 0;
 		if (m_bChangeOwner)
 		{
 			if (m_bSupportedName)
 			{
 				if (!strOwner.IsEmpty() && pItem->strOwner.Compare(strOwner, true) != 0)
 				{
-					bOChanged = true;
+					pItem->wMask |= ServerFileAttrDataMask::OwnerGroupName;
 					pItem->strOwner = strOwner;
 				}
 				if (!strGroup.IsEmpty() && pItem->strGroup.Compare(strGroup, true) != 0)
 				{
-					bOChanged = true;
+					pItem->wMask |= ServerFileAttrDataMask::OwnerGroupName;
 					pItem->strGroup = strGroup;
 				}
 			}
@@ -341,12 +342,12 @@ LRESULT CServerFilePropertyDialog::OnOK(WPARAM wParam, LPARAM lParam)
 			{
 				if (!strOwner.IsEmpty() && pItem->uUID != uUID)
 				{
-					bOChanged = true;
+					pItem->wMask |= ServerFileAttrDataMask::OwnerGroupID;
 					pItem->uUID = uUID;
 				}
 				if (!strGroup.IsEmpty() && pItem->uGID != uGID)
 				{
-					bOChanged = true;
+					pItem->wMask |= ServerFileAttrDataMask::OwnerGroupID;
 					pItem->uGID = uGID;
 				}
 			}
@@ -360,13 +361,11 @@ LRESULT CServerFilePropertyDialog::OnOK(WPARAM wParam, LPARAM lParam)
 				u |= nMode;
 				if ((UINT) pItem->nUnixMode != u)
 				{
-					bAChanged = true;
+					pItem->wMask |= ServerFileAttrDataMask::Attribute;
 					pItem->nUnixMode = (int) u;
 				}
 			}
 		}
 	}
-	m_bChangeOwner = bOChanged;
-	m_bChangeAttr = bAChanged;
 	return CMyDialog::OnDefaultButton(wParam, lParam);
 }

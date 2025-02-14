@@ -23,6 +23,7 @@
 #include <commoncontrols.h>
 #include <thumbcache.h>
 #include <propkey.h>
+#include <oleauto.h>
 
 #include <winsock2.h>
 #include <ws2tcpip.h>

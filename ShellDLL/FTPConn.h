@@ -162,7 +162,7 @@ struct CWaitFileInfoData : public CWaitResponseData
 
 ////////////////////////////////////////////////////////////////////////////////
 
-class CFTPConnection : public CUnknownImpl
+class CFTPConnection : public CReferenceCountClassBase
 {
 public:
 	CFTPConnection(void);

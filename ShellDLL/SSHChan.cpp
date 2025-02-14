@@ -111,7 +111,7 @@ bool CSSHChannel::ProcessPendingStartup()
 {
 	if (!m_pendingStartup.isPending)
 		return false;
-	auto r = libssh2_channel_process_startup(m_pChannel, m_pendingStartup.lpszService, strlen(m_pendingStartup.lpszService),
+	auto r = libssh2_channel_process_startup(m_pChannel, m_pendingStartup.lpszService, static_cast<unsigned int>(strlen(m_pendingStartup.lpszService)),
 		static_cast<const char*>(m_pendingStartup.pvExtraData), static_cast<unsigned int>(m_pendingStartup.nExtraDataLen));
 	if (r == LIBSSH2_ERROR_EAGAIN)
 		return true;
@@ -152,7 +152,7 @@ bool CSSHChannel::ProcessSendChannelData()
 	else
 	{
 		m_pendingSendChannelData.isSending = false;
-		m_pListener->ChannelError(this, r);
+		m_pListener->ChannelError(this, static_cast<int>(r));
 	}
 	return m_pendingSendChannelData.isSending;
 }
@@ -172,7 +172,7 @@ bool CSSHChannel::ProcessRead()
 		if (r == LIBSSH2_ERROR_CHANNEL_CLOSED)
 			m_pListener->ChannelClosed(this);
 		else
-			m_pListener->ChannelError(this, r);
+			m_pListener->ChannelError(this, static_cast<int>(r));
 		return false;
 	}
 	m_pendingBuffer.ResetPosition();
