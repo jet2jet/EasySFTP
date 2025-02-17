@@ -111,10 +111,15 @@ static HRESULT _InitEasySFTPRoot(CEasySFTPFolderRoot* pRoot)
 	return hr;
 }
 
-STDAPI EasySFTPCreateRoot(IEasySFTPOldRoot** ppRoot)
+static HRESULT EasySFTPGetRootInstance(CEasySFTPFolderRoot** ppRoot)
 {
-	if (!ppRoot)
-		return E_POINTER;
+	if (theApp.m_aRootRefs.GetCount() > 0)
+	{
+		auto* p = theApp.m_aRootRefs.GetItem(0);
+		p->AddRef();
+		*ppRoot = p;
+		return S_OK;
+	}
 	CEasySFTPFolderRoot* pRoot = new CEasySFTPFolderRoot();
 	if (!pRoot)
 		return E_OUTOFMEMORY;
@@ -124,6 +129,18 @@ STDAPI EasySFTPCreateRoot(IEasySFTPOldRoot** ppRoot)
 		pRoot->Release();
 		return hr;
 	}
+	*ppRoot = pRoot;
+	return S_OK;
+}
+
+STDAPI EasySFTPCreateRoot(IEasySFTPOldRoot** ppRoot)
+{
+	if (!ppRoot)
+		return E_POINTER;
+	CEasySFTPFolderRoot* pRoot;
+	auto hr = EasySFTPGetRootInstance(&pRoot);
+	if (FAILED(hr))
+		return hr;
 	hr = pRoot->QueryInterface(IID_IEasySFTPOldRoot, (void**) ppRoot);
 	pRoot->Release();
 	return hr;
@@ -133,15 +150,10 @@ STDAPI EasySFTPCreate(IEasySFTPRoot** ppRoot)
 {
 	if (!ppRoot)
 		return E_POINTER;
-	CEasySFTPFolderRoot* pRoot = new CEasySFTPFolderRoot();
-	if (!pRoot)
-		return E_OUTOFMEMORY;
-	HRESULT hr = _InitEasySFTPRoot(pRoot);
+	CEasySFTPFolderRoot* pRoot;
+	auto hr = EasySFTPGetRootInstance(&pRoot);
 	if (FAILED(hr))
-	{
-		pRoot->Release();
 		return hr;
-	}
 	hr = pRoot->QueryInterface(IID_IEasySFTPRoot, (void**) ppRoot);
 	pRoot->Release();
 	return hr;
@@ -504,13 +516,10 @@ static HRESULT STDMETHODCALLTYPE EasySFTPClassCreateFunc(CClassFactory*, IUnknow
 {
 	if (pUnkOuter)
 		return CLASS_E_NOAGGREGATION;
-	CEasySFTPFolderRoot* pRoot = new CEasySFTPFolderRoot();
-	HRESULT hr = _InitEasySFTPRoot(pRoot);
+	CEasySFTPFolderRoot* pRoot;
+	auto hr = EasySFTPGetRootInstance(&pRoot);
 	if (FAILED(hr))
-	{
-		pRoot->Release();
 		return hr;
-	}
 	hr = pRoot->QueryInterface(riid, ppv);
 	pRoot->Release();
 	return hr;
