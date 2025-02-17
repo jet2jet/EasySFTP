@@ -1104,39 +1104,39 @@ LRESULT CMainWindow::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	//	str.Format(L"CanReceive: %s\n", m_pConnection->CanReceive() ? L"true" : L"false");
 	//	::OutputDebugString(str);
 	//}
-	if (message == WM_SYSCOMMAND && LOWORD(wParam) == SC_MAXIMIZE)
-	{
-		HRESULT hr;
-		IEnumIDList* pEnum;
-		hr = m_wndListViewServer.m_pFolder->EnumObjects(m_hWnd, SHCONTF_NONFOLDERS, &pEnum);
-		if (SUCCEEDED(hr))
-		{
-			PITEMID_CHILD idChild;
-			hr = pEnum->Next(1, &idChild, NULL);
-			pEnum->Release();
-			if (hr == S_OK)
-			{
-				auto idAbsolute = AppendItemIDList(m_wndListViewServer.m_lpidlAbsoluteMe, idChild);
-				::CoTaskMemFree(idChild);
-				IShellItem* pItem;
-				hr = ::SHCreateItemFromIDList(idAbsolute, IID_IShellItem, (void**)&pItem);
-				::CoTaskMemFree(idAbsolute);
-				if (SUCCEEDED(hr))
-				{
-					IFileOperation* pOperation;
-					hr = ::CoCreateInstance(__uuidof(FileOperation), NULL, CLSCTX_INPROC_SERVER, IID_IFileOperation, (void**)&pOperation);
-					if (SUCCEEDED(hr))
-					{
-						pOperation->SetOwnerWindow(m_hWnd);
-						hr = pOperation->DeleteItem(pItem, NULL);
-						hr = pOperation->PerformOperations();
-						pOperation->Release();
-					}
-					pItem->Release();
-				}
-			}
-		}
-	}
+	//if (message == WM_SYSCOMMAND && LOWORD(wParam) == SC_MAXIMIZE)
+	//{
+	//	HRESULT hr;
+	//	IEnumIDList* pEnum;
+	//	hr = m_wndListViewServer.m_pFolder->EnumObjects(m_hWnd, SHCONTF_NONFOLDERS, &pEnum);
+	//	if (SUCCEEDED(hr))
+	//	{
+	//		PITEMID_CHILD idChild;
+	//		hr = pEnum->Next(1, &idChild, NULL);
+	//		pEnum->Release();
+	//		if (hr == S_OK)
+	//		{
+	//			auto idAbsolute = AppendItemIDList(m_wndListViewServer.m_lpidlAbsoluteMe, idChild);
+	//			::CoTaskMemFree(idChild);
+	//			IShellItem* pItem;
+	//			hr = ::SHCreateItemFromIDList(idAbsolute, IID_IShellItem, (void**)&pItem);
+	//			::CoTaskMemFree(idAbsolute);
+	//			if (SUCCEEDED(hr))
+	//			{
+	//				IFileOperation* pOperation;
+	//				hr = ::CoCreateInstance(__uuidof(FileOperation), NULL, CLSCTX_INPROC_SERVER, IID_IFileOperation, (void**)&pOperation);
+	//				if (SUCCEEDED(hr))
+	//				{
+	//					pOperation->SetOwnerWindow(m_hWnd);
+	//					hr = pOperation->DeleteItem(pItem, NULL);
+	//					hr = pOperation->PerformOperations();
+	//					pOperation->Release();
+	//				}
+	//				pItem->Release();
+	//			}
+	//		}
+	//	}
+	//}
 #endif
 	//if (message == WM_INITMENU)
 	//{
