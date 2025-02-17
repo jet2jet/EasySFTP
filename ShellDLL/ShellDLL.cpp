@@ -298,6 +298,98 @@ LSTATUS __stdcall MyRegDeleteKey2(HKEY hKey, LPCTSTR lpszSubKey)
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _DEBUG
+#include <DbgHelp.h>
+#pragma comment(lib, "Dbghelp.lib")
+static bool s_bSymInitialized = false;
+static CRITICAL_SECTION s_csSym;
+constexpr auto s_nMaxStack = 10;
+void GetCallerName(CMyStringW& rstr, const WCHAR* const* ppvIgnoreNames)
+{
+	BYTE symInfoBuffer[sizeof(SYMBOL_INFO) + 128] = {};
+	SYMBOL_INFO* symInfo = reinterpret_cast<SYMBOL_INFO*>(symInfoBuffer);
+	void* stack[10];
+	if (!s_bSymInitialized)
+	{
+		CMyStringW str;
+		GetModuleFileNameString(theApp.m_hInstance, str);
+		auto* p = wcsrchr(str.GetBuffer(), L'\\');
+		if (p)
+			*p = 0;
+		else
+			str.Empty();
+		s_bSymInitialized = SymInitialize(GetCurrentProcess(), str.IsEmpty() ? NULL : str.operator LPSTR(), TRUE) != FALSE;
+		InitializeCriticalSection(&s_csSym);
+		atexit([]() {
+			DeleteCriticalSection(&s_csSym);
+		});
+	}
+	auto frames = CaptureStackBackTrace(2, s_nMaxStack, stack, NULL);
+	symInfo->SizeOfStruct = sizeof(SYMBOL_INFO);
+	symInfo->MaxNameLen = 128;
+	int i = 0;
+	if (ppvIgnoreNames)
+	{
+		for (; i < s_nMaxStack - 1; ++i)
+		{
+			CMyStringW strName;
+			EnterCriticalSection(&s_csSym);
+			if (SymFromAddr(GetCurrentProcess(), reinterpret_cast<DWORD64>(stack[i]), 0, symInfo) && symInfo->NameLen)
+			{
+				strName.SetString(symInfo->Name, symInfo->NameLen);
+			}
+			LeaveCriticalSection(&s_csSym);
+			if (strName.IsEmpty())
+				break;
+			auto found = false;
+			for (int j = 0; ppvIgnoreNames[j]; ++j)
+			{
+				if (wcsstr(strName, ppvIgnoreNames[j]) != NULL)
+				{
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				break;
+		}
+	}
+
+	auto first = true;
+	rstr.Format(L"Thread %lu ", GetCurrentThreadId());
+	while (i < s_nMaxStack)
+	{
+		CMyStringW strName, strLine;
+		EnterCriticalSection(&s_csSym);
+		if (SymFromAddr(GetCurrentProcess(), reinterpret_cast<DWORD64>(stack[i]), 0, symInfo) && symInfo->NameLen)
+		{
+			strLine.SetString(symInfo->Name, symInfo->NameLen);
+			strName.Format(L"%s (0x%p)", strLine.operator LPCWSTR(), stack[i]);
+			strLine.Empty();
+		}
+		else
+			strName.Format(L"0x%p", stack[i]);
+		LeaveCriticalSection(&s_csSym);
+
+		IMAGEHLP_LINE64 line{};
+		line.SizeOfStruct = sizeof(line);
+		DWORD dw;
+		EnterCriticalSection(&s_csSym);
+		if (SymGetLineFromAddr64(GetCurrentProcess(), reinterpret_cast<DWORD64>(stack[i]), &dw, &line))
+			strLine.Format(L" [%S(%lu)]", line.FileName, line.LineNumber);
+		LeaveCriticalSection(&s_csSym);
+		if (first)
+			first = false;
+		else
+			rstr += L", ";
+		rstr += strName + strLine;
+		++i;
+	}
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+
 typedef HRESULT (STDAPICALLTYPE* T_SHCreateItemFromIDList)(__in PCIDLIST_ABSOLUTE pidl, __in REFIID riid, __deref_out void **ppv);
 typedef HRESULT (STDAPICALLTYPE* T_SHCreateShellItem)(__in_opt PCIDLIST_ABSOLUTE pidlParent, __in_opt IShellFolder *psfParent, __in PCUITEMID_CHILD pidl, __out IShellItem **ppsi);
 static bool s_bSHItemFuncInitialized = false;

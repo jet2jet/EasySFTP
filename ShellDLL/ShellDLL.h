@@ -40,6 +40,10 @@ inline void __stdcall CallConstructor(T* ptr)
 #define new DEBUG_NEW
 #endif
 
+#ifdef _DEBUG
+void GetCallerName(CMyStringW& rstr, const WCHAR* const* ppvIgnoreNames = NULL);
+#endif
+
 DECLARE_INTERFACE_IID_(IEasySFTPInternal, IUnknown, "AD29C042-B9E3-4638-9DF6-D7DA5B8D0199")
 {
 	// *** IUnknown methods ***
