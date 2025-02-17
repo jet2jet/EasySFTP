@@ -494,13 +494,6 @@ STDAPI MyCreateThumbnailProviderFromFileName(LPCWSTR lpszFileName, IThumbnailPro
 	return ::CoCreateInstance(clsid, NULL, CLSCTX_INPROC_SERVER, IID_IThumbnailProvider, (void**) ppProvider);
 }
 
-static HWND __stdcall _MyCreateTimerWindow()
-{
-	HWND h = ::CreateWindowEx(0, _T("Static"), _T("EasySFTP.dll"),
-		WS_DISABLED, 0, 0, 0, 0, NULL, NULL, theApp.m_hInstance, NULL);
-	return h;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef HRESULT (STDAPICALLTYPE* T_RegisterTypeLibForUser)(ITypeLib* ptlib, _In_ OLECHAR* szFullPath,
@@ -1142,7 +1135,6 @@ CMainDLL::CMainDLL()
 	m_himlIconLarge = NULL;
 	m_himlIconSmall = NULL;
 	m_hMenuContext = NULL;
-	m_hWndTimer = NULL;
 	m_pObjectOnClipboard = NULL;
 }
 
@@ -1160,6 +1152,10 @@ bool CMainDLL::InitInstance()
 		return false;
 	WSADATA wsaData;
 	if (::WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
+		return false;
+
+	::InitializeCriticalSection(&m_csTimer);
+	if (!m_TimerThread.Initialize())
 		return false;
 
 	{
@@ -1486,11 +1482,6 @@ bool CMainDLL::InitInstance()
 		m_aFTPDataFormats.Add(fmt);
 	}
 
-	// this window must be created in the main thread
-	m_hWndTimer = _MyCreateTimerWindow();
-	if (!m_hWndTimer)
-		return false;
-
 	CMyPtrArrayT<CEasySFTPHostSetting> aHostSettings;
 	LoadINISettings(NULL, NULL, &aHostSettings);
 
@@ -1566,9 +1557,6 @@ int CMainDLL::ExitInstance()
 	//EmptyKnownFingerPrints(m_aKnownFingerPrints);
 	//EmptyHostSettings(m_aHostSettings);
 
-	if (m_hWndTimer)
-		::DestroyWindow(m_hWndTimer);
-
 	if (m_hMenuContext)
 		::DestroyMenu(m_hMenuContext);
 	if (m_hMenuPopup)
@@ -1609,6 +1597,9 @@ int CMainDLL::ExitInstance()
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
 	libssh2_exit();
+
+	m_TimerThread.Finalize();
+	::DeleteCriticalSection(&m_csTimer);
 
 	return 0;
 }
@@ -2229,6 +2220,8 @@ struct CMyTimerData
 {
 	PFNEASYSFTPTIMERPROC pfnTimerProc;
 	LPARAM lParam;
+	DWORD dwTickStart;
+	DWORD dwSpan;
 };
 
 static void CALLBACK MyTimerProc(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
@@ -2245,22 +2238,26 @@ UINT_PTR CMainDLL::RegisterTimer(DWORD dwSpan, PFNEASYSFTPTIMERPROC pfnTimerProc
 	CMyTimerData* pData = (CMyTimerData*) malloc(sizeof(CMyTimerData));
 	pData->pfnTimerProc = pfnTimerProc;
 	pData->lParam = lParam;
-	if (!::SetTimer(m_hWndTimer, (UINT_PTR) pData, (UINT) dwSpan, (TIMERPROC) MyTimerProc))
-	{
-		free(pData);
-		return 0;
-	}
+	pData->dwSpan = dwSpan;
+	pData->dwTickStart = GetTickCount();
+	::EnterCriticalSection(&theApp.m_csTimer);
 	m_arrTimers.Add(pData);
+	SetEvent(m_TimerThread.m_hEventChanged);
+	::LeaveCriticalSection(&theApp.m_csTimer);
 	return (UINT_PTR) pData;
 }
 
 void CMainDLL::UnregisterTimer(UINT_PTR idTimer)
 {
 	CMyTimerData* pData = (CMyTimerData*) idTimer;
-	::KillTimer(m_hWndTimer, (UINT_PTR) pData);
+	::EnterCriticalSection(&theApp.m_csTimer);
 	int i = m_arrTimers.FindItem(pData);
 	if (i >= 0)
+	{
 		m_arrTimers.RemoveItem(i);
+		SetEvent(m_TimerThread.m_hEventChanged);
+	}
+	::LeaveCriticalSection(&theApp.m_csTimer);
 	free(pData);
 }
 
@@ -2401,6 +2398,113 @@ void CMainDLL::SetAttachmentLock(LPCWSTR lpszFileName, LPCWSTR lpszURL)
 		}
 		pExecute->Release();
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+bool CMainDLL::CTimerThread::Initialize()
+{
+	m_hEventChanged = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+	if (!m_hEventChanged)
+		return false;
+	m_bExit = false;
+	return StartThread();
+}
+
+void CMainDLL::CTimerThread::Finalize()
+{
+	m_bExit = true;
+	if (m_hThread)
+	{
+		::SetEvent(m_hEventChanged);
+		WaitForSingleObject(m_hThread, INFINITE);
+	}
+	if (m_hEventChanged)
+	{
+		::CloseHandle(m_hEventChanged);
+	}
+}
+
+int CMainDLL::CTimerThread::Run()
+{
+	int startIndex, endIndex, lastCount, foundIndex;
+	startIndex = 0;
+	endIndex = 0;
+	lastCount = 0;
+	while (!m_bExit)
+	{
+		DWORD dwTick = GetTickCount();
+		CMyTimerData* pData = NULL;
+		::EnterCriticalSection(&theApp.m_csTimer);
+		auto newCount = theApp.m_arrTimers.GetCount();
+		if (lastCount != newCount)
+		{
+			if (lastCount < newCount)
+			{
+				if (startIndex <= endIndex)
+					endIndex += newCount - lastCount;
+			}
+			else
+			{
+				if (startIndex <= endIndex)
+					endIndex -= lastCount - newCount;
+				else if (startIndex >= newCount)
+					startIndex = 0;
+			}
+			lastCount = newCount;
+		}
+		foundIndex = 0;
+		DWORD dwTimeInterval = 0;
+		for (int i = startIndex; i != endIndex; ++i)
+		{
+			if (i == theApp.m_arrTimers.GetCount())
+				i = 0;
+			auto* p = static_cast<CMyTimerData*>(theApp.m_arrTimers.GetItem(i));
+			if (!pData)
+			{
+				pData = p;
+				if (pData->dwSpan >= (dwTick - pData->dwTickStart))
+					dwTimeInterval = pData->dwSpan - (dwTick - pData->dwTickStart);
+			}
+			else
+			{
+				DWORD dwTime2 = 0;
+				if (p->dwSpan >= (dwTick - p->dwTickStart))
+					dwTime2 = p->dwSpan - (dwTick - p->dwTickStart);
+				if (dwTimeInterval > dwTime2)
+				{
+					pData = p;
+					dwTimeInterval = dwTime2;
+					foundIndex = i;
+				}
+			}
+		}
+		startIndex = foundIndex;
+		if (foundIndex > 0)
+		{
+			endIndex = startIndex - 1;
+		}
+		else
+		{
+			endIndex = lastCount;
+		}
+
+		auto idTimer = reinterpret_cast<UINT_PTR>(pData);
+		auto pfnTimerProc = pData ? pData->pfnTimerProc : NULL;
+		auto lParam = pData ? pData->lParam : 0;
+		if (pData)
+			pData->dwTickStart += dwTimeInterval;
+		::LeaveCriticalSection(&theApp.m_csTimer);
+
+		if (!pData)
+			dwTimeInterval = INFINITE;
+
+		if (::WaitForSingleObject(m_hEventChanged, dwTimeInterval) == WAIT_TIMEOUT && pfnTimerProc)
+		{
+			pfnTimerProc(idTimer, lParam);
+		}
+	}
+	return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

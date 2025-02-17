@@ -172,7 +172,7 @@ union SHFILEINFO_UNION
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define KEEP_CONNECTION_TIME_SPAN  12000
+#define KEEP_CONNECTION_TIME_SPAN  60000
 // milliseconds
 #define WAIT_RECEIVE_TIME          10000
 
@@ -385,8 +385,6 @@ public:
 	HMENU m_hMenuPopup;
 	HMENU m_hMenuContext;
 
-	HWND m_hWndTimer;
-
 	union
 	{
 		OPENFILENAMEA m_ofnA;
@@ -408,6 +406,7 @@ public:
 	// lock count for Class factory
 	ULONG m_uCFLock;
 
+	CRITICAL_SECTION m_csTimer;
 	CMyPtrArray m_arrTimers;
 
 	CRITICAL_SECTION m_csHosts;
@@ -428,6 +427,20 @@ public:
 	bool m_bEnableRootRefs;
 	CMyPtrArrayT<CEasySFTPFolderRoot> m_aRootRefs;
 	CRITICAL_SECTION m_csRootRefs;
+
+private:
+	class CTimerThread : public CMyThread
+	{
+	public:
+		CTimerThread() : m_hEventChanged(NULL), m_bExit(false) {}
+		bool Initialize();
+		void Finalize();
+		virtual int Run() override;
+
+		HANDLE m_hEventChanged;
+	private:
+		bool m_bExit;
+	} m_TimerThread;
 };
 
 extern CMainDLL theApp;
