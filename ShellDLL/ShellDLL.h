@@ -337,8 +337,7 @@ public:
 
 	void MyChangeNotify(LONG wEventId, UINT uFlags, PIDLIST_ABSOLUTE pidl1, PIDLIST_ABSOLUTE pidl2);
 
-	void AddReference(CEasySFTPFolderRoot* pRoot);
-	void RemoveReference(CEasySFTPFolderRoot* pRoot);
+	void SetReference(CEasySFTPFolderRoot* pRoot);
 
 	void GetTemporaryFileName(LPCWSTR lpszFileName, CMyStringW& rstrResult);
 	// set the file as 'retreived from foreign source'
@@ -425,7 +424,7 @@ public:
 	IDataObject* m_pObjectOnClipboard;
 
 	bool m_bEnableRootRefs;
-	CMyPtrArrayT<CEasySFTPFolderRoot> m_aRootRefs;
+	CEasySFTPFolderRoot* m_pRoot;
 	CRITICAL_SECTION m_csRootRefs;
 
 private:

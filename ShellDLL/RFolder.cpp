@@ -200,7 +200,9 @@ CEasySFTPFolderRoot::CEasySFTPFolderRoot()
 	//m_pListener = NULL;
 	m_pidlMe = NULL;
 	m_pParent = NULL;
-	theApp.AddReference(this);
+	::EnterCriticalSection(&theApp.m_csRootRefs);
+	theApp.SetReference(this);
+	::LeaveCriticalSection(&theApp.m_csRootRefs);
 
 	CMyStringW str;
 	str.Format(L"CEasySFTPFolderRoot::CEasySFTPFolderRoot() for (0x%p), count = 1\n",
@@ -217,7 +219,6 @@ CEasySFTPFolderRoot::~CEasySFTPFolderRoot()
 	//if (m_pidlMe)
 	//	::CoTaskMemFree(m_pidlMe);
 	m_pMallocData->Release();
-	theApp.RemoveReference(this);
 }
 
 STDMETHODIMP CEasySFTPFolderRoot::QueryInterface(REFIID riid, void** ppv)
@@ -294,11 +295,14 @@ STDMETHODIMP_(ULONG) CEasySFTPFolderRoot::Release()
 //	OutputDebugString(str);
 //#endif
 	CFolderBase::OnRelease();
+	::EnterCriticalSection(&theApp.m_csRootRefs);
 	auto u = ::InterlockedDecrement(&m_uRef);
-	if (u)
-		return u;
-	delete this;
-	return 0;
+	if (!u)
+		theApp.SetReference(NULL);
+	::LeaveCriticalSection(&theApp.m_csRootRefs);
+	if (!u)
+		delete this;
+	return u;
 }
 
 STDMETHODIMP CEasySFTPFolderRoot::GetClassInfo(ITypeInfo** ppTI)

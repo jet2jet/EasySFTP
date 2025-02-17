@@ -113,10 +113,13 @@ static HRESULT _InitEasySFTPRoot(CEasySFTPFolderRoot* pRoot)
 
 static HRESULT EasySFTPGetRootInstance(CEasySFTPFolderRoot** ppRoot)
 {
-	if (theApp.m_aRootRefs.GetCount() > 0)
-	{
-		auto* p = theApp.m_aRootRefs.GetItem(0);
+	::EnterCriticalSection(&theApp.m_csRootRefs);
+	auto* p = theApp.m_pRoot;
+	if (p)
 		p->AddRef();
+	::LeaveCriticalSection(&theApp.m_csRootRefs);
+	if (p)
+	{
 		*ppRoot = p;
 		return S_OK;
 	}
@@ -546,7 +549,7 @@ STDAPI DllCanUnloadNow()
 {
 	if (theApp.m_uCFLock > 0)
 		return S_FALSE;
-	if (theApp.m_aRootRefs.GetCount() > 0)
+	if (theApp.m_pRoot != NULL)
 		return S_FALSE;
 	for (int i = 0; i < theApp.m_aHosts.GetCount(); i++)
 	{
@@ -1519,7 +1522,7 @@ int CMainDLL::ExitInstance()
 {
 	::EnterCriticalSection(&m_csRootRefs);
 	m_bEnableRootRefs = false;
-	m_aRootRefs.RemoveAll();
+	m_pRoot = NULL;
 	::LeaveCriticalSection(&m_csRootRefs);
 
 	if (m_pObjectOnClipboard)
@@ -2282,43 +2285,11 @@ bool CMainDLL::CheckClipboardForMoved(IDataObject* pObject, DWORD dwEffects)
 	return true;
 }
 
-void CMainDLL::AddReference(CEasySFTPFolderRoot* pRoot)
+void CMainDLL::SetReference(CEasySFTPFolderRoot* pRoot)
 {
 	if (!m_bEnableRootRefs)
 		return;
-	::EnterCriticalSection(&m_csRootRefs);
-	m_aRootRefs.Add(pRoot);
-	::LeaveCriticalSection(&m_csRootRefs);
-}
-
-void CMainDLL::RemoveReference(CEasySFTPFolderRoot* pRoot)
-{
-	if (!m_bEnableRootRefs)
-		return;
-	::EnterCriticalSection(&m_csRootRefs);
-	int n = m_aRootRefs.FindItem(pRoot);
-	if (n >= 0)
-		m_aRootRefs.RemoveItem(n);
-	int rest = m_aRootRefs.GetCount();
-	::LeaveCriticalSection(&m_csRootRefs);
-	if (!rest)
-	{
-		// release all directories
-		::EnterCriticalSection(&m_csHosts);
-		for (int i = 0; i < m_aHosts.GetCount(); i++)
-		{
-			CHostFolderData* pData = m_aHosts.GetItem(i);
-			if (pData->pDirItem)
-			{
-				if (pData->pDirItem->pDirectory)
-				{
-					delete pData->pDirItem->pDirectory;
-					pData->pDirItem->pDirectory = NULL;
-				}
-			}
-		}
-		::LeaveCriticalSection(&m_csHosts);
-	}
+	m_pRoot = pRoot;
 }
 
 void CMainDLL::MyChangeNotify(LONG wEventId, UINT uFlags, PIDLIST_ABSOLUTE pidl1, PIDLIST_ABSOLUTE pidl2)
