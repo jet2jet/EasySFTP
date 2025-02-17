@@ -780,6 +780,22 @@ STDMETHODIMP CFTPDirectoryBase::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc, 
 	if (IsEqualIID(riid, IID_IExtractIconW) || IsEqualIID(riid, IID_IExtractIconA))
 		return E_NOINTERFACE;
 
+	if (IsEqualIID(riid, IID_IShellItem) || IsEqualIID(riid, IID_IShellItem2))
+	{
+		auto pidlAbs = ::AppendItemIDList(m_pidlMe, pidl);
+		if (!pidlAbs)
+			return E_OUTOFMEMORY;
+		IShellItem* pItem = NULL;
+		auto hr = ::MyCreateShellItem(pidlAbs, &pItem);
+		if (FAILED(hr))
+			return hr;
+		if (!pItem)
+			return E_UNEXPECTED;
+		hr = pItem->QueryInterface(riid, ppv);
+		pItem->Release();
+		return hr;
+	}
+
 	if (IsEqualIID(riid, IID_IPropertyStore))
 	{
 		CFTPDirectoryBase* pDir;
@@ -893,7 +909,9 @@ STDMETHODIMP CFTPDirectoryBase::BindToStorage(PCUIDLIST_RELATIVE pidl, LPBC pbc,
 		{
 			return hr;
 		}
-		return pChildDir->QueryInterface(riid, ppv);
+		hr = pChildDir->QueryInterface(riid, ppv);
+		pChildDir->Release();
+		return hr;
 	}
 	else
 	{
@@ -3172,7 +3190,10 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 		else
 		{
 			if (!bFound)
+			{
+				pDirectory->Release();
 				pDirItem->Release();
+			}
 		}
 		return hr;
 	}
@@ -3197,6 +3218,8 @@ CFTPDirectoryItem* CFTPDirectoryBase::GetAlreadyOpenedDirectory(PCUIDLIST_RELATI
 		CFTPDirectoryItem* pDirItem = m_aDirectories.GetItem(i);
 		if (pDirItem->strName.Compare(str) == 0)
 		{
+			if (pDirItem->pDirectory && pidlChild->mkid.cb)
+				return pDirItem->pDirectory->GetAlreadyOpenedDirectory(pidlChild, ppidlNext);
 			*ppidlNext = pidlChild->mkid.cb ? pidlChild : NULL;
 			return pDirItem;
 		}
