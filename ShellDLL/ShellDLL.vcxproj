@@ -319,7 +319,6 @@ exit /b 0
     <ClCompile Include="FoldBase.cpp" />
     <ClCompile Include="FoldDrop.cpp" />
     <ClCompile Include="Folder.cpp" />
-    <ClCompile Include="FoldItem.cpp" />
     <ClCompile Include="FoldRoot.cpp" />
     <ClCompile Include="FTPConn.cpp" />
     <ClCompile Include="FTPFldr.cpp" />
@@ -386,7 +385,6 @@ exit /b 0
     <ClInclude Include="FoldBase.h" />
     <ClInclude Include="FoldDrop.h" />
     <ClInclude Include="Folder.h" />
-    <ClInclude Include="FoldItem.h" />
     <ClInclude Include="FoldRoot.h" />
     <ClInclude Include="FTPConn.h" />
     <ClInclude Include="FTPFldr.h" />

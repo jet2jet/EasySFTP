@@ -3,8 +3,6 @@
 // note: CFolderBase::GetDisplayNameOf must be implemented in case the 'pidl' is NULL
 class DECLSPEC_NOVTABLE CFolderBase : public IShellFolder2,//public IShellFolder3,
 	public IPersistFolder2,
-	public IShellItem,
-	public IParentAndItem,
 	public IPersistIDList,
 	public IObjectWithSite,
 	public IShellIcon,
@@ -53,19 +51,6 @@ public:
 	// IPersistFolder2
 public:
 	STDMETHOD(GetCurFolder)(PIDLIST_ABSOLUTE FAR* ppidl);
-
-	// IShellItem
-public:
-	STDMETHOD(BindToHandler)(IBindCtx* pbc, REFGUID bhid, REFIID riid, void** ppv);
-	STDMETHOD(GetParent)(IShellItem** ppsi);
-	STDMETHOD(GetDisplayName)(SIGDN sigdnName, LPWSTR* ppszName);
-	STDMETHOD(GetAttributes)(SFGAOF sfgaoMask, SFGAOF* psfgaoAttribs);
-	STDMETHOD(Compare)(IShellItem* psi, SICHINTF hint, int* piOrder);
-
-	// IParentAndItem
-public:
-	STDMETHOD(SetParentAndItem)(PCIDLIST_ABSOLUTE pidlParent, IShellFolder* psf, PCUITEMID_CHILD pidlChild);
-	STDMETHOD(GetParentAndItem)(PIDLIST_ABSOLUTE* ppidlParent, IShellFolder** ppsf, PITEMID_CHILD* ppidlChild);
 
 	// IPersistIDList
 public:

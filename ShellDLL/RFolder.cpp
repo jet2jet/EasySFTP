@@ -425,6 +425,23 @@ STDMETHODIMP CEasySFTPFolderRoot::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc
 	if (!pidl || !ppv)
 		return E_POINTER;
 	*ppv = NULL;
+
+	if (IsEqualIID(riid, IID_IShellItem) || IsEqualIID(riid, IID_IShellItem2))
+	{
+		auto pidlAbs = m_pidlMe ? ::AppendItemIDList(m_pidlMe, pidl) : reinterpret_cast<PIDLIST_ABSOLUTE>(::DuplicateItemIDList(pidl));
+		if (!pidlAbs)
+			return E_OUTOFMEMORY;
+		IShellItem* pItem = NULL;
+		auto hr = ::MyCreateShellItem(pidlAbs, &pItem);
+		if (FAILED(hr))
+			return hr;
+		if (!pItem)
+			return E_UNEXPECTED;
+		hr = pItem->QueryInterface(riid, ppv);
+		pItem->Release();
+		return hr;
+	}
+
 	PCUIDLIST_RELATIVE pidlNext = (PCUIDLIST_RELATIVE)(((DWORD_PTR)pidl) + pidl->mkid.cb);
 	CFTPDirectoryRootBase* pRet;
 	HRESULT hr = _BindToObject(NULL, (PCUITEMID_CHILD)pidl, pbc, NULL, &pRet);
