@@ -275,20 +275,24 @@ STDMETHODIMP CEasySFTPFolderRoot::QueryInterface(REFIID riid, void** ppv)
 
 STDMETHODIMP_(ULONG) CEasySFTPFolderRoot::AddRef()
 {
-	CMyStringW str;
-	str.Format(L"CEasySFTPFolderRoot::AddRef() (%p), count = %lu\n",
-		this, (m_uRef + 1));
-	OutputDebugString(str);
+//#ifdef _DEBUG
+//	CMyStringW str;
+//	str.Format(L"CEasySFTPFolderRoot::AddRef() (%p), count = %lu\n",
+//		this, (m_uRef + 1));
+//	OutputDebugString(str);
+//#endif
 	CFolderBase::OnAddRef();
 	return ::InterlockedIncrement(&m_uRef);
 }
 
 STDMETHODIMP_(ULONG) CEasySFTPFolderRoot::Release()
 {
-	CMyStringW str;
-	str.Format(L"CEasySFTPFolderRoot::Release() (%p), count = %lu\n",
-		this, (m_uRef - 1));
-	OutputDebugString(str);
+//#ifdef _DEBUG
+//	CMyStringW str;
+//	str.Format(L"CEasySFTPFolderRoot::Release() (%p), count = %lu\n",
+//		this, (m_uRef - 1));
+//	OutputDebugString(str);
+//#endif
 	CFolderBase::OnRelease();
 	auto u = ::InterlockedDecrement(&m_uRef);
 	if (u)

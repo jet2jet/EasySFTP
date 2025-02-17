@@ -128,8 +128,6 @@ public:
 	virtual ~CSFTPFolderSFTPDirectory();
 
 	STDMETHOD(QueryInterface)(REFIID riid, void** ppv) { return CFTPDirectoryBase::QueryInterface(riid, ppv); }
-	STDMETHOD_(ULONG, AddRef)() { return CFTPDirectoryBase::AddRef(); }
-	STDMETHOD_(ULONG, Release)() { return CFTPDirectoryBase::Release(); }
 
 public:
 	STDMETHOD(CreateInstance)(CFTPDirectoryItem* pItemMe, CFTPDirectoryBase* pParent,

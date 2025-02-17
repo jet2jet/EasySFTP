@@ -15,7 +15,7 @@ public:
 	{
 	}
 
-	STDMETHOD_(ULONG, AddRef)()
+	ULONG AddRef()
 	{
 		auto u = ::InterlockedIncrement(&m_uRef);
 		if (_GetParent())
@@ -23,19 +23,13 @@ public:
 		return u;
 	}
 
-	STDMETHOD_(ULONG, Release)()
-	{
-		auto u = ReleaseCountOnly();
-		if (!u)
-			delete this;
-		return u;
-	}
-
-	ULONG ReleaseCountOnly()
+	ULONG Release()
 	{
 		auto u = ::InterlockedDecrement(&m_uRef);
 		if (_GetParent())
 			_GetParent()->Release();
+		if (!u)
+			delete this;
 		return u;
 	}
 

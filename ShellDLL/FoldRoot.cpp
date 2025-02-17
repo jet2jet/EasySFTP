@@ -50,6 +50,7 @@ CFTPDirectoryRootBase::~CFTPDirectoryRootBase()
 
 ULONG CFTPDirectoryRootBase::DetachAndRelease()
 {
+	CFTPDirectoryBase::DetachImpl();
 	if (m_pParent)
 	{
 		auto c = m_uRef;
@@ -57,7 +58,7 @@ ULONG CFTPDirectoryRootBase::DetachAndRelease()
 			m_pParent->Release();
 		m_pParent = NULL;
 	}
-	return CFTPDirectoryBase::DetachAndRelease();
+	return Release();
 }
 
 STDMETHODIMP CFTPDirectoryRootBase::QueryInterface(REFIID riid, void** ppv)
@@ -89,20 +90,17 @@ STDMETHODIMP CFTPDirectoryRootBase::QueryInterface(REFIID riid, void** ppv)
 
 STDMETHODIMP_(ULONG) CFTPDirectoryRootBase::AddRef()
 {
-	auto u = ::InterlockedIncrement(&m_uRef);
 	if (m_pParent)
 		m_pParent->AddRef();
+	auto u = CFTPDirectoryT::AddRef();
 	return u;
 }
 
 STDMETHODIMP_(ULONG) CFTPDirectoryRootBase::Release()
 {
-	auto u = ::InterlockedDecrement(&m_uRef);
 	if (m_pParent)
 		m_pParent->Release();
-	if (!u)
-		delete this;
-	return u;
+	return CFTPDirectoryT::Release();
 }
 
 STDMETHODIMP CFTPDirectoryRootBase::GetClassInfo(ITypeInfo** ppTI)

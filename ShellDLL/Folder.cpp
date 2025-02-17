@@ -20,6 +20,11 @@
 
 #include "RFolder.h"
 
+#ifdef _DEBUG
+#include "FTPFldr.h"
+#include "SFTPFldr.h"
+#endif
+
 static HMENU __stdcall GetSubMenuByID(HMENU hMenu, UINT uID)
 {
 	MENUITEMINFO mii;
@@ -475,7 +480,6 @@ CFTPDirectoryBase::CFTPDirectoryBase(
 	, m_pItemMe(pItemMe)
 	, m_strDirectory(lpszDirectory)
 {
-	pParent->AddRef();
 	m_bIsRoot = false;
 
 	CommonConstruct();
@@ -494,9 +498,31 @@ CFTPDirectoryBase::CFTPDirectoryBase(
 	CommonConstruct();
 }
 
+constexpr const WCHAR* const s_pIgnoreNames[] = {
+	L"CFTPDirectoryBase::AddRef",
+	L"CFTPDirectoryBase::Release",
+	L"CFTPDirectoryBase::CommonConstruct",
+	L"CFTPDirectoryT<IEasySFTPDirectory>::AddRef",
+	L"CFTPDirectoryT<IEasySFTPDirectory>::Release",
+	L"CFTPDirectoryT<IEasySFTPRootDirectory>::AddRef",
+	L"CFTPDirectoryT<IEasySFTPRootDirectory>::Release",
+	L"CFTPDirectoryRootBase::AddRef",
+	L"CFTPDirectoryRootBase::Release",
+	L"CReferenceDelegationChild<CFTPDirectoryBase>::CReferenceDelegationChild<CFTPDirectoryBase>",
+	L"CReferenceDelegationChild<CFTPDirectoryBase>::AddRef",
+	L"CReferenceDelegationChild<CFTPDirectoryBase>::Release",
+	L"CReferenceDelegationChild<CFTPDirectoryBase>::DetachParent",
+	L"QueryInterface",
+	L"IUnknown_SafeReleaseAndNullPtr",
+	NULL,
+};
+
 void CFTPDirectoryBase::CommonConstruct()
 {
 	m_uRef = 1;
+#ifdef _DEBUG
+	m_bInDetachAndRelease = false;
+#endif
 	m_clsidThis = CLSID_NULL;
 	m_grfMode = 0;
 	m_grfStateBits = 0;
@@ -506,15 +532,34 @@ void CFTPDirectoryBase::CommonConstruct()
 		m_pItemMe->AddRef();
 	}
 
+	ULONG retParent = 0;
+	if (m_pParent)
+		retParent = m_pParent->AddRef();
+
 	::InitializeCriticalSection(&m_csFiles);
-	CMyStringW str;
-	str.Format(L"CFTPDirectoryBase::CommonConstruct() for (0x%p), count = 1\n",
-		(void*)this);
-	OutputDebugString(str);
+	::InitializeCriticalSection(&m_csRefs);
+//#ifdef _DEBUG
+//	CMyStringW str, str2;
+//	GetCallerName(str2, s_pIgnoreNames);
+//	if (m_pParent)
+//	{
+//		str.Format(L"CFTPDirectoryBase::CommonConstruct() for '%s' (0x%p) from '%s', count = 1 (parent 0x%p: %lu)\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2, (void*)m_pParent, retParent);
+//	}
+//	else
+//	{
+//		str.Format(L"CFTPDirectoryBase::CommonConstruct() for '%s' (0x%p) from '%s', count = 1 (no parent)\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2);
+//	}
+//	OutputDebugString(str);
+//#endif
 }
 
 CFTPDirectoryBase::~CFTPDirectoryBase()
 {
+#ifdef _DEBUG
+	_ASSERT(!m_bInDetachAndRelease);
+#endif
 	if (m_pItemMe)
 		m_pItemMe->Release();
 	//#ifdef _DEBUG
@@ -529,20 +574,17 @@ CFTPDirectoryBase::~CFTPDirectoryBase()
 	//#endif
 
 	::DeleteCriticalSection(&m_csFiles);
+	::DeleteCriticalSection(&m_csRefs);
 
 	//if (m_pParent)
 	//	m_pParent->Release();
 }
 
-ULONG CFTPDirectoryBase::DetachAndRelease()
+void CFTPDirectoryBase::DetachImpl()
 {
-	if (m_pParent)
-	{
-		ULONG c = m_uRef;
-		for (ULONG u = 0; u < c; ++u)
-			m_pParent->Release();
-		m_pParent = NULL;
-	}
+#ifdef _DEBUG
+	m_bInDetachAndRelease = true;
+#endif
 	auto i = m_aDirectories.GetCount();
 	while (i--)
 	{
@@ -563,36 +605,85 @@ ULONG CFTPDirectoryBase::DetachAndRelease()
 	m_aFiles.RemoveAll();
 	::LeaveCriticalSection(&m_csFiles);
 
+	if (m_pParent)
+	{
+		ULONG c = m_uRef;
+		for (ULONG u = 0; u < c; ++u)
+			m_pParent->Release();
+		m_pParent = NULL;
+	}
+
+#ifdef _DEBUG
+	m_bInDetachAndRelease = false;
+#endif
+}
+
+ULONG CFTPDirectoryBase::DetachAndRelease()
+{
+	DetachImpl();
 	return Release();
 }
 
 STDMETHODIMP_(ULONG) CFTPDirectoryBase::AddRef()
 {
+	::EnterCriticalSection(&m_csRefs);
 	ULONG ret = ::InterlockedIncrement(&m_uRef);
-	//#ifdef _DEBUG
-	//	CMyStringW str;
-	//	str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p), count = %lu\n",
-	//		(LPCWSTR) m_strDirectory, (void*) this, ret);
-	//	OutputDebugString(str);
-	//#endif
+	ULONG retParent = 0;
 	if (m_pParent)
-		m_pParent->AddRef();
+		retParent = m_pParent->AddRef();
+	::LeaveCriticalSection(&m_csRefs);
+//#ifdef _DEBUG
+//	CMyStringW str, str2;
+//	GetCallerName(str2, s_pIgnoreNames);
+//	if (m_pParent)
+//	{
+//		str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p) from '%s', count = %lu (parent 0x%p: %lu)\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2, ret, (void*)m_pParent, retParent);
+//	}
+//	else
+//	{
+//		str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p) from '%s', count = %lu (no parent)\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2, ret);
+//	}
+//	OutputDebugString(str);
+//#endif
 	return ret;
 }
 
 STDMETHODIMP_(ULONG) CFTPDirectoryBase::Release()
 {
+	::EnterCriticalSection(&m_csRefs);
+	ULONG retParent = 0;
 	if (m_pParent)
-		m_pParent->Release();
+		retParent = m_pParent->Release();
 	ULONG ret;
 	ret = ::InterlockedDecrement(&m_uRef);
+	::LeaveCriticalSection(&m_csRefs);
 
-	//#ifdef _DEBUG
-	//	CMyStringW str;
-	//	str.Format(L"CFTPDirectoryBase::Release() for '%s' (0x%p), count = %lu\n",
-	//		(LPCWSTR) m_strDirectory, (void*) this, ret);
-	//	OutputDebugString(str);
-	//#endif
+//#ifdef _DEBUG
+//	CMyStringW str, str2;
+//	GetCallerName(str2, s_pIgnoreNames);
+//	if (m_pParent)
+//	{
+//		str.Format(L"CFTPDirectoryBase::Release() for '%s' (0x%p) from '%s', count = %lu (parent 0x%p: %lu)\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2, ret, (void*)m_pParent, retParent);
+//	}
+//	else
+//	{
+//		str.Format(L"CFTPDirectoryBase::Release() for '%s' (0x%p) from '%s', count = %lu\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2, ret);
+//	}
+//	OutputDebugString(str);
+//
+//	//if (m_bIsRoot)
+//	//{
+//	//	for (int i = 0; i < m_aDirectories.GetCount(); ++i)
+//	//	{
+//	//		auto* pChild = m_aDirectories.GetItem(i);
+//	//		_ASSERT(pChild->pDirectory->m_uRef < ret + 1);
+//	//	}
+//	//}
+//#endif
 	if (!ret)
 		delete this;
 	return ret;
