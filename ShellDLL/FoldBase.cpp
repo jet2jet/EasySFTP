@@ -308,7 +308,7 @@ STDMETHODIMP CFolderBase::Initialize(PCIDLIST_ABSOLUTE pidl)
 	if (!m_pidlMe)
 		return E_OUTOFMEMORY;
 
-	return InitializeParent();
+	return S_OK;
 }
 
 STDMETHODIMP CFolderBase::GetCurFolder(PIDLIST_ABSOLUTE* ppidl)

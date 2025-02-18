@@ -185,7 +185,6 @@ public:
 	STDMETHOD_(void, UpdateItem)(PCUITEMID_CHILD pidlOld, PCUITEMID_CHILD pidlNew, LONG lEvent);
 	STDMETHOD_(void, UpdateItem)(CFTPFileItem* pOldItem, LPCWSTR lpszNewItem, LONG lEvent);
 
-	virtual HRESULT InitializeParent() override { return S_OK; }
 	inline CFTPDirectoryBase* GetParent() const { return m_pParent; }
 	CFTPDirectoryRootBase* GetRoot();
 

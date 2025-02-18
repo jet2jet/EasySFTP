@@ -86,8 +86,6 @@ protected:
 	STDMETHOD_(void, UpdateItem)(PCUITEMID_CHILD pidlOld, PCUITEMID_CHILD pidlNew, LONG lEvent)
 	{ }
 
-	virtual HRESULT InitializeParent() = 0;
-
 public:
 	PIDLIST_ABSOLUTE m_pidlMe;
 	CDelegateMallocData* m_pMallocData;

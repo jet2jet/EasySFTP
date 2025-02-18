@@ -1760,11 +1760,6 @@ STDMETHODIMP_(void) CEasySFTPFolderRoot::UpdateItem(PCUITEMID_CHILD pidlOld, PCU
 	//}
 }
 
-HRESULT CEasySFTPFolderRoot::InitializeParent()
-{
-	return S_OK;
-}
-
 bool CEasySFTPFolderRoot::ConnectDialog(HWND hWndOwner, IEasySFTPAuthentication* pUser)
 {
 	m_dlgConnect.SetDialogMode(false);

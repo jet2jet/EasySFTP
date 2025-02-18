@@ -114,8 +114,6 @@ public:
 public:
 	STDMETHOD_(void, UpdateItem)(PCUITEMID_CHILD pidlOld, PCUITEMID_CHILD pidlNew, LONG lEvent) override;
 
-	virtual HRESULT InitializeParent() override;
-
 public:
 	bool ConnectDialog(HWND hWndOwner, IEasySFTPAuthentication* pUser);
 	// <0: error (only if pszAuthList != NULL)
