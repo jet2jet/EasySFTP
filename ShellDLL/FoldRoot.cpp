@@ -369,34 +369,6 @@ STDMETHODIMP CFTPDirectoryRootBase::GetHostInfo(VARIANT_BOOL* pbIsSFTP, int* pnP
 	return S_OK;
 }
 
-IShellFolder* CFTPDirectoryRootBase::GetParentFolder()
-{
-	return m_pParent;
-}
-
-HRESULT CFTPDirectoryRootBase::SetParentFolder(IShellFolder* pFolder)
-{
-	CEasySFTPFolderRoot* pRoot = NULL;
-	if (pFolder)
-	{
-		auto hr = pFolder->QueryInterface(IID_CEasySFTPFolderRoot, reinterpret_cast<void**>(&pRoot));
-		if (FAILED(hr))
-			return E_INVALIDARG;
-	}
-	if (m_pParent)
-	{
-		for (ULONG u = 0; u < m_uRef; ++u)
-			m_pParent->Release();
-	}
-	m_pParent = pRoot;
-	if (pRoot)
-	{
-		for (ULONG u = 1; u < m_uRef; ++u)
-			pRoot->AddRef();
-	}
-	return S_OK;
-}
-
 //void CFTPDirectoryRootBase::BeforeClipboardOperation(IDataObject* pObjectNew)
 //{
 //}

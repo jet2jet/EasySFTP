@@ -782,7 +782,9 @@ STDMETHODIMP CFTPDirectoryBase::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc, 
 
 	if (IsEqualIID(riid, IID_IShellItem) || IsEqualIID(riid, IID_IShellItem2))
 	{
+		::EnterCriticalSection(&m_csPidlMe);
 		auto pidlAbs = ::AppendItemIDList(m_pidlMe, pidl);
+		::LeaveCriticalSection(&m_csPidlMe);
 		if (!pidlAbs)
 			return E_OUTOFMEMORY;
 		IShellItem* pItem = NULL;
@@ -817,7 +819,9 @@ STDMETHODIMP CFTPDirectoryBase::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc, 
 		CFTPFileItem* p = GetFileItem(pidl, &pDir);
 		if (!p)
 			return E_INVALIDARG;
+		::EnterCriticalSection(&m_csPidlMe);
 		auto pidlAbsolute = ::AppendItemIDList(m_pidlMe, pidl);
+		::LeaveCriticalSection(&m_csPidlMe);
 		pDir->Release();
 		if (!pidlAbsolute)
 			return E_OUTOFMEMORY;
@@ -1165,7 +1169,9 @@ STDMETHODIMP CFTPDirectoryBase::CreateViewObject(HWND hWndOwner, REFIID riid, vo
 	else if (IsEqualIID(riid, IID_IContextMenu))
 	{
 		IShellBrowser* pBrowser = GetShellBrowser(hWndOwner);
+		::EnterCriticalSection(&m_csPidlMe);
 		CFTPFileDirectoryMenu* pMenu = new CFTPFileDirectoryMenu(this, m_pidlMe, pBrowser);
+		::LeaveCriticalSection(&m_csPidlMe);
 		if (pBrowser)
 			pBrowser->Release();
 		*ppv = (IContextMenu*)pMenu;
@@ -1348,7 +1354,9 @@ STDMETHODIMP CFTPDirectoryBase::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUITEM
 	else if (IsEqualIID(riid, IID_IContextMenu))
 	{
 		IShellBrowser* pBrowser = GetShellBrowser(hWndOwner);
+		::EnterCriticalSection(&m_csPidlMe);
 		CFTPFileItemMenu* pMenu = new CFTPFileItemMenu(this, m_pidlMe, pBrowser, aItems);
+		::LeaveCriticalSection(&m_csPidlMe);
 		if (pBrowser)
 			pBrowser->Release();
 		hr = pMenu->QueryInterface(riid, ppv);
@@ -3063,30 +3071,6 @@ STDMETHODIMP_(void) CFTPDirectoryBase::UpdateItem(CFTPFileItem* pOldItem, LPCWST
 }
 
 
-HRESULT CFTPDirectoryBase::SetParentFolder(IShellFolder* pFolder)
-{
-	CFTPDirectoryBase* pParent = NULL;
-	if (pFolder)
-	{
-		auto hr = pFolder->QueryInterface(IID_CFTPDirectoryBase, reinterpret_cast<void**>(&pParent));
-		if (FAILED(hr))
-			return E_INVALIDARG;
-	}
-	if (m_pParent)
-	{
-		for (ULONG u = 0; u < m_uRef; ++u)
-			m_pParent->Release();
-	}
-	m_pParent = pParent;
-	if (pParent)
-	{
-		// already AddRef'd one time via QueryInterface
-		for (ULONG u = 1; u < m_uRef; ++u)
-			pParent->AddRef();
-	}
-	return S_OK;
-}
-
 
 HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirectoryBase** ppDirectory)
 {
@@ -3164,7 +3148,9 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 			return E_OUTOFMEMORY;
 		}
 		{
+			::EnterCriticalSection(&m_csPidlMe);
 			PIDLIST_ABSOLUTE pidlChild = ::AppendItemIDList(m_pidlMe, pidlItem);
+			::LeaveCriticalSection(&m_csPidlMe);
 			hr = pDirectory->Initialize(pidlChild);
 			::CoTaskMemFree(pidlChild);
 			::CoTaskMemFree(pidlItem);
@@ -3322,8 +3308,36 @@ void CFTPDirectoryBase::NotifyUpdate(LONG wEventId, LPCWSTR lpszFile1, LPCWSTR l
 	auto* pRoot = GetRoot();
 	PIDLIST_RELATIVE pidlR1 = lpszFile1 ? ::CreateFullPathFileItem(m_pMallocData->pMalloc, lpszFile1) : NULL;
 	PIDLIST_RELATIVE pidlR2 = lpszFile2 ? ::CreateFullPathFileItem(m_pMallocData->pMalloc, lpszFile2) : NULL;
-	PIDLIST_ABSOLUTE pidl1 = pidlR1 ? ::AppendItemIDList(*lpszFile1 == L'/' ? pRoot->m_pidlMe : m_pidlMe, pidlR1) : NULL;
-	PIDLIST_ABSOLUTE pidl2 = pidlR2 ? ::AppendItemIDList(*lpszFile2 == L'/' ? pRoot->m_pidlMe : m_pidlMe, pidlR2) : NULL;
+	PIDLIST_ABSOLUTE pidl1;
+	PIDLIST_ABSOLUTE pidl2;
+	if (!pidlR1)
+		pidl1 = NULL;
+	else if (*lpszFile1 == L'/')
+	{
+		::EnterCriticalSection(&pRoot->m_csPidlMe);
+		pidl1 = ::AppendItemIDList(pRoot->m_pidlMe, pidlR1);
+		::LeaveCriticalSection(&pRoot->m_csPidlMe);
+	}
+	else
+	{
+		::EnterCriticalSection(&m_csPidlMe);
+		pidl1 = ::AppendItemIDList( m_pidlMe, pidlR1);
+		::LeaveCriticalSection(&m_csPidlMe);
+	}
+	if (!pidlR2)
+		pidl2 = NULL;
+	else if (*lpszFile2 == L'/')
+	{
+		::EnterCriticalSection(&pRoot->m_csPidlMe);
+		pidl2 = ::AppendItemIDList(pRoot->m_pidlMe, pidlR2);
+		::LeaveCriticalSection(&pRoot->m_csPidlMe);
+	}
+	else
+	{
+		::EnterCriticalSection(&m_csPidlMe);
+		pidl2 = ::AppendItemIDList( m_pidlMe, pidlR2);
+		::LeaveCriticalSection(&m_csPidlMe);
+	}
 	theApp.MyChangeNotify(wEventId, SHCNF_IDLIST | SHCNF_NOTIFYRECURSIVE | SHCNF_FLUSHNOWAIT, pidl1, pidl2);
 	if (pidl1)
 		::CoTaskMemFree(pidl1);

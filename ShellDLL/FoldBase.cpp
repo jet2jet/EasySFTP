@@ -42,10 +42,12 @@ CFolderBase::CFolderBase(CDelegateMallocData* pMallocData)
 	m_pidlMe = NULL;
 	m_hWndOwnerCache = NULL;
 	m_pUnkSite = NULL;
+	::InitializeCriticalSection(&m_csPidlMe);
 }
 
 CFolderBase::~CFolderBase()
 {
+	::DeleteCriticalSection(&m_csPidlMe);
 	if (m_pUnkSite)
 	{
 		m_pUnkSite->Release();
@@ -153,11 +155,15 @@ STDMETHODIMP CFolderBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam)
 	switch (uMsg)
 	{
 		case SFVM_GETNOTIFY:
+			::EnterCriticalSection(&m_csPidlMe);
 			*((PIDLIST_ABSOLUTE*) wParam) = m_pidlMe;
+			::LeaveCriticalSection(&m_csPidlMe);
 			*((LONG*) lParam) = SHCNE_ALLEVENTS;
 			return S_OK;
 		case SFVM_QUERYFSNOTIFY:
+			::EnterCriticalSection(&m_csPidlMe);
 			((SHChangeNotifyEntry*) lParam)->pidl = m_pidlMe;
+			::LeaveCriticalSection(&m_csPidlMe);
 			((SHChangeNotifyEntry*) lParam)->fRecursive = TRUE;
 			return S_OK;
 		case SFVM_FSNOTIFY:
@@ -293,10 +299,12 @@ STDMETHODIMP CFolderBase::GetClassID(CLSID* pClassID)
 
 STDMETHODIMP CFolderBase::Initialize(PCIDLIST_ABSOLUTE pidl)
 {
+	::EnterCriticalSection(&m_csPidlMe);
 	if (m_pidlMe)
 		::CoTaskMemFree(m_pidlMe);
 
 	m_pidlMe = (PIDLIST_ABSOLUTE) ::DuplicateItemIDList(pidl);
+	::LeaveCriticalSection(&m_csPidlMe);
 	if (!m_pidlMe)
 		return E_OUTOFMEMORY;
 
@@ -305,7 +313,9 @@ STDMETHODIMP CFolderBase::Initialize(PCIDLIST_ABSOLUTE pidl)
 
 STDMETHODIMP CFolderBase::GetCurFolder(PIDLIST_ABSOLUTE* ppidl)
 {
+	::EnterCriticalSection(&m_csPidlMe);
 	*ppidl = (PIDLIST_ABSOLUTE) ::DuplicateItemIDList(m_pidlMe);
+	::LeaveCriticalSection(&m_csPidlMe);
 	return m_pidlMe ? S_OK : S_FALSE;
 }
 
@@ -313,7 +323,9 @@ STDMETHODIMP CFolderBase::GetIDList(PIDLIST_ABSOLUTE* ppidl)
 {
 	if (!ppidl)
 		return E_POINTER;
+	::EnterCriticalSection(&m_csPidlMe);
 	*ppidl = (PIDLIST_ABSOLUTE) ::DuplicateItemIDList(m_pidlMe);
+	::LeaveCriticalSection(&m_csPidlMe);
 	return *ppidl ? S_OK : E_OUTOFMEMORY;
 }
 
@@ -346,8 +358,10 @@ STDMETHODIMP CFolderBase::GetSite(REFIID riid, void** ppvSite)
 
 void CFolderBase::NotifyUpdate(LONG wEventId, PCUITEMID_CHILD pidlChild1, PCUITEMID_CHILD pidlChild2)
 {
+	::EnterCriticalSection(&m_csPidlMe);
 	PIDLIST_ABSOLUTE pidl1 = pidlChild1 ? ::AppendItemIDList(m_pidlMe, pidlChild1) : NULL;
 	PIDLIST_ABSOLUTE pidl2 = pidlChild2 ? ::AppendItemIDList(m_pidlMe, pidlChild2) : NULL;
+	::LeaveCriticalSection(&m_csPidlMe);
 	theApp.MyChangeNotify(wEventId, SHCNF_IDLIST | SHCNF_NOTIFYRECURSIVE | SHCNF_FLUSHNOWAIT, pidl1, pidl2);
 	if (pidl1)
 		::CoTaskMemFree(pidl1);

@@ -304,12 +304,14 @@ STDMETHODIMP CSFTPFolderSFTP::GetFTPItemUIObjectOf(HWND hWndOwner, CFTPDirectory
 {
 	if (!m_pChannel)
 		return OLE_E_NOTRUNNING;
+	::EnterCriticalSection(&pDirectory->m_csPidlMe);
 	CFTPDataObject* pObject = new CFTPDataObject(
 		m_pMallocData->pMalloc,
 		pDirectory->m_pidlMe,
 		m_strHostName,
 		this, m_pChannel,
 		pDirectory, aItems);
+	::LeaveCriticalSection(&pDirectory->m_csPidlMe);
 	if (!pObject)
 		return E_OUTOFMEMORY;
 	pObject->SetTextMode(m_bTextMode);

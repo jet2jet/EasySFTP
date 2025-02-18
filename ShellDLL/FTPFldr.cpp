@@ -759,6 +759,7 @@ STDMETHODIMP CSFTPFolderFTP::GetFTPItemUIObjectOf(HWND hWndOwner, CFTPDirectoryB
 {
 	if (!m_pConnection)
 		return OLE_E_NOTRUNNING;
+	::EnterCriticalSection(&pDirectory->m_csPidlMe);
 	CFTPDataObject* pObject = new CFTPDataObject(//(CSFTPFolderFTPDirectory*) pDirectory,
 		m_pMallocData->pMalloc,
 		pDirectory->m_pidlMe,
@@ -766,6 +767,7 @@ STDMETHODIMP CSFTPFolderFTP::GetFTPItemUIObjectOf(HWND hWndOwner, CFTPDirectoryB
 		m_pConnection,
 		this,
 		pDirectory, aItems);
+	::LeaveCriticalSection(&pDirectory->m_csPidlMe);
 	if (!pObject)
 		return E_OUTOFMEMORY;
 	pObject->SetTextMode(m_bTextMode);

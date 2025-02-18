@@ -115,8 +115,6 @@ public:
 	STDMETHOD_(void, UpdateItem)(PCUITEMID_CHILD pidlOld, PCUITEMID_CHILD pidlNew, LONG lEvent) override;
 
 	virtual HRESULT InitializeParent() override;
-	virtual IShellFolder* GetParentFolder() override { return m_pParent; }
-	virtual HRESULT SetParentFolder(IShellFolder* pFolder) override;
 
 public:
 	bool ConnectDialog(HWND hWndOwner, IEasySFTPAuthentication* pUser);
@@ -138,7 +136,6 @@ protected:
 	friend class CEasySFTPRootIcon;
 	friend class CEasySFTPRootMenu;
 
-	IShellFolder* m_pParent;
 	ULONG m_uRef;
 	//PIDLIST_ABSOLUTE m_pidlMe;
 	CConnectDialog m_dlgConnect;

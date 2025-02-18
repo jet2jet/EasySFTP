@@ -1020,7 +1020,19 @@ void CFTPFileDirectoryMenu::DoCreateShortcut(HWND hWndOwner)
 
 void CFTPFileDirectoryMenu::DoProperty(HWND hWndOwner)
 {
-	IShellFolder* pParent = m_pParent->GetParentFolder();
+	IShellFolder* pParent = NULL;
+	IShellFolder* pDesktop;
+	if (FAILED(::SHGetDesktopFolder(&pDesktop)))
+		return;
+	PIDLIST_ABSOLUTE pidlParent = ::RemoveOneChild(m_pidlMe);
+	if (!pidlParent)
+	{
+		pDesktop->Release();
+		return;
+	}
+	auto hr = pDesktop->BindToObject(pidlParent, NULL, IID_IShellFolder, reinterpret_cast<void**>(&pParent));
+	pDesktop->Release();
+	::CoTaskMemFree(pidlParent);
 	if (pParent)
 	{
 		PITEMID_CHILD pidlC = ::GetChildItemIDList(m_pidlMe);

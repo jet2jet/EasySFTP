@@ -147,10 +147,6 @@ public:
 	STDMETHOD(IsTransferring)() = 0;
 
 public:
-	virtual IShellFolder* GetParentFolder() override;
-	virtual HRESULT SetParentFolder(IShellFolder* pFolder) override;
-
-public:
 	virtual void TransferCanceled()
 	{
 		m_bIsTransferCanceled = true;

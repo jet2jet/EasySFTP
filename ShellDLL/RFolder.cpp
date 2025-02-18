@@ -199,7 +199,6 @@ CEasySFTPFolderRoot::CEasySFTPFolderRoot()
 	m_uRef = 1;
 	//m_pListener = NULL;
 	m_pidlMe = NULL;
-	m_pParent = NULL;
 	::EnterCriticalSection(&theApp.m_csRootRefs);
 	theApp.SetReference(this);
 	::LeaveCriticalSection(&theApp.m_csRootRefs);
@@ -212,8 +211,6 @@ CEasySFTPFolderRoot::CEasySFTPFolderRoot()
 
 CEasySFTPFolderRoot::~CEasySFTPFolderRoot()
 {
-	if (m_pParent)
-		m_pParent->Release();
 	//if (m_pListener)
 	//	m_pListener->Release();
 	//if (m_pidlMe)
@@ -432,7 +429,9 @@ STDMETHODIMP CEasySFTPFolderRoot::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc
 
 	if (IsEqualIID(riid, IID_IShellItem) || IsEqualIID(riid, IID_IShellItem2))
 	{
+		::EnterCriticalSection(&m_csPidlMe);
 		auto pidlAbs = m_pidlMe ? ::AppendItemIDList(m_pidlMe, pidl) : reinterpret_cast<PIDLIST_ABSOLUTE>(::DuplicateItemIDList(pidl));
+		::LeaveCriticalSection(&m_csPidlMe);
 		if (!pidlAbs)
 			return E_OUTOFMEMORY;
 		IShellItem* pItem = NULL;
@@ -569,9 +568,23 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 		if (SUCCEEDED(hr))
 		{
 			PITEMID_CHILD pidlChild = (PITEMID_CHILD) ::CoTaskMemAlloc(sizeof(USHORT) + pidl->mkid.cb);
+			if (!pidlChild)
+			{
+				pPFolder->Release();
+				pDirectory->DetachAndRelease();
+				if (!bFound)
+				{
+					pHostData->pDirItem->Release();
+					delete pHostData;
+				}
+				::LeaveCriticalSection(&theApp.m_csHosts);
+				return E_OUTOFMEMORY;
+			}
 			memcpy(pidlChild, pidl, (size_t)pidl->mkid.cb);
 			*((USHORT UNALIGNED*)(((DWORD_PTR)pidlChild) + pidl->mkid.cb)) = 0;
+			::EnterCriticalSection(&m_csPidlMe);
 			PIDLIST_ABSOLUTE p = ::AppendItemIDList(m_pidlMe, pidlChild);
+			::LeaveCriticalSection(&m_csPidlMe);
 			::CoTaskMemFree(pidlChild);
 			if (!p)
 			{
@@ -853,7 +866,9 @@ STDMETHODIMP CEasySFTPFolderRoot::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUIT
 	if (IsEqualIID(riid, IID_IContextMenu))
 	{
 		IShellBrowser* pBrowser = (hWndOwner ? (IShellBrowser*) ::SendMessage(hWndOwner, CWM_GETISHELLBROWSER, 0, 0) : NULL);
+		::EnterCriticalSection(&m_csPidlMe);
 		CEasySFTPRootMenu* pMenu = new CEasySFTPRootMenu(this, pBrowser, m_pidlMe, apidl, (int)cidl);
+		::LeaveCriticalSection(&m_csPidlMe);
 		HRESULT hr = pMenu->QueryInterface(riid, ppv);
 		pMenu->Release();
 		return hr;
@@ -901,7 +916,10 @@ STDMETHODIMP CEasySFTPFolderRoot::GetUIObjectOf(HWND hWndOwner, UINT cidl, PCUIT
 	}
 	else if (IsEqualIID(riid, IID_IDataObject))
 	{
-		return ::CIDLData_CreateFromIDArray(m_pidlMe, cidl, (PCUIDLIST_RELATIVE_ARRAY)apidl, (IDataObject**)ppv);
+		::EnterCriticalSection(&m_csPidlMe);
+		auto hr = ::CIDLData_CreateFromIDArray(m_pidlMe, cidl, (PCUIDLIST_RELATIVE_ARRAY)apidl, (IDataObject**)ppv);
+		::LeaveCriticalSection(&m_csPidlMe);
+		return hr;
 	}
 	*ppv = NULL;
 	return E_NOTIMPL;
@@ -1744,50 +1762,6 @@ STDMETHODIMP_(void) CEasySFTPFolderRoot::UpdateItem(PCUITEMID_CHILD pidlOld, PCU
 
 HRESULT CEasySFTPFolderRoot::InitializeParent()
 {
-	if (m_pParent)
-	{
-		m_pParent->Release();
-		m_pParent = NULL;
-	}
-	IShellFolder* pDesktop;
-	auto hr = ::SHGetDesktopFolder(&pDesktop);
-	if (FAILED(hr))
-		return hr;
-	PIDLIST_ABSOLUTE pidlParent = ::RemoveOneChild(m_pidlMe);
-	if (!pidlParent)
-	{
-		pDesktop->Release();
-		return S_OK;
-	}
-	// if the item is empty, use Desktop shell folder (empty item means the root namespace)
-	if (pidlParent->mkid.cb == 0)
-	{
-		m_pParent = pDesktop;
-		m_pParent->AddRef();
-	}
-	else
-	{
-		hr = pDesktop->BindToObject(pidlParent, NULL, IID_IShellFolder, reinterpret_cast<void**>(&m_pParent));
-		if (FAILED(hr))
-		{
-			m_pParent = NULL;
-			::CoTaskMemFree(pidlParent);
-			return hr;
-		}
-	}
-	::CoTaskMemFree(pidlParent);
-	pDesktop->Release();
-
-	return hr;
-}
-
-HRESULT CEasySFTPFolderRoot::SetParentFolder(IShellFolder* pFolder)
-{
-	if (m_pParent)
-		m_pParent->Release();
-	m_pParent = pFolder;
-	if (pFolder)
-		pFolder->AddRef();
 	return S_OK;
 }
 

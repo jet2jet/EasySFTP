@@ -87,12 +87,11 @@ protected:
 	{ }
 
 	virtual HRESULT InitializeParent() = 0;
-	virtual IShellFolder* GetParentFolder() = 0;
-	virtual HRESULT SetParentFolder(IShellFolder* pFolder) = 0;
 
 public:
 	PIDLIST_ABSOLUTE m_pidlMe;
 	CDelegateMallocData* m_pMallocData;
+	CRITICAL_SECTION m_csPidlMe;
 protected:
 	IUnknown* m_pUnkSite;
 	HWND m_hWndOwnerCache;

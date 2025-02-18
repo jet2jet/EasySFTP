@@ -186,8 +186,6 @@ public:
 	STDMETHOD_(void, UpdateItem)(CFTPFileItem* pOldItem, LPCWSTR lpszNewItem, LONG lEvent);
 
 	virtual HRESULT InitializeParent() override { return S_OK; }
-	virtual IShellFolder* GetParentFolder() override { return m_pParent; }
-	virtual HRESULT SetParentFolder(IShellFolder* pFolder) override;
 	inline CFTPDirectoryBase* GetParent() const { return m_pParent; }
 	CFTPDirectoryRootBase* GetRoot();
 
