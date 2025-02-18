@@ -48,7 +48,7 @@ library EasySFTP
 		BufferLf = 0x02,
 		BufferMask = 0x03,
 		StreamCrLf = 0x00,
-		StreamCf = 0x04,
+		StreamCr = 0x04,
 		StreamLf = 0x08,
 		StreamMask = 0x0C,
 		EncodeNone = 0x00,
