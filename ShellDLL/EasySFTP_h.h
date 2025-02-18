@@ -270,6 +270,7 @@ enum EasySFTPSeekOrigin
         SeekEnd	= 2
     } 	EasySFTPSeekOrigin;
 
+#undef enum
 typedef /* [helpstring] */ 
 enum EasySFTPTextMode
     {
@@ -290,6 +291,7 @@ enum EasySFTPTextMode
         EncodeMask	= 0xf0
     } 	EasySFTPTextMode;
 
+#define enum _ENUM_CLASS
 typedef 
 enum EasySFTPTransferMode
     {

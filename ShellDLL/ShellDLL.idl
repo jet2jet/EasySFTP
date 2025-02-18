@@ -39,6 +39,9 @@ library EasySFTP
 		SeekEnd = 2
 	} EasySFTPSeekOrigin;
 
+	// EasySFTPTextMode is used for bit mask, so define as 'enum' instead of 'enum class'
+	cpp_quote("#undef enum")
+
 	[helpstring("This enum should be used as a convination (Buffer* + Stream* + Encode*)")]
 	typedef enum EasySFTPTextMode
 	{
@@ -58,6 +61,8 @@ library EasySFTP
 		EncodeUcs4 = 0x40,
 		EncodeMask = 0xF0
 	} EasySFTPTextMode;
+
+	cpp_quote("#define enum _ENUM_CLASS")
 
 	typedef enum EasySFTPTransferMode
 	{
