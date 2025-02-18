@@ -527,15 +527,15 @@ void CMainWindow::NavigateServerParentFolder()
 
 void CMainWindow::CheckFileTypes(CShellFolderFileView* pViewCur, CShellFolderFileView* pViewOther, PIDLIST_ABSOLUTE* ppidlItems, int nCount, int& nTextCount, int& nDirCount)
 {
-	IEasySFTPOldDirectory* pDir;
+	IEasySFTPRootDirectory* pDir;
 	//PITEMID_CHILD pidlChild;
 	PIDLIST_RELATIVE pidlChild;
 	if (!nCount)
 		return;
-	if (pViewCur->m_pDirectory)
-		pDir = pViewCur->m_pDirectory;
-	else if (pViewOther->m_pDirectory)
-		pDir = pViewOther->m_pDirectory;
+	if (pViewCur->m_pRootDirectory)
+		pDir = pViewCur->m_pRootDirectory;
+	else if (pViewOther->m_pRootDirectory)
+		pDir = pViewOther->m_pRootDirectory;
 	else
 		return;
 
@@ -547,7 +547,7 @@ void CMainWindow::CheckFileTypes(CShellFolderFileView* pViewCur, CShellFolderFil
 		if (IsMatchParentIDList(pViewCur->m_lpidlAbsoluteMe, ppidlItems[i]))
 		{
 			bDir = false;
-			if (pViewCur->m_pDirectory)
+			if (pViewCur->m_pRootDirectory)
 			{
 				//pidlChild = GetChildItemIDList(ppidlItems[i]);
 				pidlChild = PickupRelativeIDList(pViewCur->m_lpidlAbsoluteMe, ppidlItems[i]);
@@ -601,8 +601,16 @@ void CMainWindow::CheckFileTypes(CShellFolderFileView* pViewCur, CShellFolderFil
 				nDirCount++;
 			else if (!str.IsEmpty())
 			{
-				hr = pDir->IsTextFile(str);
-				if (hr == S_OK)
+				VARIANT_BOOL bRet = VARIANT_FALSE;
+				BSTR bstr = MyStringToBSTR(str);
+				if (bstr)
+				{
+					hr = pDir->IsTextFile(bstr, &bRet);
+					if (FAILED(hr))
+						bRet = VARIANT_FALSE;
+					::SysFreeString(bstr);
+				}
+				if (bRet)
 					nTextCount++;
 			}
 		}
@@ -704,22 +712,22 @@ void CMainWindow::UpdateFileSelection()
 
 void CMainWindow::_SetTransferMode(LONG nTransferMode)
 {
-	if (m_wndListViewServer.m_pDirectory)
-		m_wndListViewServer.m_pDirectory->SetTransferMode(nTransferMode);
+	if (m_wndListViewServer.m_pRootDirectory)
+		m_wndListViewServer.m_pRootDirectory->put_TransferMode(static_cast<EasySFTPTransferMode>(nTransferMode));
 }
 
 void CMainWindow::_SetTextMode(bool bServer, LONG nTextMode)
 {
-	if (m_wndListViewServer.m_pDirectory)
+	if (m_wndListViewServer.m_pRootDirectory)
 	{
-		LONG nTMode;
-		if (m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode))
+		EasySFTPTextMode nTMode;
+		if (SUCCEEDED(m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode)))
 		{
 			if (bServer)
-				nTMode = ((nTMode & ~TEXTMODE_SERVER_MASK) | nTextMode);
+				nTMode = static_cast<EasySFTPTextMode>((nTMode & ~EasySFTPTextMode::StreamMask) | nTextMode);
 			else
-				nTMode = ((nTMode & ~TEXTMODE_LOCAL_MASK) | nTextMode);
-			m_wndListViewServer.m_pDirectory->SetTextMode(nTMode);
+				nTMode = static_cast<EasySFTPTextMode>((nTMode & ~EasySFTPTextMode::BufferMask) | nTextMode);
+			m_wndListViewServer.m_pRootDirectory->put_TextMode(nTMode);
 		}
 	}
 }
@@ -953,9 +961,14 @@ static bool __stdcall IsHostItemSelected(HWND hWnd, CShellFolderFileView* pView)
 
 bool CMainWindow::CanConnect(bool bServer)
 {
-	IEasySFTPOldDirectory* pDir = bServer ? m_wndListViewServer.m_pDirectory : m_wndListViewLocal.m_pDirectory;
+	IEasySFTPRootDirectory* pDir = bServer ? m_wndListViewServer.m_pRootDirectory : m_wndListViewLocal.m_pRootDirectory;
 	if (pDir)
-		return (pDir->IsConnected() != S_OK);
+	{
+		VARIANT_BOOL bRet = VARIANT_FALSE;
+		if (FAILED(pDir->get_Connected(&bRet)))
+			bRet = VARIANT_FALSE;
+		return !bRet;
+	}
 	if (IsHostItemSelected(m_hWnd, bServer ? &m_wndListViewServer : &m_wndListViewLocal))
 		return true;
 	//if (bServer)
@@ -980,10 +993,13 @@ bool CMainWindow::CanDisconnect(bool bServer)
 {
 	//if (!theApp.CheckExternalApplications())
 	//	return false;
-	IEasySFTPOldDirectory* pDir = bServer ? m_wndListViewServer.m_pDirectory : m_wndListViewLocal.m_pDirectory;
+	IEasySFTPRootDirectory* pDir = bServer ? m_wndListViewServer.m_pRootDirectory : m_wndListViewLocal.m_pRootDirectory;
 	if (pDir)
 	{
-		if (pDir->IsTransferring() == S_OK)
+		VARIANT_BOOL bRet = VARIANT_FALSE;
+		if (FAILED(pDir->get_Transferring(&bRet)))
+			bRet = VARIANT_FALSE;
+		if (bRet)
 		{
 			if (::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_EXTERNAL_APP_IS_DOWNLOADING), NULL, MB_ICONEXCLAMATION | MB_YESNO) == IDNO)
 				return false;
@@ -1004,14 +1020,16 @@ void CMainWindow::UpdateViewStatus(HWND hWndFocus)
 {
 	if (IsWindowOrChildrenFocused(m_wndListViewLocal.m_hWnd, hWndFocus))
 	{
-		if (m_wndListViewLocal.m_pDirectory)
+		if (m_wndListViewLocal.m_pRootDirectory)
 		{
-			VARIANT_BOOL b;
-			BSTR bstr;
-			if (SUCCEEDED(m_wndListViewLocal.m_pDirectory->GetHostInfo(&b, NULL, &bstr)))
+			EasySFTPConnectionMode mode = EasySFTPConnectionMode::FTP;
+			BSTR bstr = NULL;
+			m_wndListViewLocal.m_pRootDirectory->get_ConnectionMode(&mode);
+			m_wndListViewLocal.m_pRootDirectory->get_HostName(&bstr);
+			if (bstr)
 			{
 				SetStatusText(ID_STATUS_HOST, bstr);
-				SetStatusSecureIcon(b != VARIANT_FALSE);
+				SetStatusSecureIcon(mode != EasySFTPConnectionMode::FTP);
 				::SysFreeString(bstr);
 				return;
 			}
@@ -1019,14 +1037,16 @@ void CMainWindow::UpdateViewStatus(HWND hWndFocus)
 	}
 	else if (IsWindowOrChildrenFocused(m_wndListViewServer.m_hWnd, hWndFocus))
 	{
-		if (m_wndListViewServer.m_pDirectory)
+		if (m_wndListViewServer.m_pRootDirectory)
 		{
-			VARIANT_BOOL b;
-			BSTR bstr;
-			if (SUCCEEDED(m_wndListViewServer.m_pDirectory->GetHostInfo(&b, NULL, &bstr)))
+			EasySFTPConnectionMode mode = EasySFTPConnectionMode::FTP;
+			BSTR bstr = NULL;
+			m_wndListViewServer.m_pRootDirectory->get_ConnectionMode(&mode);
+			m_wndListViewServer.m_pRootDirectory->get_HostName(&bstr);
+			if (bstr)
 			{
 				SetStatusText(ID_STATUS_HOST, bstr);
-				SetStatusSecureIcon(b != VARIANT_FALSE);
+				SetStatusSecureIcon(mode != EasySFTPConnectionMode::FTP);
 				::SysFreeString(bstr);
 				return;
 			}
@@ -1993,13 +2013,21 @@ void CMainWindow::UpdateUIItem(CCommandUIItem* pUIItem)
 					m_wndListViewLocal.GetSelectionCount() > 0);
 			break;
 		case ID_FILE_DISCONNECT:
+		{
+			VARIANT_BOOL bConnected = VARIANT_FALSE;
 			if (IsWindowOrChildrenFocused(m_wndListViewServer, hWndFocus))
-				pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL &&
-					m_wndListViewServer.m_pDirectory->IsConnected() == S_OK);
+			{
+				if (m_wndListViewServer.m_pRootDirectory)
+					m_wndListViewServer.m_pRootDirectory->get_Connected(&bConnected);
+			}
 			else
-				pUIItem->Enable(m_wndListViewLocal.m_pDirectory != NULL &&
-					m_wndListViewLocal.m_pDirectory->IsConnected() == S_OK);
-			break;
+			{
+				if (m_wndListViewLocal.m_pRootDirectory)
+					m_wndListViewLocal.m_pRootDirectory->get_Connected(&bConnected);
+			}
+			pUIItem->Enable(bConnected == VARIANT_TRUE);
+		}
+		break;
 		//case ID_VIEW_REFRESH:
 		//case ID_VIEW_SERVER_GO_FOLDER:
 		//	pUIItem->Enable(IS_CONNECTED());
@@ -2035,43 +2063,43 @@ void CMainWindow::UpdateUIItem(CCommandUIItem* pUIItem)
 			pUIItem->Enable(!IsDesktopIDList(m_wndListViewServer.m_lpidlAbsoluteMe));
 			break;
 		case ID_TRANSFER_MODE_AUTO:
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTransferMode(&nTMode);
-				pUIItem->Check(nTMode == TRANSFER_MODE_AUTO);
+				EasySFTPTransferMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TransferMode(&nTMode);
+				pUIItem->Check(nTMode == EasySFTPTransferMode::Auto);
 			}
 			break;
 		case ID_TRANSFER_MODE_TEXT:
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTransferMode(&nTMode);
-				pUIItem->Check(nTMode == TRANSFER_MODE_TEXT);
+				EasySFTPTransferMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TransferMode(&nTMode);
+				pUIItem->Check(nTMode == EasySFTPTransferMode::Text);
 			}
 			break;
 		case ID_TRANSFER_MODE_BINARY:
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTransferMode(&nTMode);
-				pUIItem->Check(nTMode == TRANSFER_MODE_BINARY);
+				EasySFTPTransferMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TransferMode(&nTMode);
+				pUIItem->Check(nTMode == EasySFTPTransferMode::Binary);
 			}
 			break;
 		case ID_TRANSFER_LOCAL_MODE:
 		{
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
 				int iImage;
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode);
-				if ((nTMode & TEXTMODE_LOCAL_MASK) == TEXTMODE_LOCAL_CR)
+				EasySFTPTextMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
+				if ((nTMode & EasySFTPTextMode::BufferMask) == EasySFTPTextMode::BufferCr)
 					iImage = 9;
-				else if ((nTMode & TEXTMODE_LOCAL_MASK) == TEXTMODE_LOCAL_LF)
+				else if ((nTMode & EasySFTPTextMode::BufferMask) == EasySFTPTextMode::BufferLf)
 					iImage = 10;
 				else
 					iImage = 8;
@@ -2081,15 +2109,15 @@ void CMainWindow::UpdateUIItem(CCommandUIItem* pUIItem)
 		break;
 		case ID_TRANSFER_SERVER_MODE:
 		{
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
 				int iImage;
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode);
-				if ((nTMode & TEXTMODE_SERVER_MASK) == TEXTMODE_SERVER_CR)
+				EasySFTPTextMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
+				if ((nTMode & EasySFTPTextMode::StreamMask) == EasySFTPTextMode::StreamCr)
 					iImage = 12;
-				else if ((nTMode & TEXTMODE_SERVER_MASK) == TEXTMODE_SERVER_LF)
+				else if ((nTMode & EasySFTPTextMode::StreamMask) == EasySFTPTextMode::StreamLf)
 					iImage = 13;
 				else
 					iImage = 11;
@@ -2098,57 +2126,57 @@ void CMainWindow::UpdateUIItem(CCommandUIItem* pUIItem)
 		}
 		break;
 		case ID_TRANSFER_LOCAL_CRLF:
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode);
-				pUIItem->Check((nTMode & TEXTMODE_LOCAL_MASK) == TEXTMODE_LOCAL_CRLF);
+				EasySFTPTextMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
+				pUIItem->Check((nTMode & EasySFTPTextMode::BufferMask) == EasySFTPTextMode::BufferCrLf);
 			}
 			break;
 		case ID_TRANSFER_LOCAL_CR:
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode);
-				pUIItem->Check((nTMode & TEXTMODE_LOCAL_MASK) == TEXTMODE_LOCAL_CR);
+				EasySFTPTextMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
+				pUIItem->Check((nTMode & EasySFTPTextMode::BufferMask) == EasySFTPTextMode::BufferCr);
 			}
 			break;
 		case ID_TRANSFER_LOCAL_LF:
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode);
-				pUIItem->Check((nTMode & TEXTMODE_LOCAL_MASK) == TEXTMODE_LOCAL_LF);
+				EasySFTPTextMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
+				pUIItem->Check((nTMode & EasySFTPTextMode::BufferMask) == EasySFTPTextMode::BufferLf);
 			}
 			break;
 		case ID_TRANSFER_SERVER_CRLF:
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode);
-				pUIItem->Check((nTMode & TEXTMODE_SERVER_MASK) == TEXTMODE_SERVER_CRLF);
+				EasySFTPTextMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
+				pUIItem->Check((nTMode & EasySFTPTextMode::StreamMask) == EasySFTPTextMode::StreamCrLf);
 			}
 			break;
 		case ID_TRANSFER_SERVER_CR:
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode);
-				pUIItem->Check((nTMode & TEXTMODE_SERVER_MASK) == TEXTMODE_SERVER_CR);
+				EasySFTPTextMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
+				pUIItem->Check((nTMode & EasySFTPTextMode::StreamMask) == EasySFTPTextMode::StreamCr);
 			}
 			break;
 		case ID_TRANSFER_SERVER_LF:
-			pUIItem->Enable(m_wndListViewServer.m_pDirectory != NULL);
-			if (m_wndListViewServer.m_pDirectory)
+			pUIItem->Enable(m_wndListViewServer.m_pRootDirectory != NULL);
+			if (m_wndListViewServer.m_pRootDirectory)
 			{
-				LONG nTMode;
-				m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode);
-				pUIItem->Check((nTMode & TEXTMODE_SERVER_MASK) == TEXTMODE_SERVER_LF);
+				EasySFTPTextMode nTMode;
+				m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
+				pUIItem->Check((nTMode & EasySFTPTextMode::StreamMask) == EasySFTPTextMode::StreamLf);
 			}
 			break;
 	}
@@ -2331,9 +2359,9 @@ LRESULT CMainWindow::OnToolBarDropDown(WPARAM wParam, LPARAM lParam)
 	// NMTOOLBARA and NMTOOLBARW are the same
 	LPNMTOOLBAR lptb = (LPNMTOOLBAR) lParam;
 	bool bServer;
-	LONG nTMode = 0;
-	if (m_wndListViewServer.m_pDirectory)
-		m_wndListViewServer.m_pDirectory->GetTextMode(&nTMode);
+	EasySFTPTextMode nTMode = EasySFTPTextMode::NoConversion;
+	if (m_wndListViewServer.m_pRootDirectory)
+		m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
 
 	CMenuItem mi(m_hMenuReturnMode);
 	switch (lptb->iItem)
@@ -2341,20 +2369,20 @@ LRESULT CMainWindow::OnToolBarDropDown(WPARAM wParam, LPARAM lParam)
 		case ID_TRANSFER_LOCAL_MODE:
 			bServer = false;
 			mi.m_uID = ID_RETURN_MODE_CRLF;
-			mi.Check((nTMode & TEXTMODE_LOCAL_MASK) == TEXTMODE_LOCAL_CRLF);
+			mi.Check((nTMode & EasySFTPTextMode::BufferMask) == EasySFTPTextMode::BufferCrLf);
 			mi.m_uID = ID_RETURN_MODE_CR;
-			mi.Check((nTMode & TEXTMODE_LOCAL_MASK) == TEXTMODE_LOCAL_CR);
+			mi.Check((nTMode & EasySFTPTextMode::BufferMask) == EasySFTPTextMode::BufferCr);
 			mi.m_uID = ID_RETURN_MODE_LF;
-			mi.Check((nTMode & TEXTMODE_LOCAL_MASK) == TEXTMODE_LOCAL_LF);
+			mi.Check((nTMode & EasySFTPTextMode::BufferMask) == EasySFTPTextMode::BufferLf);
 			break;
 		case ID_TRANSFER_SERVER_MODE:
 			bServer = true;
 			mi.m_uID = ID_RETURN_MODE_CRLF;
-			mi.Check((nTMode & TEXTMODE_SERVER_MASK) == TEXTMODE_SERVER_CRLF);
+			mi.Check((nTMode & EasySFTPTextMode::StreamMask) == EasySFTPTextMode::StreamCrLf);
 			mi.m_uID = ID_RETURN_MODE_CR;
-			mi.Check((nTMode & TEXTMODE_SERVER_MASK) == TEXTMODE_SERVER_CR);
+			mi.Check((nTMode & EasySFTPTextMode::StreamMask) == EasySFTPTextMode::StreamCr);
 			mi.m_uID = ID_RETURN_MODE_LF;
-			mi.Check((nTMode & TEXTMODE_SERVER_MASK) == TEXTMODE_SERVER_LF);
+			mi.Check((nTMode & EasySFTPTextMode::StreamMask) == EasySFTPTextMode::StreamLf);
 			break;
 		default:
 			return TBDDRET_NODEFAULT;
@@ -2375,35 +2403,35 @@ LRESULT CMainWindow::OnToolBarDropDown(WPARAM wParam, LPARAM lParam)
 	//	tp.rcExclude.left, tp.rcExclude.top, m_hWnd, &tp);
 	UINT uRet = (UINT) ::TrackPopupMenuEx(m_hMenuReturnMode, TPM_RETURNCMD | TPM_VERTICAL,
 		tp.rcExclude.left, tp.rcExclude.top, m_wndToolBar, &tp);
-	if (uRet != 0 && m_wndListViewServer.m_pDirectory)
+	if (uRet != 0 && m_wndListViewServer.m_pRootDirectory)
 	{
 		if (!bServer)
 		{
-			nTMode &= ~TEXTMODE_LOCAL_MASK;
+			nTMode = static_cast<EasySFTPTextMode>(nTMode & ~EasySFTPTextMode::BufferMask);
 			switch (uRet)
 			{
-				case ID_RETURN_MODE_CRLF: nTMode |= TEXTMODE_LOCAL_CRLF; break;
-				case ID_RETURN_MODE_CR:   nTMode |= TEXTMODE_LOCAL_CR; break;
-				case ID_RETURN_MODE_LF:   nTMode |= TEXTMODE_LOCAL_LF; break;
+				case ID_RETURN_MODE_CRLF: nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::BufferCrLf); break;
+				case ID_RETURN_MODE_CR:   nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::BufferCr); break;
+				case ID_RETURN_MODE_LF:   nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::BufferLf); break;
 			}
 		}
 		else
 		{
-			nTMode &= ~TEXTMODE_SERVER_MASK;
+			nTMode = static_cast<EasySFTPTextMode>(nTMode & ~EasySFTPTextMode::StreamMask);
 			switch (uRet)
 			{
-				case ID_RETURN_MODE_CRLF: nTMode |= TEXTMODE_SERVER_CRLF; break;
-				case ID_RETURN_MODE_CR:   nTMode |= TEXTMODE_SERVER_CR; break;
-				case ID_RETURN_MODE_LF:   nTMode |= TEXTMODE_SERVER_LF; break;
+				case ID_RETURN_MODE_CRLF: nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::StreamCrLf); break;
+				case ID_RETURN_MODE_CR:   nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::StreamCr); break;
+				case ID_RETURN_MODE_LF:   nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::StreamLf); break;
 			}
 		}
-		m_wndListViewServer.m_pDirectory->SetTextMode(nTMode);
+		m_wndListViewServer.m_pRootDirectory->put_TextMode(nTMode);
 	}
 
 	return TBDDRET_DEFAULT;
 }
 
-static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR lpszAddress, IEasySFTPOldDirectory* pDirectoryCurrent)
+static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR lpszAddress)
 {
 	if (wcschr(lpszAddress, L':') == NULL)
 		return NULL;
@@ -2413,13 +2441,13 @@ static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR 
 	if (SUCCEEDED(theApp.m_pEasySFTPRoot->QueryInterface(IID_IShellFolder, (void**) &pRoot)))
 	{
 		PIDLIST_RELATIVE pidlRel = NULL;
-		IEasySFTPOldDirectory* pDir = NULL;
+		IEasySFTPDirectory* pDir = NULL;
 		if (SUCCEEDED(pRoot->ParseDisplayName(hWnd, NULL, (LPWSTR) lpszAddress, NULL, &pidlRel, NULL)))
 		{
 			IShellFolder* pFld = NULL;
 			if (SUCCEEDED(pRoot->BindToObject(pidlRel, NULL, IID_IShellFolder, (void**) &pFld)) && pFld)
 			{
-				if (FAILED(pFld->QueryInterface(IID_IEasySFTPOldDirectory, (void**) &pDir)))
+				if (FAILED(pFld->QueryInterface(IID_IEasySFTPDirectory, (void**) &pDir)))
 					pDir = NULL;
 				pFld->Release();
 			}
@@ -2461,7 +2489,7 @@ void CMainWindow::OnLocalAddressTextReturn(LPCWSTR lpszText)
 			UpdateCurrentFolderAbsolute(pidl);
 		return;
 	}
-	pidl = GetEasySFTPItemIfAvailable(m_hWnd, lpszText, m_wndListViewLocal.m_pDirectory);
+	pidl = GetEasySFTPItemIfAvailable(m_hWnd, lpszText);
 	if (pidl)
 	{
 		UpdateCurrentFolderAbsolute(pidl);
@@ -2546,7 +2574,7 @@ void CMainWindow::OnServerAddressTextReturn(LPCWSTR lpszText)
 			UpdateServerFolderAbsolute(pidl);
 		return;
 	}
-	pidl = GetEasySFTPItemIfAvailable(m_hWnd, lpszText, m_wndListViewServer.m_pDirectory);
+	pidl = GetEasySFTPItemIfAvailable(m_hWnd, lpszText);
 	if (pidl)
 	{
 		UpdateServerFolderAbsolute(pidl);

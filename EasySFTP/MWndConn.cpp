@@ -16,14 +16,14 @@ void CMainWindow::DoHostConnect(bool bServer)
 {
 	if (bServer)
 	{
-		if (m_wndListViewServer.m_pDirectory)
+		if (m_wndListViewServer.m_pRootDirectory)
 			m_wndListViewServer.Refresh();
 		else
 			m_wndListViewServer.DoOpen(m_hWnd);
 	}
 	else
 	{
-		if (m_wndListViewLocal.m_pDirectory)
+		if (m_wndListViewLocal.m_pRootDirectory)
 			m_wndListViewLocal.Refresh();
 		else
 			m_wndListViewLocal.DoOpen(m_hWnd);
@@ -58,27 +58,27 @@ void CMainWindow::DoConnect()
 //void CMainWindow::DoCloseConnection(bool bForce)
 void CMainWindow::DoCloseConnection(bool bServer, bool bForce)
 {
-	if (bServer && !m_wndListViewServer.m_pDirectory)
+	if (bServer && !m_wndListViewServer.m_pRootDirectory)
 		return;
-	else if (!bServer && !m_wndListViewLocal.m_pDirectory)
+	else if (!bServer && !m_wndListViewLocal.m_pRootDirectory)
 		return;
 	if (!bForce)
 	{
 		if (!CanDisconnect(bServer))
 			return;
 	}
-	if (bServer && m_wndListViewServer.m_pDirectory)
+	if (bServer && m_wndListViewServer.m_pRootDirectory)
 	{
-		auto pDirectory = m_wndListViewServer.m_pDirectory;
+		auto pDirectory = m_wndListViewServer.m_pRootDirectory;
 		pDirectory->AddRef();
 		// change folder before disconnect to prevent from handling MY_WM_CHANGENOTIFY
 		UpdateServerFolderAbsolute(theApp.m_pidlEasySFTP);
 		pDirectory->Disconnect();
 		pDirectory->Release();
 	}
-	else if (!bServer && m_wndListViewLocal.m_pDirectory)
+	else if (!bServer && m_wndListViewLocal.m_pRootDirectory)
 	{
-		auto pDirectory = m_wndListViewLocal.m_pDirectory;
+		auto pDirectory = m_wndListViewLocal.m_pRootDirectory;
 		pDirectory->AddRef();
 		// change folder before disconnect to prevent from handling MY_WM_CHANGENOTIFY
 		UpdateCurrentFolderAbsolute(theApp.m_pidlEasySFTP);

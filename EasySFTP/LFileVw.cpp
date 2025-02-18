@@ -19,7 +19,7 @@ CShellFolderFileView::CShellFolderFileView()
 	m_pFolder = NULL;
 	m_pView = NULL;
 	m_lpidlAbsoluteMe = NULL;
-	m_pDirectory = NULL;
+	m_pRootDirectory = NULL;
 	m_fs.ViewMode = FVM_DETAILS;
 	m_fs.fFlags = FWF_SHOWSELALWAYS | FWF_NOWEBVIEW;
 	m_bFocused = false;
@@ -38,10 +38,10 @@ void CShellFolderFileView::ReleaseAll()
 		::CoTaskMemFree(m_lpidlAbsoluteMe);
 		m_lpidlAbsoluteMe = NULL;
 	}
-	if (m_pDirectory)
+	if (m_pRootDirectory)
 	{
-		m_pDirectory->Release();
-		m_pDirectory = NULL;
+		m_pRootDirectory->Release();
+		m_pRootDirectory = NULL;
 	}
 	//if (m_pBrowser)
 	//	m_pBrowser->Release();
@@ -118,8 +118,15 @@ HWND CShellFolderFileView::Create(PCIDLIST_ABSOLUTE lpItemID, IShellFolder* pFol
 	//pBrowser->AddRef();
 	m_pView = pView;
 	m_pFolder = pFolder;
-	if (FAILED(pFolder->QueryInterface(IID_IEasySFTPOldDirectory, (void**) &m_pDirectory)))
-		m_pDirectory = NULL;
+	IEasySFTPDirectory* pDirectory;
+	if (SUCCEEDED(pFolder->QueryInterface(IID_IEasySFTPDirectory, (void**)&pDirectory)))
+	{
+		if (FAILED(pDirectory->get_RootDirectory(&m_pRootDirectory)))
+			m_pRootDirectory = NULL;
+		pDirectory->Release();
+	}
+	else
+		m_pRootDirectory = NULL;
 	m_bReplacing = false;
 	return hWnd;
 }
@@ -271,10 +278,17 @@ HRESULT CShellFolderFileView::ReplaceView(IShellFolder* pFolder)
 	m_pFolder->Release();
 	m_pFolder = pFolder;
 	pFolder->AddRef();
-	if (m_pDirectory)
-		m_pDirectory->Release();
-	if (FAILED(pFolder->QueryInterface(IID_IEasySFTPOldDirectory, (void**) &m_pDirectory)))
-		m_pDirectory = NULL;
+	if (m_pRootDirectory)
+		m_pRootDirectory->Release();
+	IEasySFTPDirectory* pDirectory;
+	if (SUCCEEDED(pFolder->QueryInterface(IID_IEasySFTPDirectory, (void**)&pDirectory)))
+	{
+		if (FAILED(pDirectory->get_RootDirectory(&m_pRootDirectory)))
+			m_pRootDirectory = NULL;
+		pDirectory->Release();
+	}
+	else
+		m_pRootDirectory = NULL;
 	m_bReplacing = false;
 	return S_OK;
 }

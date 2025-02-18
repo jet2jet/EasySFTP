@@ -21,7 +21,7 @@ public:
 	IShellView* m_pView;
 	PIDLIST_ABSOLUTE m_lpidlAbsoluteMe;
 	FOLDERSETTINGS m_fs;
-	IEasySFTPOldDirectory* m_pDirectory;
+	IEasySFTPRootDirectory* m_pRootDirectory;
 
 	bool m_bFocused;
 	bool m_bReplacing;
