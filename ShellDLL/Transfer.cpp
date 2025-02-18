@@ -336,12 +336,12 @@ LRESULT CTransferDialog::OnDrawItem(WPARAM wParam, LPARAM lParam)
 
 		if (pItem)
 		{
-			//if (m_himlSystemLarge && pItem->iIconIndex != -1)
-			//{
-			//	int y = rc.top + ((rc.bottom - rc.top) - m_nCYIcon) / 2;
-			//	::ImageList_Draw(m_himlSystemLarge, pItem->iIconIndex, lpdis->hDC, LIST_PADDING, y,
-			//		(lpdis->itemState & ODS_SELECTED) ? ILD_SELECTED | ILD_TRANSPARENT : ILD_TRANSPARENT);
-			//}
+			if (m_himlSystemLarge && pItem->iIconIndex != -1)
+			{
+				int y = rc.top + ((rc.bottom - rc.top) - m_nCYIcon) / 2;
+				::ImageList_Draw(m_himlSystemLarge, pItem->iIconIndex, lpdis->hDC, LIST_PADDING, y,
+					(lpdis->itemState & ODS_SELECTED) ? ILD_SELECTED | ILD_TRANSPARENT : ILD_TRANSPARENT);
+			}
 
 			//rc.bottom = lpdis->rcItem.bottom / 2;
 			rc.bottom = rc.top + (rc.bottom - rc.top) / 2;
