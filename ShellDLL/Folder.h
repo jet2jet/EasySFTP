@@ -196,9 +196,8 @@ public:
 	DWORD m_grfMode;
 	DWORD m_grfStateBits;
 	bool m_bIsRoot;
-#ifdef _DEBUG
 	bool m_bInDetachAndRelease;
-#endif
+	bool m_bPendingDelete;
 	// the absolute path
 	CMyStringW m_strDirectory;
 	CMyPtrArrayT<CFTPFileItem> m_aFiles;
@@ -207,7 +206,7 @@ public:
 protected:
 	CFTPDirectoryBase(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, ITypeInfo* pInfo);
 	void CommonConstruct();
-	void DetachImpl();
+	bool DetachImpl();
 
 public:
 	CRITICAL_SECTION m_csFiles;

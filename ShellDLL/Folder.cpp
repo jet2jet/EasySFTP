@@ -520,9 +520,8 @@ constexpr const WCHAR* const s_pIgnoreNames[] = {
 void CFTPDirectoryBase::CommonConstruct()
 {
 	m_uRef = 1;
-#ifdef _DEBUG
 	m_bInDetachAndRelease = false;
-#endif
+	m_bPendingDelete = false;
 	m_clsidThis = CLSID_NULL;
 	m_grfMode = 0;
 	m_grfStateBits = 0;
@@ -557,9 +556,6 @@ void CFTPDirectoryBase::CommonConstruct()
 
 CFTPDirectoryBase::~CFTPDirectoryBase()
 {
-#ifdef _DEBUG
-	_ASSERT(!m_bInDetachAndRelease);
-#endif
 	if (m_pItemMe)
 		m_pItemMe->Release();
 	//#ifdef _DEBUG
@@ -580,11 +576,9 @@ CFTPDirectoryBase::~CFTPDirectoryBase()
 	//	m_pParent->Release();
 }
 
-void CFTPDirectoryBase::DetachImpl()
+bool CFTPDirectoryBase::DetachImpl()
 {
-#ifdef _DEBUG
 	m_bInDetachAndRelease = true;
-#endif
 	auto i = m_aDirectories.GetCount();
 	while (i--)
 	{
@@ -613,14 +607,21 @@ void CFTPDirectoryBase::DetachImpl()
 		m_pParent = NULL;
 	}
 
-#ifdef _DEBUG
 	m_bInDetachAndRelease = false;
-#endif
+	// see CFTPDirectoryBase::Release
+	if (m_bPendingDelete)
+	{
+		delete this;
+		return false;
+	}
+	else
+		return true;
 }
 
 ULONG CFTPDirectoryBase::DetachAndRelease()
 {
-	DetachImpl();
+	if (!DetachImpl())
+		return 0;
 	return Release();
 }
 
@@ -653,11 +654,16 @@ STDMETHODIMP_(ULONG) CFTPDirectoryBase::AddRef()
 STDMETHODIMP_(ULONG) CFTPDirectoryBase::Release()
 {
 	::EnterCriticalSection(&m_csRefs);
-	ULONG retParent = 0;
-	if (m_pParent)
-		retParent = m_pParent->Release();
 	ULONG ret;
-	ret = ::InterlockedDecrement(&m_uRef);
+	ULONG retParent = 0;
+	if (!m_uRef)
+		ret = 0;
+	else
+	{
+		if (m_pParent)
+			retParent = m_pParent->Release();
+		ret = ::InterlockedDecrement(&m_uRef);
+	}
 	::LeaveCriticalSection(&m_csRefs);
 
 //#ifdef _DEBUG
@@ -685,7 +691,17 @@ STDMETHODIMP_(ULONG) CFTPDirectoryBase::Release()
 //	//}
 //#endif
 	if (!ret)
-		delete this;
+	{
+		if (m_bInDetachAndRelease)
+		{
+			// This is a workaround for over-Release problem occurring when exiting Explorer process.
+			// In some case reference count of the instance become fewer than expected, and
+			// the count will be zero during DetachImpl(), so delay 'delete' to avoid unexpected memory access.
+			m_bPendingDelete = true;
+		}
+		else
+			delete this;
+	}
 	return ret;
 }
 

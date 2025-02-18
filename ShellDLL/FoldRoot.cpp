@@ -44,13 +44,14 @@ CFTPDirectoryRootBase::~CFTPDirectoryRootBase()
 
 	if (m_pTransferDialog)
 		delete m_pTransferDialog;
-	//if (m_pParent)
-	//	m_pParent->Release();
+	if (m_pParent)
+		m_pParent->Release();
 }
 
 ULONG CFTPDirectoryRootBase::DetachAndRelease()
 {
-	CFTPDirectoryBase::DetachImpl();
+	if (!CFTPDirectoryBase::DetachImpl())
+		return 0;
 	if (m_pParent)
 	{
 		auto c = m_uRef;
