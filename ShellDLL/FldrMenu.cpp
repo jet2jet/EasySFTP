@@ -94,7 +94,7 @@ STDMETHODIMP_(ULONG) CFTPFileItemMenu::Release()
 STDMETHODIMP CFTPFileItemMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags)
 {
 	int i, nCount;
-	MENUITEMINFO mii;
+	MENUITEMINFOW mii;
 	UINT uMaxID;
 	CMyStringW str;
 
@@ -102,7 +102,7 @@ STDMETHODIMP CFTPFileItemMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UIN
 	mii.cbSize = sizeof(mii);
 	mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE;
 #else
-	mii.cbSize = MENUITEMINFO_SIZE_V1;
+	mii.cbSize = MENUITEMINFO_SIZE_V1W;
 	mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
 #endif
 	uMaxID = idCmdFirst;
@@ -122,12 +122,8 @@ STDMETHODIMP CFTPFileItemMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UIN
 	for (i = 0; i < nCount; i++)
 	{
 		mii.cch = MAX_PATH;
-#ifdef _UNICODE
-		mii.dwTypeData = str.GetBufferW(MAX_PATH);
-#else
-		mii.dwTypeData = str.GetBufferA(MAX_PATH);
-#endif
-		::GetMenuItemInfo(h, (UINT) i, TRUE, &mii);
+		mii.dwTypeData = str.GetBuffer(MAX_PATH);
+		::MyGetMenuItemInfoW(h, (UINT) i, TRUE, &mii);
 		if (uFlags & CMF_DEFAULTONLY)
 		{
 			if (mii.wID != uIDDefault)
@@ -166,7 +162,7 @@ STDMETHODIMP CFTPFileItemMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UIN
 		mii.wID = (WORD)((UINT) mii.wID - ID_ITEM_BASE + idCmdFirst);
 		if (uMaxID < (UINT) mii.wID)
 			uMaxID = (UINT) mii.wID;
-		::InsertMenuItem(hMenu, indexMenu++, TRUE, &mii);
+		::MyInsertMenuItemW(hMenu, indexMenu++, TRUE, &mii);
 	}
 	return MAKE_HRESULT(SEVERITY_SUCCESS, 0, uMaxID - idCmdFirst + 1);
 }
@@ -776,7 +772,7 @@ STDMETHODIMP CFTPFileDirectoryMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu
 UINT CFTPFileDirectoryMenu::_QueryContextMenu(HMENU hMenuTarget, HMENU hMenuCurrent, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags)
 {
 	int i, nCount;
-	MENUITEMINFO mii;
+	MENUITEMINFOW mii;
 	UINT uMaxID;
 	CMyStringW str;
 
@@ -784,7 +780,7 @@ UINT CFTPFileDirectoryMenu::_QueryContextMenu(HMENU hMenuTarget, HMENU hMenuCurr
 	mii.cbSize = sizeof(mii);
 	mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE | MIIM_SUBMENU;
 #else
-	mii.cbSize = MENUITEMINFO_SIZE_V1;
+	mii.cbSize = MENUITEMINFO_SIZE_V1W;
 	mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE | MIIM_SUBMENU;
 #endif
 	uMaxID = idCmdFirst;
@@ -793,12 +789,8 @@ UINT CFTPFileDirectoryMenu::_QueryContextMenu(HMENU hMenuTarget, HMENU hMenuCurr
 	for (i = 0; i < nCount; i++)
 	{
 		mii.cch = MAX_PATH;
-#ifdef _UNICODE
-		mii.dwTypeData = str.GetBufferW(MAX_PATH);
-#else
-		mii.dwTypeData = str.GetBufferA(MAX_PATH);
-#endif
-		::GetMenuItemInfo(hMenuCurrent, (UINT) i, TRUE, &mii);
+		mii.dwTypeData = str.GetBuffer(MAX_PATH);
+		::MyGetMenuItemInfoW(hMenuCurrent, (UINT) i, TRUE, &mii);
 		if (uFlags & CMF_DEFAULTONLY)
 		{
 			//if ((!(uFlags & CMF_EXPLORE) && mii.wID != ID_ITEM_OPEN) ||
@@ -838,7 +830,7 @@ UINT CFTPFileDirectoryMenu::_QueryContextMenu(HMENU hMenuTarget, HMENU hMenuCurr
 			// ignore 'u'
 			mii.hSubMenu = h;
 		}
-		::InsertMenuItem(hMenuTarget, indexMenu++, TRUE, &mii);
+		::MyInsertMenuItemW(hMenuTarget, indexMenu++, TRUE, &mii);
 	}
 	return uMaxID;
 }

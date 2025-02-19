@@ -2127,7 +2127,7 @@ STDMETHODIMP_(ULONG) CEasySFTPRootMenu::Release()
 STDMETHODIMP CEasySFTPRootMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags)
 {
 	int i, nCount;
-	MENUITEMINFO mii;
+	MENUITEMINFOW mii;
 	UINT uMaxID;
 	CMyStringW str;
 
@@ -2135,7 +2135,7 @@ STDMETHODIMP CEasySFTPRootMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UI
 	mii.cbSize = sizeof(mii);
 	mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE;
 #else
-	mii.cbSize = MENUITEMINFO_SIZE_V1;
+	mii.cbSize = MENUITEMINFO_SIZE_V1W;
 	mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
 #endif
 	uMaxID = idCmdFirst;
@@ -2147,8 +2147,8 @@ STDMETHODIMP CEasySFTPRootMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UI
 		if (!(uFlags & CMF_NODEFAULT))
 			mii.fState |= MFS_DEFAULT;
 		mii.wID = idCmdFirst;
-		mii.dwTypeData = (LPTSTR)(LPCTSTR)str;
-		::InsertMenuItem(hMenu, indexMenu++, TRUE, &mii);
+		mii.dwTypeData = (LPWSTR)(LPCWSTR)str;
+		::MyInsertMenuItemW(hMenu, indexMenu++, TRUE, &mii);
 	}
 	else
 	{
@@ -2157,12 +2157,8 @@ STDMETHODIMP CEasySFTPRootMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UI
 		for (i = 0; i < nCount; i++)
 		{
 			mii.cch = MAX_PATH;
-#ifdef _UNICODE
-			mii.dwTypeData = str.GetBufferW(MAX_PATH);
-#else
-			mii.dwTypeData = str.GetBufferA(MAX_PATH);
-#endif
-			::GetMenuItemInfo(h, (UINT)i, TRUE, &mii);
+			mii.dwTypeData = str.GetBuffer(MAX_PATH);
+			::MyGetMenuItemInfoW(h, (UINT)i, TRUE, &mii);
 			if (uFlags & CMF_DEFAULTONLY)
 			{
 				if (mii.wID != ID_HOST_CONNECT)
@@ -2184,7 +2180,7 @@ STDMETHODIMP CEasySFTPRootMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu, UI
 			mii.wID = (WORD)((UINT)mii.wID - ID_HOST_BASE + idCmdFirst);
 			if (uMaxID < (UINT)mii.wID)
 				uMaxID = (UINT)mii.wID;
-			::InsertMenuItem(hMenu, indexMenu++, TRUE, &mii);
+			::MyInsertMenuItemW(hMenu, indexMenu++, TRUE, &mii);
 		}
 	}
 	return MAKE_HRESULT(SEVERITY_SUCCESS, 0, uMaxID - idCmdFirst + 1);

@@ -27,19 +27,19 @@
 
 static HMENU __stdcall GetSubMenuByID(HMENU hMenu, UINT uID)
 {
-	MENUITEMINFO mii;
+	MENUITEMINFOW mii;
 	int nCount;
 
 #ifdef _WIN64
 	mii.cbSize = sizeof(mii);
 #else
-	mii.cbSize = MENUITEMINFO_SIZE_V1;
+	mii.cbSize = MENUITEMINFO_SIZE_V1W;
 #endif
 	mii.fMask = MIIM_ID | MIIM_SUBMENU;
 	nCount = ::GetMenuItemCount(hMenu);
 	for (int i = 0; i < nCount; i++)
 	{
-		::GetMenuItemInfo(hMenu, (UINT)i, TRUE, &mii);
+		::MyGetMenuItemInfoW(hMenu, (UINT)i, TRUE, &mii);
 		if (mii.wID == uID)
 			return mii.hSubMenu;
 	}
@@ -1821,7 +1821,7 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 		{
 			int i, nCount;
 			UINT indexMenu;
-			MENUITEMINFO mii;
+			MENUITEMINFOW mii;
 			UINT uMaxID;
 			CMyStringW str;
 
@@ -1829,7 +1829,7 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 			mii.cbSize = sizeof(mii);
 			mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE;
 #else
-			mii.cbSize = MENUITEMINFO_SIZE_V1;
+			mii.cbSize = MENUITEMINFO_SIZE_V1W;
 			mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
 #endif
 			uMaxID = lpqi->idCmdFirst;
@@ -1841,16 +1841,12 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 			for (i = 0; i < nCount; i++)
 			{
 				mii.cch = MAX_PATH;
-#ifdef _UNICODE
-				mii.dwTypeData = str.GetBufferW(MAX_PATH);
-#else
-				mii.dwTypeData = str.GetBufferA(MAX_PATH);
-#endif
-				::GetMenuItemInfo(h, (UINT)i, TRUE, &mii);
+				mii.dwTypeData = str.GetBuffer(MAX_PATH);
+				::MyGetMenuItemInfoW(h, (UINT)i, TRUE, &mii);
 				mii.wID = (WORD)((UINT)mii.wID - ID_ROOT_IDBASE + lpqi->idCmdFirst);
 				if (uMaxID < (UINT)mii.wID)
 					uMaxID = (UINT)mii.wID;
-				::InsertMenuItem(hMenuToAdd, indexMenu++, TRUE, &mii);
+				::MyInsertMenuItemW(hMenuToAdd, indexMenu++, TRUE, &mii);
 			}
 			//mii.fMask = MIIM_TYPE;
 			//mii.fType = MFT_SEPARATOR;

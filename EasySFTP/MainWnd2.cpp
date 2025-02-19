@@ -295,14 +295,14 @@ STDMETHODIMP CMainWindow::CBrowser::ContextSensitiveHelp(BOOL fEnterMode)
 static void __stdcall DuplicateMenu(HMENU hMenuFrom, HMENU hMenuTo, LPOLEMENUGROUPWIDTHS lpMenuWidths)
 {
 	int i, nCount;
-	MENUITEMINFO mii;
+	MENUITEMINFOW mii;
 	CMyStringW str;
 
 #ifdef _WIN64
 	mii.cbSize = sizeof(mii);
 	mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_STATE | MIIM_SUBMENU;
 #else
-	mii.cbSize = MENUITEMINFO_SIZE_V1;
+	mii.cbSize = MENUITEMINFO_SIZE_V1W;
 	mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE | MIIM_SUBMENU;
 #endif
 
@@ -310,12 +310,8 @@ static void __stdcall DuplicateMenu(HMENU hMenuFrom, HMENU hMenuTo, LPOLEMENUGRO
 	for (i = 0; i < nCount; i++)
 	{
 		mii.cch = MAX_PATH;
-#ifdef _UNICODE
-		mii.dwTypeData = str.GetBufferW(MAX_PATH);
-#else
-		mii.dwTypeData = str.GetBufferA(MAX_PATH);
-#endif
-		::GetMenuItemInfo(hMenuFrom, (UINT) i, TRUE, &mii);
+		mii.dwTypeData = str.GetBuffer(MAX_PATH);
+		::MyGetMenuItemInfoW(hMenuFrom, (UINT) i, TRUE, &mii);
 		if (mii.hSubMenu)
 		{
 			HMENU hs = ::CreatePopupMenu();
@@ -334,7 +330,7 @@ static void __stdcall DuplicateMenu(HMENU hMenuFrom, HMENU hMenuTo, LPOLEMENUGRO
 					break;
 			}
 		}
-		::InsertMenuItem(hMenuTo, (UINT) i, TRUE, &mii);
+		::MyInsertMenuItemW(hMenuTo, (UINT) i, TRUE, &mii);
 	}
 }
 

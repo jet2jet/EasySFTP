@@ -81,4 +81,13 @@ extern "C" int __stdcall AddDlgListBoxStringW(HWND hWnd, int nID, LPCWSTR lpszSt
 extern "C" int __stdcall InsertDlgListBoxStringW(HWND hWnd, int nID, int nIndex, LPCWSTR lpszString);
 extern "C" int __stdcall AddDlgComboBoxStringW(HWND hWnd, int nID, LPCWSTR lpszString);
 
+///////////////////////////////////////////////////////////////////////////////
+
+EXTERN_C HMENU __stdcall MyLoadMenuW(_In_opt_ HINSTANCE hInstance, _In_ LPCWSTR lpMenuName);
+EXTERN_C BOOL __stdcall MyInsertMenuItemW(_In_ HMENU hmenu, _In_ UINT item, _In_ BOOL fByPosition, _In_ LPCMENUITEMINFOW lpmi);
+EXTERN_C BOOL __stdcall MyGetMenuItemInfoW(_In_ HMENU hmenu, _In_ UINT item, _In_ BOOL fByPosition, _Inout_ LPMENUITEMINFOW lpmii);
+EXTERN_C BOOL __stdcall MySetMenuItemInfoW(_In_ HMENU hmenu, _In_ UINT item, _In_ BOOL fByPosition, _In_ LPCMENUITEMINFOW lpmii);
+
+///////////////////////////////////////////////////////////////////////////////
+
 #endif // __UNICODE_H__

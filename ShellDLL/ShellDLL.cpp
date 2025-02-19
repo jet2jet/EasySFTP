@@ -1350,8 +1350,8 @@ bool CMainDLL::InitInstance()
 		m_hFontWindow = ::CreateFontIndirect(&ncm.lfMessageFont);
 	}
 
-	m_hMenuPopup = ::LoadMenu(m_hInstance, MAKEINTRESOURCE(IDR_POPUP));
-	m_hMenuContext = ::LoadMenu(m_hInstance, MAKEINTRESOURCE(IDR_SHELLMENU));
+	m_hMenuPopup = MyLoadMenuW(m_hInstance, MAKEINTRESOURCEW(IDR_POPUP));
+	m_hMenuContext = MyLoadMenuW(m_hInstance, MAKEINTRESOURCEW(IDR_SHELLMENU));
 
 	// Build the INI file name
 	{

@@ -810,3 +810,162 @@ extern "C" int __stdcall AddDlgComboBoxStringW(HWND hWnd, int nID, LPCWSTR lpszS
 		return (int) (::SendMessageA(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR) str));
 	}
 }
+
+EXTERN_C HMENU __stdcall MyLoadMenuW(_In_opt_ HINSTANCE hInstance, _In_ LPCWSTR lpMenuName)
+{
+	HMENU h = ::LoadMenuW(hInstance, lpMenuName);
+	if (h != NULL || ::GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+		return h;
+	if (IS_INTRESOURCE(lpMenuName))
+		return ::LoadMenuA(hInstance, reinterpret_cast<LPCSTR>(lpMenuName));
+	CMyStringW str(lpMenuName);
+	return ::LoadMenuA(hInstance, str);
+}
+
+EXTERN_C BOOL __stdcall MyInsertMenuItemW(_In_ HMENU hmenu, _In_ UINT item, _In_ BOOL fByPosition, _In_ LPCMENUITEMINFOW lpmi)
+{
+	BOOL bRet;
+	if ((bRet = ::InsertMenuItemW(hmenu, item, fByPosition, lpmi)) || ::GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+		return bRet;
+	MENUITEMINFOA miiA;
+	if (sizeof(miiA) < lpmi->cbSize)
+		return FALSE;
+	memcpy(&miiA, lpmi, lpmi->cbSize);
+	char* buffer = NULL;
+	if ((miiA.fMask & MIIM_STRING) || ((miiA.fMask & MIIM_TYPE) && miiA.fType == MFT_STRING))
+	{
+		buffer = MyUnicodeToAnsiString(lpmi->dwTypeData);
+		if (!buffer)
+		{
+			::SetLastError(ERROR_OUTOFMEMORY);
+			return FALSE;
+		}
+		miiA.dwTypeData = buffer;
+	}
+	if (!::InsertMenuItemA(hmenu, item, fByPosition, &miiA))
+	{
+		if (buffer)
+		{
+			auto last = ::GetLastError();
+			free(buffer);
+			::SetLastError(last);
+		}
+		return FALSE;
+	}
+	free(buffer);
+	return TRUE;
+}
+
+EXTERN_C BOOL __stdcall MyGetMenuItemInfoW(_In_ HMENU hmenu, _In_ UINT item, _In_ BOOL fByPosition, _Inout_ LPMENUITEMINFOW lpmii)
+{
+	BOOL bRet;
+	if ((bRet = ::GetMenuItemInfoW(hmenu, item, fByPosition, lpmii)) || ::GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+		return bRet;
+	MENUITEMINFOA miiA;
+	if (sizeof(miiA) < lpmii->cbSize)
+		return FALSE;
+	char* buffer = NULL;
+	if (lpmii->fMask & (MIIM_TYPE | MIIM_STRING))
+	{
+		if (lpmii->dwTypeData)
+		{
+			miiA.cch = lpmii->cch * 2;
+			buffer = static_cast<char*>(malloc(sizeof(char) * miiA.cch));
+			if (!buffer)
+			{
+				::SetLastError(ERROR_OUTOFMEMORY);
+				return FALSE;
+			}
+			miiA.dwTypeData = buffer;
+		}
+		else
+		{
+			miiA.cbSize = MENUITEMINFO_SIZE_V1A;
+			miiA.fMask = MIIM_TYPE;
+			miiA.cch = 0;
+			miiA.dwTypeData = NULL;
+			if (!::GetMenuItemInfoA(hmenu, item, fByPosition, &miiA))
+				return FALSE;
+			if (miiA.fType == MFT_STRING)
+			{
+				buffer = static_cast<char*>(malloc(sizeof(char) * (++miiA.cch)));
+				if (!buffer)
+				{
+					::SetLastError(ERROR_OUTOFMEMORY);
+					return FALSE;
+				}
+				miiA.dwTypeData = buffer;
+			}
+		}
+	}
+	else
+	{
+		miiA.cch = 0;
+		miiA.dwTypeData = NULL;
+	}
+	miiA.cbSize = lpmii->cbSize;
+	miiA.fMask = lpmii->fMask | MIIM_TYPE;
+	if (!::GetMenuItemInfoA(hmenu, item, fByPosition, &miiA))
+	{
+		if (buffer)
+		{
+			auto last = ::GetLastError();
+			free(buffer);
+			::SetLastError(last);
+		}
+		return FALSE;
+	}
+	auto* p = lpmii->dwTypeData;
+	memcpy(lpmii, &miiA, lpmii->cbSize);
+	if (lpmii->fMask & (MIIM_TYPE | MIIM_STRING))
+	{
+		if (miiA.fType == MFT_STRING)
+		{
+			lpmii->dwTypeData = p;
+			if (buffer)
+			{
+				if (p)
+					lpmii->cch = static_cast<UINT>(::MultiByteToWideChar(CP_ACP, 0, buffer, static_cast<int>(miiA.cch), p, static_cast<int>(lpmii->cch)));
+				else
+					lpmii->cch = static_cast<UINT>(::MultiByteToWideChar(CP_ACP, 0, buffer, static_cast<int>(miiA.cch), NULL, 0));
+			}
+		}
+	}
+	if (buffer)
+		free(buffer);
+	return TRUE;
+}
+
+EXTERN_C BOOL __stdcall MySetMenuItemInfoW(_In_ HMENU hmenu, _In_ UINT item, _In_ BOOL fByPosition, _In_ LPCMENUITEMINFOW lpmii)
+{
+	BOOL bRet;
+	if ((bRet = ::SetMenuItemInfoW(hmenu, item, fByPosition, lpmii)) || ::GetLastError() != ERROR_CALL_NOT_IMPLEMENTED)
+		return bRet;
+	MENUITEMINFOA miiA;
+	if (sizeof(miiA) < lpmii->cbSize)
+		return FALSE;
+	memcpy(&miiA, lpmii, lpmii->cbSize);
+	char* buffer = NULL;
+	if ((miiA.fMask & MIIM_STRING) || ((miiA.fMask & MIIM_TYPE) && miiA.fType == MFT_STRING))
+	{
+		buffer = MyUnicodeToAnsiString(lpmii->dwTypeData);
+		if (!buffer)
+		{
+			::SetLastError(ERROR_OUTOFMEMORY);
+			return FALSE;
+		}
+		miiA.dwTypeData = buffer;
+	}
+	if (!::SetMenuItemInfoA(hmenu, item, fByPosition, &miiA))
+	{
+		if (buffer)
+		{
+			auto last = ::GetLastError();
+			free(buffer);
+			::SetLastError(last);
+		}
+		return FALSE;
+	}
+	free(buffer);
+	return TRUE;
+}

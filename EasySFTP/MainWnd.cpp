@@ -1171,25 +1171,21 @@ static void __stdcall _SetMenuItemAllInfoIfNeed(HMENU hMenu, CMyStringW* pstrBuf
 {
 	int i, nCount;
 	CMyStringW* p;
-	MENUITEMINFO mii;
+	MENUITEMINFOW mii;
 
 	if (pstrBuffer)
 		p = pstrBuffer;
 	else
 		p = new CMyStringW();
 	nCount = ::GetMenuItemCount(hMenu);
-	mii.cbSize = MENUITEMINFO_SIZE_V1;
+	mii.cbSize = MENUITEMINFO_SIZE_V1W;
 	mii.fMask = MIIM_TYPE | MIIM_SUBMENU | MIIM_ID;
-#ifdef _UNICODE
 	mii.dwTypeData = p->GetBuffer(MAX_PATH);
-#else
-	mii.dwTypeData = p->GetBufferA(MAX_PATH);
-#endif
 	for (i = 0; i < nCount; i++)
 	{
 		mii.cch = MAX_PATH;
 		mii.hSubMenu = NULL;
-		::GetMenuItemInfo(hMenu, (UINT) i, TRUE, &mii);
+		::MyGetMenuItemInfoW(hMenu, (UINT) i, TRUE, &mii);
 		if (mii.hSubMenu)
 			_SetMenuItemAllInfoIfNeed(mii.hSubMenu, p);
 		else
@@ -1215,7 +1211,7 @@ static void __stdcall _SetMenuItemAllInfoIfNeed(HMENU hMenu, CMyStringW* pstrBuf
 				default:
 					continue;
 			}
-			::SetMenuItemInfo(hMenu, (UINT) i, TRUE, &mii);
+			::MySetMenuItemInfoW(hMenu, (UINT) i, TRUE, &mii);
 		}
 	}
 	if (!pstrBuffer)
@@ -1267,23 +1263,23 @@ LRESULT CMainWindow::OnCreate(WPARAM wParam, LPARAM lParam)
 
 	m_uDpi = _MyGetDpiForWindow(m_hWnd);
 
-	m_hMenu = ::LoadMenu(theApp.m_hInstance, MAKEINTRESOURCE(IDC_EASYFTP));
+	m_hMenu = MyLoadMenuW(theApp.m_hInstance, MAKEINTRESOURCEW(IDC_EASYFTP));
 	if (!m_hMenu)
 		return -1;
 	_SetMenuItemAllInfoIfNeed(m_hMenu);
 	{
-		MENUITEMINFO mii;
+		MENUITEMINFOW mii;
 #ifdef _WIN64
 		mii.cbSize = sizeof(mii);
 #else
-		mii.cbSize = MENUITEMINFO_SIZE_V1;
+		mii.cbSize = MENUITEMINFO_SIZE_V1W;
 #endif
 		mii.fMask = MIIM_ID;
 		int nCount = ::GetMenuItemCount(m_hMenu);
 		for (int i = 0; i < nCount; i++)
 		{
 			mii.wID = s_arrMenuParentIDs[i];
-			::SetMenuItemInfo(m_hMenu, (UINT) i, TRUE, &mii);
+			::MySetMenuItemInfoW(m_hMenu, (UINT) i, TRUE, &mii);
 		}
 	}
 

@@ -817,7 +817,7 @@ bool CMainApplication::InitAppData()
 		m_strTempPath += L'\\';
 	}
 
-	m_hMenuPopup = ::LoadMenu(m_hInstance, MAKEINTRESOURCE(IDR_POPUP));
+	m_hMenuPopup = MyLoadMenuW(m_hInstance, MAKEINTRESOURCEW(IDR_POPUP));
 
 	m_strTitle.LoadString(IDS_APP_TITLE);
 
