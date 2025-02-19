@@ -1863,20 +1863,29 @@ static INT_PTR CALLBACK _AboutDlgProc(HWND hDlg, UINT message, WPARAM wParam, LP
 	{
 		case WM_INITDIALOG:
 		{
-			IEasySFTPOldRoot2* pRoot2 = NULL;
-			auto hr = theApp.m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPOldRoot2, reinterpret_cast<void**>(&pRoot2));
+			IEasySFTPRoot* pRoot = NULL;
+			auto hr = theApp.m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPRoot, reinterpret_cast<void**>(&pRoot));
 			if (SUCCEEDED(hr))
 			{
+				CMyStringW str;
 				BSTR bstr = NULL;
-				hr = pRoot2->GetDependencyLibraryInfo(&bstr);
-				pRoot2->Release();
+				hr = pRoot->get_Version(&bstr);
 				if (SUCCEEDED(hr))
 				{
-					CMyStringW str;
-					str.SetString(bstr, ::SysStringLen(bstr));
+					MyBSTRToString(bstr, str);
+					::SysFreeString(bstr);
+					str.InsertString(L" version ", 0);
+					str.InsertString(theApp.m_strTitle, 0);
+					::MySetDlgItemTextW(hDlg, IDC_VERSION, str);
+				}
+				hr = pRoot->GetDependencyLibraryInfo(&bstr);
+				if (SUCCEEDED(hr))
+				{
+					MyBSTRToString(bstr, str);
 					::SysFreeString(bstr);
 					::MySetDlgItemTextW(hDlg, IDC_FEATURES, str);
 				}
+				pRoot->Release();
 			}
 		}
 		break;

@@ -1,5 +1,12 @@
 # ChangeLog
 
+## v0.12.0.1
+
+- Add implementation for use from VBA, PowerShell, and etc.
+  - EasySFTP.dll now provides type library
+- Restore showing icons on transfer dialog
+- Fix some bugs, especially for Shell Extension
+
 ## v0.11.1.1
 
 - Fix for reauthenticating process on SFTP

@@ -1,4 +1,4 @@
-//{{NO_DEPENDENCIES}}
+﻿//{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ で生成されたインクルード ファイル。
 // EasySFTP.rc で使用
 //
@@ -33,7 +33,6 @@
 #define IDD_OPTION                      134
 #define IDR_POPUP                       135
 #define IDB_ADDRESS_BUTTONS             138
-#define IDB_BITMAP1                     144
 #define IDB_TOOLBAR_L                   144
 #define IDB_ADDRESS_BUTTONS_L           145
 #define IDS_HEAD_FILE_NAME              201
@@ -68,6 +67,7 @@
 #define IDC_REGISTER_SYSTEM             1052
 #define IDC_FEATURES                    1053
 #define IDC_LINK_TO_REPOSITORY          1054
+#define IDC_VERSION                     1055
 #define IDS_UNKNOWN_HOST                10001
 #define IDS_FAILED_TO_CONNECT           10002
 #define IDS_DIRCHANGE_FAILED            11001
@@ -138,7 +138,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        146
 #define _APS_NEXT_COMMAND_VALUE         32870
-#define _APS_NEXT_CONTROL_VALUE         1055
+#define _APS_NEXT_CONTROL_VALUE         1056
 #define _APS_NEXT_SYMED_VALUE           117
 #endif
 #endif
