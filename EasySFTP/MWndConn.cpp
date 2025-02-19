@@ -70,20 +70,16 @@ void CMainWindow::DoCloseConnection(bool bServer, bool bForce)
 	if (bServer && m_wndListViewServer.m_pRootDirectory)
 	{
 		auto pDirectory = m_wndListViewServer.m_pRootDirectory;
-		pDirectory->AddRef();
 		// change folder before disconnect to prevent from handling MY_WM_CHANGENOTIFY
 		UpdateServerFolderAbsolute(theApp.m_pidlEasySFTP);
 		pDirectory->Disconnect();
-		pDirectory->Release();
 	}
 	else if (!bServer && m_wndListViewLocal.m_pRootDirectory)
 	{
 		auto pDirectory = m_wndListViewLocal.m_pRootDirectory;
-		pDirectory->AddRef();
 		// change folder before disconnect to prevent from handling MY_WM_CHANGENOTIFY
 		UpdateCurrentFolderAbsolute(theApp.m_pidlEasySFTP);
 		pDirectory->Disconnect();
-		pDirectory->Release();
 	}
 }
 
