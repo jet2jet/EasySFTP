@@ -1938,6 +1938,7 @@ void CMainDLL::SaveINISettings(
 		::MyWriteINIValueW(hFile, L"ServerCharset", (int) pHost->nServerCharset);
 		::MyWriteINIValueW(hFile, L"InitLocalPath", pHost->strInitLocalPath);
 		::MyWriteINIValueW(hFile, L"InitServerPath", pHost->strInitServerPath);
+		::MyWriteINIValueW(hFile, L"UseThumbnailPreview", pHost->bUseThumbnailPreview ? 1 : 0);
 		::MyWriteINIValueW(hFile, L"TransferMode", (int) pHost->nTransferMode);
 		str.Empty();
 		for (int n2 = 0; n2 < pHost->arrTextFileType.GetCount(); n2++)
