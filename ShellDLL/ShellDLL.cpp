@@ -2461,11 +2461,14 @@ int CMainDLL::CTimerThread::Run()
 			endIndex = lastCount;
 		}
 
+		if (dwTimeInterval < 10)
+			dwTimeInterval = 10;
+
 		auto idTimer = reinterpret_cast<UINT_PTR>(pData);
 		auto pfnTimerProc = pData ? pData->pfnTimerProc : NULL;
 		auto lParam = pData ? pData->lParam : 0;
 		if (pData)
-			pData->dwTickStart += dwTimeInterval;
+			pData->dwTickStart = dwTick;
 		::LeaveCriticalSection(&theApp.m_csTimer);
 
 		if (!pData)
