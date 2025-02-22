@@ -374,8 +374,44 @@ bool CFTPConnection::ReceiveMessage(int& nCode, CMyStringW& rstrMessage, CWaitRe
 	}
 	nCode = r;
 
-	CFTPWaitResponse* p;
-	bool b = m_aWaitResponse.Dequeue(&p);
+	CFTPWaitResponse* p = NULL;
+	bool b = false;
+	for (auto i = 0; i < m_aWaitResponse.GetCount(); ++i)
+	{
+		p = m_aWaitResponse.GetItem(i);
+		// find Passive waiting if code is 226 or 451
+		if (r == 226 || r == 451)
+		{
+			if (p->bIsWaitingIgnorablePassiveDone || (p->pWait && (p->pWait->nWaitType == CWaitResponseData::WRD_PASSIVEDONE || p->pWait->nWaitType == CWaitResponseData::WRD_CONFIRM)))
+			{
+				b = true;
+				m_aWaitResponse.RemoveItem(i);
+				break;
+			}
+		}
+		else
+		{
+			if (p->bIsWaitingIgnorablePassiveDone)
+			{
+#ifdef _DEBUG
+				{
+					CMyStringW str(L"FTP: drop waiting passive done\n");
+					::OutputDebugString(str);
+				}
+#endif
+				m_aWaitResponse.RemoveItem(i);
+				delete p;
+				--i;
+				continue;
+			}
+			if (!p->pWait || p->pWait->nWaitType != CWaitResponseData::WRD_PASSIVEDONE)
+			{
+				b = true;
+				m_aWaitResponse.RemoveItem(i);
+				break;
+			}
+		}
+	}
 
 #ifdef _DEBUG
 	{
@@ -408,10 +444,10 @@ bool CFTPConnection::ReceivePassive(CFTPWaitPassive* pPassive)
 	if (pPassive->pPassive->IsRemoteClosed())
 	{
 		pPassive->bWaiting = true;
-		pPassive->nWaitFlags = CFTPWaitPassive::flagFinished;
+		pPassive->nWaitFlags = CFTPWaitPassive::WaitFlags::Finished;
 		pPassive->pMessage->EndReceive(NULL);
 
-		ClosePassiveSocket(pPassive->pPassive, pPassive);
+		pPassive->pPassive->Close();
 		//delete pPassive->pPassive;
 		//pPassive->pPassive = NULL;
 		return true;
@@ -420,7 +456,7 @@ bool CFTPConnection::ReceivePassive(CFTPWaitPassive* pPassive)
 		!pPassive->pPassive->IsRemoteClosed())
 	{
 		pPassive->bWaiting = false;
-		pPassive->nWaitFlags = CFTPWaitPassive::flagError;
+		pPassive->nWaitFlags = CFTPWaitPassive::WaitFlags::Error;
 		pPassive->pMessage->EndReceive(NULL);
 		//break;
 		//::LeaveCriticalSection(&m_csSocket);
@@ -430,21 +466,66 @@ bool CFTPConnection::ReceivePassive(CFTPWaitPassive* pPassive)
 	return true;
 }
 
-void CFTPConnection::ClosePassiveSocket(CTextSocket* pPassive, CWaitResponseData* pWait)
+void CFTPConnection::WaitFinishPassive(CFTPWaitPassiveDone* pPassive)
 {
 	::EnterCriticalSection(&m_csSocket);
-	pPassive->Close();
 
 	CFTPWaitResponse* p = new CFTPWaitResponse();
-	p->pWait = pWait;
+	p->pWait = pPassive;
 	m_aWaitResponse.Enqueue(p);
 #ifdef _DEBUG
 	{
 		CMyStringW str;
-		str.Format(L"(wait = %p) : wait for 226 msg\n", pWait);
+		str.Format(L"(wait = %p) : wait for 226 msg\n", pPassive);
 		OutputDebugString(str);
 	}
 #endif
+	::LeaveCriticalSection(&m_csSocket);
+}
+
+void CFTPConnection::MarkPassiveDoneIgnorable(CFTPWaitPassiveDone* pPassive)
+{
+	::EnterCriticalSection(&m_csSocket);
+
+	for (int i = 0; i < m_aWaitResponse.GetCount(); ++i)
+	{
+		auto* p = m_aWaitResponse.GetItem(i);
+		if (p->pWait == pPassive)
+		{
+			p->pWait = NULL;
+			p->bIsWaitingIgnorablePassiveDone = true;
+			break;
+		}
+	}
+#ifdef _DEBUG
+	{
+		CMyStringW str;
+		str.Format(L"(wait = %p) : mark ignorable for waiting for 226 msg\n", pPassive);
+		OutputDebugString(str);
+	}
+#endif
+	::LeaveCriticalSection(&m_csSocket);
+}
+
+void CFTPConnection::ReplaceFinishPassive(CFTPWaitPassive* pPassive, CWaitResponseData* pWait)
+{
+	::EnterCriticalSection(&m_csSocket);
+
+	for (auto i = 0; i < m_aWaitResponse.GetCount(); ++i)
+	{
+		auto* p = m_aWaitResponse.GetItem(i);
+		if (p->pWait == pPassive)
+		{
+#ifdef _DEBUG
+			p->pWait = pWait;
+			{
+				CMyStringW str;
+				str.Format(L"(wait = %p -> %p) : wait for 226 msg\n", pPassive, pWait);
+				OutputDebugString(str);
+			}
+#endif
+		}
+	}
 	::LeaveCriticalSection(&m_csSocket);
 }
 

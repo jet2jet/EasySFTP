@@ -34,14 +34,18 @@ public:
 		int family = AF_UNSPEC,
 		int socktype = 0,
 		int protocol = PF_UNSPEC);
-	void Close();
+	virtual void Close();
 	bool IsConnected() const { return m_socket != INVALID_SOCKET; }
-	int Send(LPCVOID lpBuffer, SIZE_T nSize, int flags)
+	virtual int Send(LPCVOID lpBuffer, SIZE_T nSize, int flags, bool* pbNeedRepeat = NULL)
 	{
+		if (pbNeedRepeat)
+			*pbNeedRepeat = false;
 		return ::send(m_socket, (const char*)lpBuffer, (int)nSize, flags);
 	}
-	int Recv(LPVOID lpBuffer, SIZE_T nSize, int flags)
+	virtual int Recv(LPVOID lpBuffer, SIZE_T nSize, int flags, bool* pbNeedMoreData = NULL)
 	{
+		if (pbNeedMoreData)
+			*pbNeedMoreData = false;
 		return ::recv(m_socket, (char*)lpBuffer, (int)nSize, flags);
 	}
 	bool AsyncSelect(HWND hWnd, UINT uMsg, long lEvent);
@@ -58,7 +62,7 @@ public:
 		return ::ioctlsocket(m_socket, nCmd, pdwArgument) == 0;
 	}
 
-	bool CanReceive(DWORD dwWaitMilliseconds = 0) const;
+	virtual bool CanReceive(DWORD dwWaitMilliseconds = 0, bool* pbIsError = NULL) const;
 	bool IsRemoteClosed() const;
 	bool EnableAsyncSelect(bool bEnable, bool bUseRefCount = false);
 

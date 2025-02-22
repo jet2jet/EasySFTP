@@ -50,6 +50,8 @@ static HRESULT GetConnectionModeFromUrl(LPCWSTR lpsz, EasySFTPConnectionMode* pM
 		*pMode = EasySFTPConnectionMode::SFTP;
 	else if (wcsncmp(lpsz, L"ftp:", 4) == 0)
 		*pMode = EasySFTPConnectionMode::FTP;
+	else if (wcsncmp(lpsz, L"ftps:", 4) == 0)
+		*pMode = EasySFTPConnectionMode::FTPS;
 	else
 		return E_INVALIDARG;
 	return S_OK;
@@ -57,11 +59,7 @@ static HRESULT GetConnectionModeFromUrl(LPCWSTR lpsz, EasySFTPConnectionMode* pM
 
 static int CompareConnectionMode(EasySFTPConnectionMode mode1, EasySFTPConnectionMode mode2)
 {
-	if (mode1 == mode2)
-		return 0;
-	if (mode1 == EasySFTPConnectionMode::SFTP)
-		return -1;
-	return 1;
+	return static_cast<int>(mode1) - static_cast<int>(mode2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,7 +487,8 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 			pHostData->nPort = pItem->nPort;
 			pHostData->pSettings = NULL;
 		}
-		if (pItem->GetConnectionMode() == EasySFTPConnectionMode::SFTP)
+		auto mode = pItem->GetConnectionMode();
+		if (mode == EasySFTPConnectionMode::SFTP)
 		{
 			CSFTPFolderSFTP* pSFTP = new CSFTPFolderSFTP(m_pMallocData, pHostData->pDirItem, this);
 			if (!pSFTP)
@@ -513,7 +512,7 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 		}
 		else
 		{
-			CSFTPFolderFTP* pFTP = new CSFTPFolderFTP(m_pMallocData, pHostData->pDirItem, this);
+			CSFTPFolderFTP* pFTP = new CSFTPFolderFTP(m_pMallocData, pHostData->pDirItem, this, mode == EasySFTPConnectionMode::FTPS);
 			if (!pFTP)
 			{
 				if (!bFound)
@@ -2549,7 +2548,7 @@ void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
 				else
 				{
 					CSFTPFolderFTP* pFTP = new CSFTPFolderFTP(m_pRoot->m_pMallocData,
-						pHostData->pDirItem, m_pRoot);
+						pHostData->pDirItem, m_pRoot, pHostData->ConnectionMode == EasySFTPConnectionMode::FTPS);
 					if (pFTP)
 					{
 						pFTP->m_strHostName = pSettings->strHostName;

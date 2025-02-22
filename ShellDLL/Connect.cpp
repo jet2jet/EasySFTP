@@ -28,10 +28,12 @@ CConnectDialog::CConnectDialog(void)
 	: CMyDialog(IDD1)
 {
 	m_bPasswordDialog = false;
-	m_nPort = 21;
+	m_nPort = 22;
 	m_ConnectionMode = EasySFTPConnectionMode::SFTP;
 	m_pPKey = NULL;
 	m_nAuthType = EasySFTPAuthenticationMode::Password;
+	m_bDisableAuthPassword = false;
+	m_bDisableAuthPublicKey = false;
 }
 
 CConnectDialog::~CConnectDialog(void)
@@ -86,7 +88,6 @@ void CConnectDialog::UpdateConnectionMode(EasySFTPConnectionMode ConnectionMode)
 {
 	char nAuthType;
 	bool bSFTPMode = ConnectionMode == EasySFTPConnectionMode::SFTP;
-	::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, false);
 	if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PASSWORD) == BST_CHECKED)
 		nAuthType = AUTHTYPE_PASSWORD;
 	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PKEY) == BST_CHECKED)
@@ -142,13 +143,29 @@ bool CConnectDialog::OnInitDialog(HWND hWndFocus)
 	{
 		::SyncDialogData(m_hWnd, IDC_HOST_NAME, m_strHostName, false);
 		::SyncDialogData(m_hWnd, IDC_PORT, m_nPort, false);
+
+		CMyStringW str;
+		int i;
+		str.LoadString(IDS_CONNECTMODE_FTP);
+		i = ::AddDlgComboBoxStringW(m_hWnd, IDC_CONNECT_MODE, str);
+		::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM)IntToPtr(i), (LPARAM)IntToPtr(static_cast<int>(EasySFTPConnectionMode::FTP)));
+		if (m_ConnectionMode == EasySFTPConnectionMode::FTP)
+			::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETCURSEL, (WPARAM)IntToPtr(i), 0);
+		str.LoadString(IDS_CONNECTMODE_SFTP);
+		i = ::AddDlgComboBoxStringW(m_hWnd, IDC_CONNECT_MODE, str);
+		::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM)IntToPtr(i), (LPARAM)IntToPtr(static_cast<int>(EasySFTPConnectionMode::SFTP)));
+		if (m_ConnectionMode == EasySFTPConnectionMode::SFTP)
+			::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETCURSEL, (WPARAM)IntToPtr(i), 0);
+		str.LoadString(IDS_CONNECTMODE_FTPS);
+		i = ::AddDlgComboBoxStringW(m_hWnd, IDC_CONNECT_MODE, str);
+		::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM)IntToPtr(i), (LPARAM)IntToPtr(static_cast<int>(EasySFTPConnectionMode::FTPS)));
+		if (m_ConnectionMode == EasySFTPConnectionMode::FTPS)
+			::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETCURSEL, (WPARAM)IntToPtr(i), 0);
 	}
 	else if (!m_strMessage.IsEmpty())
 		::SyncDialogData(m_hWnd, IDC_MESSAGE, m_strMessage, false);
 	::SyncDialogData(m_hWnd, IDC_USER_NAME, m_strUserName, false);
 	m_strPassword.SetStringToWindowText(::GetDlgItem(m_hWnd, IDC_PASSWORD));
-	if (!m_bPasswordDialog)
-		::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, false);
 	::CheckRadioButton(m_hWnd, IDC_AUTH_PASSWORD, IDC_AUTH_WIN_SSHAGENT,
 		IDC_AUTH_PASSWORD + static_cast<int>(m_nAuthType) - static_cast<int>(EasySFTPAuthenticationMode::Password));
 	::SyncDialogData(m_hWnd, IDC_PKEY_FILE, m_strPKeyFileName, false);
@@ -172,7 +189,7 @@ bool CConnectDialog::OnInitDialog(HWND hWndFocus)
 
 LRESULT CConnectDialog::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 {
-	HANDLE_COMMAND(IDC_USE_SFTP, OnSFTPModeChecked);
+	HANDLE_CONTROL(IDC_CONNECT_MODE, CBN_SELCHANGE, OnConnectModeChanged);
 	HANDLE_COMMAND(IDC_AUTH_PASSWORD, OnAuthTypeChecked);
 	HANDLE_COMMAND(IDC_AUTH_PKEY, OnAuthTypeChecked);
 	HANDLE_COMMAND(IDC_AUTH_PAGEANT, OnAuthTypeChecked);
@@ -182,22 +199,35 @@ LRESULT CConnectDialog::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	return CMyDialog::WindowProc(message, wParam, lParam);
 }
 
-LRESULT CConnectDialog::OnSFTPModeChecked(WPARAM wParam, LPARAM lParam)
+LRESULT CConnectDialog::OnConnectModeChanged(WPARAM wParam, LPARAM lParam)
 {
-	bool bSFTPMode;
-	::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, true);
-	UpdateConnectionMode(bSFTPMode ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP);
+	int i = (int)(::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETCURSEL, 0, 0));
+	if (i != CB_ERR)
+		i = (int)(::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETITEMDATA, (WPARAM)IntToPtr(i), 0));
+	if (i < 0)
+		i = static_cast<int>(EasySFTPConnectionMode::FTP);
+	UpdateConnectionMode(static_cast<EasySFTPConnectionMode>(i));
 	return 0;
 }
 
 LRESULT CConnectDialog::OnAuthTypeChecked(WPARAM wParam, LPARAM lParam)
 {
 	bool bSFTPMode;
-	char nAuthType;
+	char nAuthType = AUTHTYPE_PASSWORD;
 	if (m_bPasswordDialog)
 		bSFTPMode = m_ConnectionMode == EasySFTPConnectionMode::SFTP;
 	else
-		::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, true);
+	{
+		EasySFTPConnectionMode mode;
+		int i = (int)(::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETCURSEL, 0, 0));
+		if (i != CB_ERR)
+			i = (int)(::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETITEMDATA, (WPARAM)IntToPtr(i), 0));
+		if (i < 0)
+			mode = EasySFTPConnectionMode::FTP;
+		else
+			mode = static_cast<EasySFTPConnectionMode>(i);
+		bSFTPMode = mode == EasySFTPConnectionMode::SFTP;
+	}
 	if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PASSWORD) == BST_CHECKED)
 		nAuthType = AUTHTYPE_PASSWORD;
 	else if (::IsDlgButtonChecked(m_hWnd, IDC_AUTH_PKEY) == BST_CHECKED)
@@ -245,8 +275,14 @@ LRESULT CConnectDialog::OnOK(WPARAM wParam, LPARAM lParam)
 			::MyMessageBoxW(m_hWnd, MAKEINTRESOURCEW(IDS_INVALID_PORT), NULL, MB_ICONEXCLAMATION);
 			return 0;
 		}
-		::SyncDialogData(m_hWnd, IDC_USE_SFTP, bSFTPMode, true);
-		mode = bSFTPMode ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP;
+		int i = (int)(::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETCURSEL, 0, 0));
+		if (i != CB_ERR)
+			i = (int)(::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETITEMDATA, (WPARAM)IntToPtr(i), 0));
+		if (i < 0)
+			mode = EasySFTPConnectionMode::FTP;
+		else
+			mode = static_cast<EasySFTPConnectionMode>(i);
+		bSFTPMode = mode == EasySFTPConnectionMode::SFTP;
 	}
 	else
 	{

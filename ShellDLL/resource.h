@@ -90,13 +90,13 @@
 #define IDS_TYPE_DIRECTORY              404
 #define IDS_CONNECTMODE_SFTP            500
 #define IDS_CONNECTMODE_FTP             501
+#define IDS_CONNECTMODE_FTPS            502
 #define IDC_HOST_NAME                   1000
 #define IDC_USER_NAME                   1001
 #define IDC_MSG_ICON                    1001
 #define IDC_PASSWORD                    1002
 #define IDC_PORT                        1003
 #define IDC_ERROR_LIST                  1003
-#define IDC_USE_SFTP                    1004
 #define IDC_INFO                        1004
 #define IDC_USE_THUMBNAIL               1005
 #define IDC_PKEY_FILE                   1006
@@ -238,7 +238,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        107
 #define _APS_NEXT_COMMAND_VALUE         41018
-#define _APS_NEXT_CONTROL_VALUE         1006
+#define _APS_NEXT_CONTROL_VALUE         1009
 #define _APS_NEXT_SYMED_VALUE           104
 #endif
 #endif

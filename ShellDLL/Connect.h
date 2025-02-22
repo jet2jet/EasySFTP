@@ -39,7 +39,7 @@ protected:
 
 	virtual bool OnInitDialog(HWND hWndFocus);
 	virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
-	LRESULT OnSFTPModeChecked(WPARAM wParam, LPARAM lParam);
+	LRESULT OnConnectModeChanged(WPARAM wParam, LPARAM lParam);
 	LRESULT OnAuthTypeChecked(WPARAM wParam, LPARAM lParam);
 	LRESULT OnSearchPKeyFile(WPARAM wParam, LPARAM lParam);
 	LRESULT OnOK(WPARAM wParam, LPARAM lParam);

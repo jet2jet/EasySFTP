@@ -37,7 +37,7 @@ protected:
 class CSFTPFolderFTP : public CFTPDirectoryRoot
 {
 public:
-	CSFTPFolderFTP(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, CEasySFTPFolderRoot* pFolderRoot);
+	CSFTPFolderFTP(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, CEasySFTPFolderRoot* pFolderRoot, bool bIsFTPS);
 	virtual ~CSFTPFolderFTP();
 
 	// IUnknown
@@ -80,9 +80,9 @@ public:
 	{
 		if (pDefPort)
 			*pDefPort = 21;
-		return EasySFTPConnectionMode::FTP;
+		return m_bIsFTPS ? EasySFTPConnectionMode::FTPS : EasySFTPConnectionMode::FTP;
 	}
-	virtual LPCWSTR GetProtocolName() const { return L"ftp"; }
+	virtual LPCWSTR GetProtocolName() const { return m_bIsFTPS ? L"ftps" : L"ftp"; }
 	virtual bool IsLockSupported() const { return false; }
 	virtual void PreShowPropertyDialog(CServerFilePropertyDialog* pDialog);
 	virtual void PreShowServerInfoDialog(CServerInfoDialog* pDialog);
@@ -105,13 +105,21 @@ public:
 	bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser);
 
 protected:
+	enum class FTPSConnectionPhase : BYTE
+	{
+		None = 0,
+		FirstReceive = 1,
+		Handshake = 2,
+	};
+
 	HWND m_hWndOwner;
 	CFTPConnection* m_pConnection;
 	UINT_PTR m_idTimer;
 	IEasySFTPAuthentication* m_pUser;
 	CMyStringW m_strServerInfo;
 	CMyStringW m_strWelcomeMessage;
-	bool m_bFirstReceive;
+	bool m_bIsFTPS;
+	FTPSConnectionPhase m_FTPSConnectionPhase;
 	bool m_bLoggingIn;
 	int m_nServerSystemType;
 	char m_nYearFollows;      // used for DOS system type
@@ -135,8 +143,9 @@ protected:
 	void OnFTPSocketReceive();
 	void _OnFTPSocketReceiveThreadUnsafe();
 	void DoReceiveSocket();
+	void StartAuth();
 	CFTPWaitEstablishPassive* StartPassive(CFTPPassiveMessage* pMessage);
-	CFTPWaitPassive* PassiveStarted(CFTPWaitEstablishPassive* pWait, CTextSocket* pSocket);
+	CFTPWaitPassive* PassiveStarted(CFTPWaitEstablishPassive* pWait, CFTPSocket* pSocket);
 	void DoReceivePassive(CFTPWaitPassive* pPassive);
 	CFTPFileItem* RetrieveFileItem2(CFTPDirectoryBase* pDirectory, LPCWSTR lpszFullPathName);
 	virtual HRESULT DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW& astrMsgs, bool bIsDirectory, LPCWSTR lpszFile, CFTPDirectoryBase* pDirectory = NULL);
@@ -147,7 +156,8 @@ public:
 protected:
 	inline int DoRetryAuthentication(bool bFirstAttempt)
 	{
-		return m_pParent->DoRetryAuthentication(m_hWndOwner, m_pUser, EasySFTPConnectionMode::FTP, NULL, bFirstAttempt);
+		return m_pParent->DoRetryAuthentication(m_hWndOwner, m_pUser,
+			m_bIsFTPS ? EasySFTPConnectionMode::FTPS : EasySFTPConnectionMode::FTP, NULL, bFirstAttempt);
 	}
 
 	class CFTPFileListingHandler : public CFTPFileListingListener
@@ -156,8 +166,8 @@ protected:
 		CFTPFileListingHandler(CSFTPFolderFTP* pRoot, CFTPDirectoryBase* pDirectory);
 		~CFTPFileListingHandler();
 
-		virtual bool ReceiveFileListing(CTextSocket* pPassive, bool bMListing);
-		virtual void FinishFileListing();
+		virtual bool ReceiveFileListing(CFTPSocket* pPassive, bool bMListing) override;
+		virtual void FinishFileListing() override;
 
 	private:
 		CSFTPFolderFTP* m_pRoot;

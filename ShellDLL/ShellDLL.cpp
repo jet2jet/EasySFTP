@@ -1749,7 +1749,7 @@ void CMainDLL::LoadINISettings(
 					EasySFTPConnectionMode mode;
 					if (mode_ < 0)
 						mode = ::MyGetProfileBooleanW(pvSection, L"SFTPMode", false) ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP;
-					else if (mode_ < static_cast<int>(EasySFTPConnectionMode::SFTP) || mode_ > static_cast<int>(EasySFTPConnectionMode::FTP))
+					else if (mode_ < static_cast<int>(EasySFTPConnectionMode::SFTP) || mode_ > static_cast<int>(EasySFTPConnectionMode::FTPS))
 						mode = EasySFTPConnectionMode::SFTP;
 					else
 						mode = static_cast<EasySFTPConnectionMode>(mode_);
@@ -2720,6 +2720,10 @@ extern "C++" void __stdcall ConnectionModeToProtocolAndPort(EasySFTPConnectionMo
 			break;
 		case EasySFTPConnectionMode::FTP:
 			rstrProtocol = L"ftp";
+			nDefaultPort = 21;
+			break;
+		case EasySFTPConnectionMode::FTPS:
+			rstrProtocol = L"ftps";
 			nDefaultPort = 21;
 			break;
 	}

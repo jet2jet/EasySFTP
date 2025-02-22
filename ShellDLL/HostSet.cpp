@@ -87,7 +87,7 @@ STDMETHODIMP CEasySFTPHostSetting::get_ConnectionMode(EasySFTPConnectionMode* pR
 
 STDMETHODIMP CEasySFTPHostSetting::put_ConnectionMode(EasySFTPConnectionMode Value)
 {
-	if (Value < EasySFTPConnectionMode::SFTP || Value > EasySFTPConnectionMode::FTP)
+	if (Value < EasySFTPConnectionMode::SFTP || Value > EasySFTPConnectionMode::FTPS)
 		return E_INVALIDARG;
 	ConnectionMode = Value;
 	return S_OK;

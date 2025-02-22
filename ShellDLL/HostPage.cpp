@@ -38,16 +38,21 @@ bool CHostGeneralSettingPage::OnInitDialog(HWND hWndFocus)
 	int i;
 	str.LoadString(IDS_CONNECTMODE_FTP);
 	i = ::AddDlgComboBoxStringW(m_hWnd, IDC_CONNECT_MODE, str);
-	::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM) IntToPtr(i), (LPARAM) IntToPtr(0));
+	::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM) IntToPtr(i), (LPARAM) IntToPtr(static_cast<int>(EasySFTPConnectionMode::FTP)));
 	if (m_pSettings->ConnectionMode == EasySFTPConnectionMode::FTP)
 		::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETCURSEL, (WPARAM) IntToPtr(i), 0);
 	str.LoadString(IDS_CONNECTMODE_SFTP);
 	i = ::AddDlgComboBoxStringW(m_hWnd, IDC_CONNECT_MODE, str);
-	::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM) IntToPtr(i), (LPARAM) IntToPtr(1));
+	::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM) IntToPtr(i), (LPARAM) IntToPtr(static_cast<int>(EasySFTPConnectionMode::SFTP)));
 	if (m_pSettings->ConnectionMode == EasySFTPConnectionMode::SFTP)
 		::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETCURSEL, (WPARAM) IntToPtr(i), 0);
 	if (m_bNoModeChange)
 		::EnableDlgItem(m_hWnd, IDC_CONNECT_MODE, m_bNoModeChange);
+	str.LoadString(IDS_CONNECTMODE_FTPS);
+	i = ::AddDlgComboBoxStringW(m_hWnd, IDC_CONNECT_MODE, str);
+	::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETITEMDATA, (WPARAM) IntToPtr(i), (LPARAM) IntToPtr(static_cast<int>(EasySFTPConnectionMode::FTPS)));
+	if (m_pSettings->ConnectionMode == EasySFTPConnectionMode::FTPS)
+		::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_SETCURSEL, (WPARAM) IntToPtr(i), 0);
 
 	::SyncDialogData(m_hWnd, IDC_NAME, m_pSettings->strDisplayName, false);
 	::SyncDialogData(m_hWnd, IDC_HOST_NAME, m_pSettings->strHostName, false);
@@ -76,7 +81,7 @@ LRESULT CHostGeneralSettingPage::OnDefPortClicked(WPARAM wParam, LPARAM lParam)
 		int i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETCURSEL, 0, 0));
 		if (i != CB_ERR)
 			i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETITEMDATA, (WPARAM) IntToPtr(i), 0));
-		::SetDlgItemInt(m_hWnd, IDC_PORT, (i == 1) ? 22 : 21, FALSE);
+		::SetDlgItemInt(m_hWnd, IDC_PORT, (i == static_cast<int>(EasySFTPConnectionMode::SFTP)) ? 22 : 21, FALSE);
 	}
 	return 0;
 }
@@ -98,7 +103,7 @@ LRESULT CHostGeneralSettingPage::OnConnectModeChanged(WPARAM wParam, LPARAM lPar
 		int i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETCURSEL, 0, 0));
 		if (i != CB_ERR)
 			i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETITEMDATA, (WPARAM) IntToPtr(i), 0));
-		::SetDlgItemInt(m_hWnd, IDC_PORT, (i == 1) ? 22 : 21, FALSE);
+		::SetDlgItemInt(m_hWnd, IDC_PORT, (i == static_cast<int>(EasySFTPConnectionMode::SFTP)) ? 22 : 21, FALSE);
 	}
 	return 0;
 }
@@ -136,7 +141,10 @@ LRESULT CHostGeneralSettingPage::OnApply(WPARAM wParam, LPARAM lParam)
 	int i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETCURSEL, 0, 0));
 	if (i != CB_ERR)
 		i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETITEMDATA, (WPARAM) IntToPtr(i), 0));
-	mode = (i == 1) ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP;
+	if (i < 0)
+		mode = EasySFTPConnectionMode::FTP;
+	else
+		mode = static_cast<EasySFTPConnectionMode>(i);
 
 	m_pSettings->strDisplayName = strName;
 	m_pSettings->strHostName = strHost;
@@ -158,6 +166,9 @@ LRESULT CHostGeneralSettingPage::OnKillActive(WPARAM wParam, LPARAM lParam)
 	int i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETCURSEL, 0, 0));
 	if (i != CB_ERR)
 		i = (int) (::SendDlgItemMessage(m_hWnd, IDC_CONNECT_MODE, CB_GETITEMDATA, (WPARAM) IntToPtr(i), 0));
-	m_pSettings->ConnectionMode = (i == 1) ? EasySFTPConnectionMode::SFTP : EasySFTPConnectionMode::FTP;
+	if (i < 0)
+		m_pSettings->ConnectionMode = EasySFTPConnectionMode::FTP;
+	else
+		m_pSettings->ConnectionMode = static_cast<EasySFTPConnectionMode>(i);
 	return FALSE;
 }

@@ -14,13 +14,32 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+bool CFTPWaitPassive::OnReceiveForHandshake()
+{
+	auto r = pPassive->ContinueHandshake();
+	if (r == CFTPSocket::HandshakeResult::Success)
+		nWaitFlags = CFTPWaitPassive::WaitFlags::WaitingForEstablish;
+	else if (r == CFTPSocket::HandshakeResult::Error)
+	{
+		bWaiting = false;
+		nWaitFlags = CFTPWaitPassive::WaitFlags::Error;
+		pMessage->EndReceive(NULL);
+		//break;
+		//::LeaveCriticalSection(&m_csSocket);
+		return false;
+	}
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 bool CFTPFileListingMessage::SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait)
 {
 	//return pConnection->SendCommandWithType(L"NLST", L"-alL", L"A", pWait) != NULL;
 	return pConnection->SendCommandWithType(L"LIST", m_strDirectory, L"A", pWait) != NULL;
 }
 
-bool CFTPFileListingMessage::OnReceive(CTextSocket* pPassive)
+bool CFTPFileListingMessage::OnReceive(CFTPSocket* pPassive)
 {
 	return m_pListener->ReceiveFileListing(pPassive, false);
 }
@@ -38,7 +57,7 @@ bool CFTPFileMListingMessage::SendPassive(CFTPConnection* pConnection, CFTPWaitP
 	return pConnection->SendCommandWithType(L"MLSD", m_strDirectory, L"A", pWait) != NULL;
 }
 
-bool CFTPFileMListingMessage::OnReceive(CTextSocket* pPassive)
+bool CFTPFileMListingMessage::OnReceive(CFTPSocket* pPassive)
 {
 	return m_pListener->ReceiveFileListing(pPassive, true);
 }
@@ -54,11 +73,12 @@ void CFTPFileMListingMessage::EndReceive(UINT* puStatusMsgID)
 CFTPFileSendMessage::CFTPFileSendMessage(IStream* pStreamLocalData,
 		LPCWSTR lpszRemoteFileName)
 	: m_pStreamLocalData(pStreamLocalData), m_strRemoteFileName(lpszRemoteFileName)
-	, m_bFinished(false), m_pDispatcher(NULL)
+	, m_bNeedRepeat(false), m_bFinished(false), m_pDispatcher(NULL)
 {
 	m_bForWrite = true;
 	m_pvBuffer = malloc(STREAM_BUFFER_SIZE);
 	m_uliOffset = 0;
+	m_ulLastSize = 0;
 	m_pStreamLocalData->AddRef();
 	//if (lpszTouch)
 	//	m_strTouch = lpszTouch;
@@ -77,25 +97,37 @@ bool CFTPFileSendMessage::SendPassive(CFTPConnection* pConnection, CFTPWaitPassi
 	return pConnection->SendCommandWithType(L"STOR", m_strRemoteFileName, L"I", pWait) != NULL;
 }
 
-bool CFTPFileSendMessage::ReadyToWrite(CTextSocket* pPassive)
+bool CFTPFileSendMessage::ReadyToWrite(CFTPSocket* pPassive)
 {
-	HRESULT hr;
-	ULONG uSize = 0;
-	hr = m_pStreamLocalData->Read(m_pvBuffer, STREAM_BUFFER_SIZE, &uSize);
-	if (FAILED(hr))
+	if (m_bNeedRepeat)
+		m_bNeedRepeat = false;
+	else
 	{
-		m_bCanceled = true;
-		return false;
-	}
-	if (hr != S_OK || !uSize)
-	{
-		m_bFinished = true;
-		return false;
+		HRESULT hr;
+		ULONG uSize = 0;
+		hr = m_pStreamLocalData->Read(m_pvBuffer, STREAM_BUFFER_SIZE, &uSize);
+		if (FAILED(hr))
+		{
+			m_bCanceled = true;
+			return false;
+		}
+		if (hr != S_OK || !uSize)
+		{
+			m_bFinished = true;
+			return false;
+		}
+		m_ulLastSize = uSize;
 	}
 	if (pPassive->IsRemoteClosed())
 		return false;
-	pPassive->Send(m_pvBuffer, (SIZE_T) uSize, 0);
-	m_uliOffset += uSize;
+	bool needRepeat = false;
+	pPassive->Send(m_pvBuffer, (SIZE_T)m_ulLastSize, 0, &needRepeat);
+	if (needRepeat)
+	{
+		m_bNeedRepeat = true;
+		return true;
+	}
+	m_uliOffset += m_ulLastSize;
 	//return uSize == STREAM_BUFFER_SIZE;
 	return true;
 }
@@ -128,7 +160,7 @@ bool CFTPWriteFileMessage::SendPassive(CFTPConnection* pConnection, CFTPWaitPass
 	return pConnection->SendCommandWithType(L"STOR", m_strRemoteFileName, L"I", pWait) != NULL;
 }
 
-bool CFTPWriteFileMessage::ReadyToWrite(CTextSocket* pPassive)
+bool CFTPWriteFileMessage::ReadyToWrite(CFTPSocket* pPassive)
 {
 	if (!m_pvBuffer)
 	{
@@ -140,9 +172,16 @@ bool CFTPWriteFileMessage::ReadyToWrite(CTextSocket* pPassive)
 		m_bFinished = true;
 		return false;
 	}
-	if (pPassive->IsRemoteClosed())
-		return false;
-	pPassive->Send(m_pvBuffer, (SIZE_T) m_dwSize, 0);
+	bool needRepeat;
+	while (true)
+	{
+		needRepeat = false;
+		if (pPassive->IsRemoteClosed())
+			return false;
+		pPassive->Send(m_pvBuffer, (SIZE_T)m_dwSize, 0, &needRepeat);
+		if (!needRepeat)
+			break;
+	}
 	m_pvBuffer = NULL;
 	m_dwSize = 0;
 	return true;
@@ -161,26 +200,14 @@ CFTPStream::CFTPStream(LPCWSTR lpszFileName,
 	, m_uliDataSize(uliDataSize)
 	, m_pRoot(pRoot)
 {
-	m_pDataSocket = NULL;
+	m_pPassive = NULL;
 	m_uliNowPos.QuadPart = 0;
 	pRoot->AddRef();
 }
 
 CFTPStream::~CFTPStream()
 {
-	//CMyStringW str;
-	//int code;
-	if (m_pDataSocket)
-	{
-		if (m_pRoot->m_pConnection)
-			m_pRoot->m_pConnection->ClosePassiveSocket(m_pDataSocket);
-		delete m_pDataSocket;
-	}
-	//if (m_pControlSocket)
-	//{
-	//	m_pControlSocket->ReceiveMessage(str, &code);
-	//	OutputDebugFTPMessage(code, str);
-	//}
+	Close();
 	m_pRoot->Release();
 }
 
@@ -206,34 +233,31 @@ STDMETHODIMP CFTPStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 	if (FAILED(hr))
 		return hr;
 	::Sleep(0);
-	if (m_pDataSocket->IsRemoteClosed())
+	if (m_pPassive->pPassive->IsRemoteClosed())
 	{
-		if (m_pRoot->m_pConnection)
-			m_pRoot->m_pConnection->ClosePassiveSocket(m_pDataSocket);
-		delete m_pDataSocket;
-		m_pDataSocket = NULL;
+		Close();
 		if (pcbRead)
 			*pcbRead = 0;
 		return S_FALSE;
 	}
-	if (!m_pDataSocket->CanReceive(WAIT_RECEIVE_TIME))
+	if (!m_pPassive->pPassive->CanReceive(WAIT_RECEIVE_TIME))
 		return E_FAIL;
 	ULONG read = 0;
 	while (cb)
 	{
-		if (m_pDataSocket->IsRemoteClosed())
+		bool needMoreData = false;
+		if (m_pPassive->pPassive->IsRemoteClosed())
 		{
-			if (m_pRoot->m_pConnection)
-				m_pRoot->m_pConnection->ClosePassiveSocket(m_pDataSocket);
-			delete m_pDataSocket;
-			m_pDataSocket = NULL;
+			Close();
 			break;
 		}
-		if (!m_pDataSocket->CanReceive(WAIT_RECEIVE_TIME))
+		if (!m_pPassive->pPassive->CanReceive(WAIT_RECEIVE_TIME))
 			break;
-		int ret = m_pDataSocket->Recv(pv, (SIZE_T) cb, 0);
+		int ret = m_pPassive->pPassive->Recv(pv, (SIZE_T) cb, 0, &needMoreData);
 		if (ret < 0)
 			return E_FAIL;
+		if (needMoreData)
+			continue;
 		if (!ret)
 			break;
 		m_uliNowPos.QuadPart += (ULONG) ret;
@@ -321,12 +345,10 @@ STDMETHODIMP CFTPStream::Seek(LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, UL
 	{
 		if (!m_pRoot->m_pConnection->IsCommandAvailable(L"REST"))
 			return E_NOTIMPL;
-		if (m_pDataSocket)
+		if (m_pPassive)
 		{
-			if (m_pRoot->m_pConnection)
-				m_pRoot->m_pConnection->ClosePassiveSocket(m_pDataSocket);
-			delete m_pDataSocket;
-			m_pDataSocket = NULL;
+			delete m_pPassive;
+			m_pPassive = NULL;
 		}
 		ULONGLONG ulTo;
 		switch (dwOrigin)
@@ -378,7 +400,7 @@ STDMETHODIMP CFTPStream::Stat(STATSTG* pStatstg, DWORD grfStatFlag)
 
 HRESULT CFTPStream::InitDataSocket()
 {
-	if (m_pDataSocket)
+	if (m_pPassive)
 		return S_OK;
 
 	CMyScopedCSLock lock(m_pRoot->m_csSocket);
@@ -394,16 +416,28 @@ HRESULT CFTPStream::InitDataSocket()
 	}
 	CFTPWaitPassive* pPassive = pEstablishWait->pRet;
 	delete pEstablishWait;
-	if (!m_pRoot->WaitForReceive(&pPassive->bWaiting))
+	if (!m_pRoot->WaitForReceive(&pPassive->bWaiting, pPassive))
 	{
 		delete pPassive;
 		return E_FAIL;
 	}
-	m_pDataSocket = pPassive->pPassive;
-	pPassive->pPassive = NULL;
-	delete pPassive;
+	m_pPassive = pPassive;
 
 	return S_OK;
+}
+
+void CFTPStream::Close()
+{
+	if (!m_pPassive)
+		return;
+	{
+		CMyScopedCSLock lock(m_pRoot->m_csSocket);
+		m_pPassive->pPassive->Close();
+		m_pPassive->pDone->bWaiting = true;
+		m_pRoot->WaitForReceive(&m_pPassive->pDone->bWaiting);
+	}
+	delete m_pPassive;
+	m_pPassive = NULL;
 }
 
 CFTPFileRecvMessage::CFTPFileRecvMessage(LPCWSTR lpszRemoteFileName, ULONGLONG uliOffset)
@@ -431,29 +465,3 @@ bool CFTPFileRecvMessage::SendPassive(CFTPConnection* pConnection, CFTPWaitPassi
 	}
 	return pConnection->SendCommandWithType(L"RETR", m_strRemoteFileName, L"I", pWait) != NULL;
 }
-
-//bool CFTPFileRecvMessage::OnReceive(CTextSocket* pPassive)
-//{
-//	HRESULT hr;
-//	ULONG uSize, u;
-//
-//	uSize = (ULONG) pPassive->Recv(m_pvBuffer, RECV_STREAM_BUFFER_SIZE, 0);
-//	if (!uSize)
-//		return false;
-//
-//	hr = m_pStreamLocalData->Write(m_pvBuffer, uSize, &u);
-//	if (FAILED(hr))
-//	{
-//		m_bCanceled = true;
-//		return false;
-//	}
-//	if (hr != S_OK || !u)
-//	{
-//		//m_bFinished = true;
-//		m_bCanceled = true;
-//		return false;
-//	}
-//	m_uliOffset += uSize;
-//	//return uSize == STREAM_BUFFER_SIZE;
-//	return true;
-//}

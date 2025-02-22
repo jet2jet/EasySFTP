@@ -535,21 +535,21 @@ STDMETHODIMP CFTPDataObject::QueryInterface(REFIID riid, void** ppv)
 
 STDMETHODIMP_(ULONG) CFTPDataObject::AddRef()
 {
-#ifdef _DEBUG
-	CMyStringW str;
-	str.Format(L"CFTPDataObject(0x%p): AddRef(): ref = %lu\n", this, m_uRef + 1);
-	OutputDebugString(str);
-#endif
+//#ifdef _DEBUG
+//	CMyStringW str;
+//	str.Format(L"CFTPDataObject(0x%p): AddRef(): ref = %lu\n", this, m_uRef + 1);
+//	OutputDebugString(str);
+//#endif
 	return ++m_uRef;
 }
 
 STDMETHODIMP_(ULONG) CFTPDataObject::Release()
 {
-#ifdef _DEBUG
-	CMyStringW str;
-	str.Format(L"CFTPDataObject(0x%p): Release(): ref = %lu\n", this, m_uRef - 1);
-	OutputDebugString(str);
-#endif
+//#ifdef _DEBUG
+//	CMyStringW str;
+//	str.Format(L"CFTPDataObject(0x%p): Release(): ref = %lu\n", this, m_uRef - 1);
+//	OutputDebugString(str);
+//#endif
 	if (!--m_uRef)
 	{
 		delete this;

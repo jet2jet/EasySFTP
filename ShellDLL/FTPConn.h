@@ -8,6 +8,7 @@
 
 #include "MsgData.h"
 #include "FTPMsg.h"
+#include "FTPSock.h"
 
 #define SVT_UNKNOWN           0
 #define SVT_UNIX              1
@@ -19,34 +20,9 @@ struct CFTPWaitResponse
 	CMyStringW strCommand;
 	CMyStringW strParameter;
 	CWaitResponseData* pWait;
-};
+	bool bIsWaitingIgnorablePassiveDone;
 
-struct CFTPWaitPassive : public CWaitResponseData
-{
-	inline CFTPWaitPassive(char nWaitFlags,
-		CFTPPassiveMessage* pMessage,
-		CTextSocket* pPassive)
-		: CWaitResponseData(WRD_PASSIVEMSG)
-		, nWaitFlags(nWaitFlags)
-		, pMessage(pMessage)
-		, pPassive(pPassive)
-		{ pMessage->AddRef(); }
-	~CFTPWaitPassive()
-	{
-		if (pPassive)
-			delete pPassive;
-		pMessage->Release();
-	}
-	CFTPPassiveMessage* pMessage;
-	CTextSocket* pPassive;
-	enum
-	{
-		flagWaitingForEstablish = 1,
-		flagWaitingForPassiveDone = 2,
-		flagFinished = 0,
-		flagError = -1
-	};
-	char nWaitFlags;
+	CFTPWaitResponse() : pWait(NULL), bIsWaitingIgnorablePassiveDone(false) {}
 };
 
 struct CFTPWaitEstablishPassive : public CWaitResponseData
@@ -186,12 +162,14 @@ public:
 	bool ReceiveMessage(int& nCode, CMyStringW& rstrMessage, CWaitResponseData** ppWait,
 		CMyStringW* pstrCommand = NULL);
 	bool ReceivePassive(CFTPWaitPassive* pPassive);
-	void ClosePassiveSocket(CTextSocket* pPassive, CWaitResponseData* pWait = NULL);
+	void WaitFinishPassive(CFTPWaitPassiveDone* pPassive);
+	void MarkPassiveDoneIgnorable(CFTPWaitPassiveDone* pPassive);
+	void ReplaceFinishPassive(CFTPWaitPassive* pPassive, CWaitResponseData* pWait);
 
 	void InitAvaliableCommands(LPCWSTR lpszParam);
 	LPCWSTR IsCommandAvailable(LPCWSTR lpszCommand) const;
 
-	CTextSocket m_socket;
+	CFTPSocket m_socket;
 	CRITICAL_SECTION m_csSocket;
 	CMyPtrArrayT<CFTPWaitResponse> m_aWaitResponse;
 protected:

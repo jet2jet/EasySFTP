@@ -147,14 +147,21 @@ bool CMySocket::AsyncSelect(HWND hWnd, UINT uMsg, long lEvent)
 	return true;
 }
 
-bool CMySocket::CanReceive(DWORD dwWaitMilliseconds) const
+bool CMySocket::CanReceive(DWORD dwWaitMilliseconds, bool* pbIsError) const
 {
 	fd_set fset;
 	timeval tv;
 	int ret;
 
+	if (pbIsError)
+		*pbIsError = false;
+
 	if (m_socket == INVALID_SOCKET)
+	{
+		if (pbIsError)
+			*pbIsError = true;
 		return false;
+	}
 
 	FD_ZERO(&fset);
 	FD_SET(m_socket, &fset);
@@ -162,7 +169,11 @@ bool CMySocket::CanReceive(DWORD dwWaitMilliseconds) const
 	tv.tv_usec = (dwWaitMilliseconds % 1000) * 1000;
 	ret = ::select(1, &fset, NULL, NULL, &tv);
 	if (ret == SOCKET_ERROR)
+	{
+		if (pbIsError)
+			*pbIsError = true;
 		return false;
+	}
 	if (!ret)
 		return false;
 	if (!FD_ISSET(m_socket, &fset))
@@ -170,15 +181,17 @@ bool CMySocket::CanReceive(DWORD dwWaitMilliseconds) const
 	ret = ::recv(m_socket, (char*)&tv, 1, MSG_PEEK);
 	if (ret < 1)
 	{
-#ifdef _DEBUG
 		if (ret < 0)
 		{
+			if (pbIsError)
+				*pbIsError = true;
+#ifdef _DEBUG
 			CMyStringW str;
 			int err = ::WSAGetLastError();
 			str.Format(L"WSA error has occurred: %d\n", err);
 			OutputDebugString(str);
-		}
 #endif
+		}
 		return false;
 	}
 	return true;
@@ -382,10 +395,17 @@ bool CTextSocket::ReceiveLine(CMyStringW& ret, bool (*pfnPumpMessage)())
 	b2 = 0;
 	while (true)
 	{
+		bool needMoreData = false;
 		if (pfnPumpMessage)
 		{
-			while (!CanReceive())
+			bool bIsError = false;
+			while (!CanReceive(0, &bIsError))
 			{
+				if (bIsError)
+				{
+					free(lpBuffer);
+					return false;
+				}
 				if (!pfnPumpMessage())
 				{
 					free(lpBuffer);
@@ -393,11 +413,21 @@ bool CTextSocket::ReceiveLine(CMyStringW& ret, bool (*pfnPumpMessage)())
 				}
 				::Sleep(0);
 			}
-			iRet = Recv(&b, 1, 0);
+			iRet = Recv(&b, 1, 0, &needMoreData);
 		}
 		else
 		{
-			iRet = Recv(&b, 1, 0);
+			iRet = Recv(&b, 1, 0, &needMoreData);
+		}
+		if (needMoreData)
+		{
+			if (!pfnPumpMessage())
+			{
+				free(lpBuffer);
+				return false;
+			}
+			::Sleep(0);
+			continue;
 		}
 		if (iRet < 0)
 		{
@@ -425,7 +455,10 @@ bool CTextSocket::ReceiveLine(CMyStringW& ret, bool (*pfnPumpMessage)())
 		}
 	}
 	if (lpBuffer == lpPos)
+	{
+		free(lpBuffer);
 		return false;
+	}
 	nBufferSize = (size_t)(lpPos - lpBuffer);
 	switch (m_charset)
 	{

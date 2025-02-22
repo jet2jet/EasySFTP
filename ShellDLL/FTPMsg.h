@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include "MySocket.h"
+#include "FTPSock.h"
+#include "MsgData.h"
 #include "UString.h"
 #include "SUString.h"
 //#include "SFileVw.h"
@@ -30,12 +31,12 @@ public:
 
 	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait) = 0;
 	// return true if succeeded
-	// if return false, the implementation must delete pPassive
-	virtual bool ConnectionEstablished(CTextSocket* pPassive) = 0;
+	// if return false, the implementation must delete pWait->pPassive
+	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) = 0;
 	// return false if no data has received
-	virtual bool OnReceive(CTextSocket* pPassive) = 0;
+	virtual bool OnReceive(CFTPSocket* pPassive) = 0;
 	// return false if finished
-	virtual bool ReadyToWrite(CTextSocket* pPassive) = 0;
+	virtual bool ReadyToWrite(CFTPSocket* pPassive) = 0;
 	virtual void EndReceive(UINT* puStatusMsgID) = 0;
 
 	bool m_bCanceled;
@@ -45,8 +46,57 @@ public:
 class __declspec(novtable) CFTPFileListingListener
 {
 public:
-	virtual bool ReceiveFileListing(CTextSocket* pPassive, bool bMListing) = 0;
+	virtual bool ReceiveFileListing(CFTPSocket* pPassive, bool bMListing) = 0;
 	virtual void FinishFileListing() = 0;
+};
+
+struct CFTPWaitPassive;
+
+struct CFTPWaitPassiveDone : public CWaitResponseData
+{
+	inline CFTPWaitPassiveDone(CFTPWaitPassive* _) : CWaitResponseData(WRD_PASSIVEDONE), pPassive(_), nCode(0) { }
+	CFTPWaitPassive* pPassive;
+	int nCode;
+	CMyStringW strMsg;
+};
+
+struct CFTPWaitPassive : public CWaitResponseData
+{
+	enum class WaitFlags : char
+	{
+		WaitingForHandshake = 1,
+		WaitingForEstablish = 2,
+		SendingData = 3,
+		WaitingForPassiveDone = 4,
+		Finished = 0,
+		Error = -1
+	};
+
+	inline CFTPWaitPassive(WaitFlags nWaitFlags,
+		CFTPPassiveMessage* pMessage,
+		CFTPSocket* pPassive)
+		: CWaitResponseData(WRD_PASSIVEMSG)
+		, nWaitFlags(nWaitFlags)
+		, pMessage(pMessage)
+		, pPassive(pPassive)
+		, pDone(NULL)
+	{
+		pMessage->AddRef();
+	}
+	~CFTPWaitPassive()
+	{
+		if (pDone)
+			delete pDone;
+		if (pPassive)
+			delete pPassive;
+		pMessage->Release();
+	}
+	CFTPPassiveMessage* pMessage;
+	CFTPSocket* pPassive;
+	CFTPWaitPassiveDone* pDone;
+	WaitFlags nWaitFlags;
+
+	bool OnReceiveForHandshake();
 };
 
 class CFTPFileListingMessage : public CFTPPassiveMessage
@@ -55,11 +105,15 @@ public:
 	CFTPFileListingMessage(CFTPFileListingListener* pListener, LPCWSTR lpszDirectory)
 		: m_pListener(pListener), m_strDirectory(lpszDirectory) { m_bForWrite = false; }
 
-	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait);
-	virtual bool ConnectionEstablished(CTextSocket* pPassive) { return true; }
-	virtual bool OnReceive(CTextSocket* pPassive);
-	virtual bool ReadyToWrite(CTextSocket* pPassive) { return false; }
-	virtual void EndReceive(UINT* puStatusMsgID);
+	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait) override;
+	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) override
+	{
+		pWait->nWaitFlags = CFTPWaitPassive::WaitFlags::WaitingForPassiveDone;
+		return true;
+	}
+	virtual bool OnReceive(CFTPSocket* pPassive) override;
+	virtual bool ReadyToWrite(CFTPSocket* pPassive) override { return false; }
+	virtual void EndReceive(UINT* puStatusMsgID) override;
 
 public:
 	CFTPFileListingListener* m_pListener;
@@ -72,10 +126,14 @@ public:
 	CFTPFileMListingMessage(CFTPFileListingListener* pListener, LPCWSTR lpszDirectory)
 		: m_pListener(pListener), m_strDirectory(lpszDirectory) { m_bForWrite = false; }
 
-	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait);
-	virtual bool ConnectionEstablished(CTextSocket* pPassive) { return true; }
-	virtual bool OnReceive(CTextSocket* pPassive);
-	virtual bool ReadyToWrite(CTextSocket* pPassive) { return false; }
+	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait) override;
+	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) override
+	{
+		pWait->nWaitFlags = CFTPWaitPassive::WaitFlags::WaitingForPassiveDone;
+		return true;
+	}
+	virtual bool OnReceive(CFTPSocket* pPassive) override;
+	virtual bool ReadyToWrite(CFTPSocket* pPassive) override { return false; }
 	virtual void EndReceive(UINT* puStatusMsgID);
 
 public:
@@ -93,38 +151,23 @@ public:
 	CFTPFileSendMessage(IStream* pStreamLocalData, LPCWSTR lpszRemoteFileName);
 	virtual ~CFTPFileSendMessage();
 
-	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait);
-	virtual bool ConnectionEstablished(CTextSocket* pPassive) { return true; }
-	virtual bool OnReceive(CTextSocket* pPassive) { return false; }
-	virtual bool ReadyToWrite(CTextSocket* pPassive);
-	virtual void EndReceive(UINT* puStatusMsgID);
+	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait) override;
+	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) override
+	{
+		pWait->nWaitFlags = CFTPWaitPassive::WaitFlags::SendingData;
+		return true;
+	}
+	virtual bool OnReceive(CFTPSocket* pPassive) override { return false; }
+	virtual bool ReadyToWrite(CFTPSocket* pPassive) override;
+	virtual void EndReceive(UINT* puStatusMsgID) override;
 
 public:
 	IStream* m_pStreamLocalData;
 	CMyStringW m_strRemoteFileName;
 	void* m_pvBuffer;
 	ULONGLONG m_uliOffset;
-	bool m_bFinished;
-	CFTPMessageDispatcher* m_pDispatcher;
-};
-
-class CFTPReadFileMessage : public CFTPPassiveMessage
-{
-public:
-	CFTPReadFileMessage(LPCWSTR lpszRemoteFileName);
-	virtual ~CFTPReadFileMessage();
-
-	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait);
-	virtual bool ConnectionEstablished(CTextSocket* pPassive) { return true; }
-	virtual bool OnReceive(CTextSocket* pPassive);
-	virtual bool ReadyToWrite(CTextSocket* pPassive) { return false;  }
-	virtual void EndReceive(UINT* puStatusMsgID);
-
-public:
-	CMyStringW m_strRemoteFileName;
-	void* m_pvBuffer;
-	DWORD m_dwSize;
-	DWORD m_dwBufferOffset;
+	ULONG m_ulLastSize;
+	bool m_bNeedRepeat;
 	bool m_bFinished;
 	CFTPMessageDispatcher* m_pDispatcher;
 };
@@ -136,10 +179,14 @@ public:
 	virtual ~CFTPWriteFileMessage();
 
 	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait);
-	virtual bool ConnectionEstablished(CTextSocket* pPassive) { return true; }
-	virtual bool OnReceive(CTextSocket* pPassive) { return false; }
-	virtual bool ReadyToWrite(CTextSocket* pPassive);
-	virtual void EndReceive(UINT* puStatusMsgID);
+	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) override
+	{
+		pWait->nWaitFlags = CFTPWaitPassive::WaitFlags::SendingData;
+		return true;
+	}
+	virtual bool OnReceive(CFTPSocket* pPassive) override { return false; }
+	virtual bool ReadyToWrite(CFTPSocket* pPassive) override;
+	virtual void EndReceive(UINT* puStatusMsgID) override;
 
 public:
 	CMyStringW m_strRemoteFileName;
@@ -178,11 +225,12 @@ public:
 
 public:
 	HRESULT InitDataSocket();
+	void Close();
 
 	CMyStringW m_strFileName;
 	ULARGE_INTEGER m_uliDataSize;
 	ULARGE_INTEGER m_uliNowPos;
-	CTextSocket* m_pDataSocket;
+	CFTPWaitPassive* m_pPassive;
 	CSFTPFolderFTP* m_pRoot;
 };
 
@@ -192,12 +240,11 @@ public:
 	CFTPFileRecvMessage(LPCWSTR lpszRemoteFileName, ULONGLONG uliOffse);
 	virtual ~CFTPFileRecvMessage();
 
-	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait);
-	virtual bool ConnectionEstablished(CTextSocket* pPassive) { return true; }
-	virtual bool OnReceive(CTextSocket* pPassive) { return true; }
-	virtual bool ReadyToWrite(CTextSocket* pPassive) { return false; }
-	virtual void EndReceive(UINT* puStatusMsgID) { }
-	virtual void* GetSyncSendFile() { return m_pSendFile; }
+	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait) override;
+	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) override { return true; }
+	virtual bool OnReceive(CFTPSocket* pPassive) override { return true; }
+	virtual bool ReadyToWrite(CFTPSocket* pPassive) override { return false; }
+	virtual void EndReceive(UINT* puStatusMsgID) override { }
 
 public:
 	IStream* m_pStreamLocalData;

@@ -304,7 +304,8 @@ typedef
 enum EasySFTPConnectionMode
     {
         SFTP	= 0,
-        FTP	= 1
+        FTP	= 1,
+        FTPS	= 2
     } 	EasySFTPConnectionMode;
 
 typedef 
