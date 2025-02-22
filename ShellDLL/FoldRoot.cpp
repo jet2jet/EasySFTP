@@ -84,6 +84,7 @@ STDMETHODIMP CFTPDirectoryRootBase::QueryInterface(REFIID riid, void** ppv)
 		IsEqualIID(riid, IID_IUnknown))
 	{
 		*ppv = static_cast<IEasySFTPRootDirectory*>(this);
+		AddRef();
 		return S_OK;
 	}
 	return CFTPDirectoryBase::QueryInterface(riid, ppv);
