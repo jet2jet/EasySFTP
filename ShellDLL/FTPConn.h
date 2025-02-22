@@ -169,9 +169,30 @@ public:
 	void InitAvaliableCommands(LPCWSTR lpszParam);
 	LPCWSTR IsCommandAvailable(LPCWSTR lpszCommand) const;
 
+	enum class FTPSHandshakeResult : BYTE
+	{
+		NotApplicable = 0,
+		InProgress = 1,
+		Success = 2,
+		Failure = 3
+	};
+
+	void StartFTPSHandshake();
+	FTPSHandshakeResult OnFirstFTPSHandshake(int code);
+	FTPSHandshakeResult ProcessFTPSHandshake();
+
 	CFTPSocket m_socket;
 	CRITICAL_SECTION m_csSocket;
 	CMyPtrArrayT<CFTPWaitResponse> m_aWaitResponse;
+
 protected:
+	enum class FTPSConnectionPhase : BYTE
+	{
+		None = 0,
+		FirstReceive = 1,
+		Handshake = 2,
+	};
+
 	LPWSTR m_lpszAvailableCommands;
+	FTPSConnectionPhase m_FTPSConnectionPhase;
 };

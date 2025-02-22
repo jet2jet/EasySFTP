@@ -11,6 +11,7 @@
 CFTPConnection::CFTPConnection(void)
 {
 	m_lpszAvailableCommands = NULL;
+	m_FTPSConnectionPhase = FTPSConnectionPhase::None;
 	::InitializeCriticalSection(&m_csSocket);
 }
 
@@ -589,4 +590,58 @@ LPCWSTR CFTPConnection::IsCommandAvailable(LPCWSTR lpszCommand) const
 		while (*lpw++);
 	}
 	return NULL;
+}
+
+void CFTPConnection::StartFTPSHandshake()
+{
+	SendCommand(L"AUTH", L"TLS");
+	m_FTPSConnectionPhase = FTPSConnectionPhase::FirstReceive;
+}
+
+CFTPConnection::FTPSHandshakeResult CFTPConnection::OnFirstFTPSHandshake(int code)
+{
+	if (m_FTPSConnectionPhase != FTPSConnectionPhase::FirstReceive)
+		return FTPSHandshakeResult::NotApplicable;
+	switch (code)
+	{
+		case 234:
+			{
+				auto r = m_socket.StartHandshake();
+				if (r == CFTPSocket::HandshakeResult::Success)
+				{
+					m_FTPSConnectionPhase = FTPSConnectionPhase::None;
+					SendDoubleCommand(L"PBSZ", L"0", L"PROT", L"P");
+					return FTPSHandshakeResult::Success;
+				}
+				else if (r == CFTPSocket::HandshakeResult::Error)
+				{
+					return FTPSHandshakeResult::Failure;
+				}
+				else
+				{
+					m_FTPSConnectionPhase = FTPSConnectionPhase::Handshake;
+					return FTPSHandshakeResult::InProgress;
+				}
+			}
+		case 530:
+		default:
+			return FTPSHandshakeResult::Failure;
+	}
+}
+
+CFTPConnection::FTPSHandshakeResult CFTPConnection::ProcessFTPSHandshake()
+{
+	if (m_FTPSConnectionPhase != FTPSConnectionPhase::Handshake)
+		return FTPSHandshakeResult::NotApplicable;
+	auto r = m_socket.ContinueHandshake();
+	if (r == CFTPSocket::HandshakeResult::Success)
+	{
+		m_FTPSConnectionPhase = FTPSConnectionPhase::None;
+		return FTPSHandshakeResult::Success;
+	}
+	else if (r == CFTPSocket::HandshakeResult::Error)
+	{
+		return FTPSHandshakeResult::Failure;
+	}
+	return FTPSHandshakeResult::InProgress;
 }

@@ -194,6 +194,7 @@ CSFTPFolderFTP::CSFTPFolderFTP(CDelegateMallocData* pMallocData, CFTPDirectoryIt
 	: CFTPDirectoryRootBase(pMallocData, pItemMe, pFolderRoot)
 {
 	m_pConnection = NULL;
+	m_pUser = NULL;
 	::InitializeCriticalSection(&m_csSocket);
 	m_dwTransferringCount = 0;
 	m_nServerCharset = scsUTF8;
@@ -211,6 +212,8 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySF
 	CMyScopedCSLock lock(m_csSocket);
 	m_hWndOwner = hWnd;
 
+	if (m_pUser)
+		m_pUser->Release();
 	if (pUser)
 	{
 		m_pUser = pUser;
@@ -249,7 +252,6 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySF
 	}
 	//m_pSocket->AsyncSelect(m_hWnd, MY_WM_SOCKETMESSAGE, FD_READ | FD_CLOSE);
 	m_bLoggingIn = true;
-	m_FTPSConnectionPhase = FTPSConnectionPhase::None;
 	m_nServerSystemType = SVT_UNKNOWN;
 	m_nYearFollows = 0;
 	m_bY2KProblem = false;
@@ -288,6 +290,12 @@ STDMETHODIMP CSFTPFolderFTP::Disconnect()
 
 	theApp.UnregisterTimer(m_idTimer);
 	m_idTimer = 0;
+
+	if (m_pUser)
+	{
+		m_pUser->Release();
+		m_pUser = NULL;
+	}
 
 	m_hWndOwner = NULL;
 
@@ -1569,31 +1577,25 @@ void CALLBACK CSFTPFolderFTP::KeepConnectionTimerProc(UINT_PTR idEvent, LPARAM l
 		pThis->m_pConnection->SendCommand(L"NOOP", NULL);
 }
 
-void CSFTPFolderFTP::OnFTPSocketReceive()
-{
-	CMyScopedCSLock lock(m_csSocket);
-	_OnFTPSocketReceiveThreadUnsafe();
-}
-
 // in FileList.cpp
 extern "C" bool __stdcall _ParseToFileTime(LPCWSTR lpszString, LPCWSTR lpszStop, FILETIME * pftTime);
 
 void CSFTPFolderFTP::_OnFTPSocketReceiveThreadUnsafe()
 {
-	if (m_FTPSConnectionPhase == FTPSConnectionPhase::Handshake)
 	{
-		auto r = m_pConnection->m_socket.ContinueHandshake();
-		if (r == CFTPSocket::HandshakeResult::Success)
+		auto resultFTPS = m_pConnection->ProcessFTPSHandshake();
+		switch (resultFTPS)
 		{
-			m_FTPSConnectionPhase = FTPSConnectionPhase::None;
+		case CFTPConnection::FTPSHandshakeResult::Success:
 			StartAuth();
-		}
-		else if (r == CFTPSocket::HandshakeResult::Error)
-		{
+			return;
+		case CFTPConnection::FTPSHandshakeResult::Failure:
 			Disconnect();
 			::MyMessageBoxW(m_hWndOwner, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
+			return;
+		case CFTPConnection::FTPSHandshakeResult::InProgress:
+			return;
 		}
-		return;
 	}
 
 	int code;
@@ -1610,151 +1612,20 @@ void CSFTPFolderFTP::_OnFTPSocketReceiveThreadUnsafe()
 
 	if (m_bLoggingIn)
 	{
-		switch (code)
+		auto r = DoProcessForLogin(m_pConnection, code, str, strCommand, pWait);
+		switch (r)
 		{
-			// response for NOOP, etc.
-		case 200:
-			break;
-			// response for FEAT
-		case 211:
-			if (pWait && pWait->nWaitType == CWaitResponseData::WRD_GETFEATURE)
-			{
+			case ProcessLoginResult::Finish:
 				m_bLoggingIn = false;
-				m_pConnection->InitAvaliableCommands(str);
-			}
-			break;
-			// initial message
-		case 220:
-			m_strServerInfo = str;
-			if (m_bIsFTPS)
-			{
-				m_pConnection->SendCommand(L"AUTH", L"TLS");
-				m_FTPSConnectionPhase = FTPSConnectionPhase::FirstReceive;
-			}
-			else
-			{
-				StartAuth();
-			}
-			//SetStatusText(MAKEINTRESOURCEW(IDS_AUTHENTICATING));
-			break;
-			// response for SYST
-		case 215:
-			ConvertToLowerLenW(str.GetBuffer(), (SIZE_T)str.GetLength());
-			if (wcsstr(str, L"unix"))
-				m_nServerSystemType = SVT_UNIX;
-			else if (wcsstr(str, L"dos"))
-				m_nServerSystemType = SVT_DOS;
-			else if (wcsstr(str, L"windows"))
-				m_nServerSystemType = SVT_WINDOWS;
-			//else
-			//	m_nServerSystemType = SVT_UNKNOWN;
-			m_pConnection->SendCommand(L"FEAT", NULL,
-				new CWaitFeatureData());
-			////UpdateServerFolderAbsolute(L"/");
-			//UpdateServerFolderAbsolute(L".");
-			break;
-			// response for USER
-		case 331:
-		{
-			BSTR bstrPass;
-			if (FAILED(m_pUser->get_Password(&bstrPass)))
-				bstrPass = ::SysAllocString(L"");
-			m_pConnection->SecureSendCommand(L"PASS", bstrPass);
-			_SecureStringW::SecureEmptyBStr(bstrPass);
-			::SysFreeString(bstrPass);
-		}
-		break;
-		case 230:
-		//SetStatusText(MAKEINTRESOURCEW(IDS_CONNECTED));
-		{
-			LPWSTR lpw = str.GetBuffer();
-			LPWSTR lpw2R = wcsrchr(lpw, L'\r');
-			LPWSTR lpw2L = wcsrchr(lpw, L'\n');
-			if (lpw2R || lpw2L)
-			{
-				if (lpw2R)
-					*lpw2R = 0;
-				else
-					*lpw2L = 0;
-				str.ReleaseBuffer();
-			}
-			else
-				str.Empty();
-			m_strWelcomeMessage = str;
-		}
-		m_pConnection->SendCommand(L"SYST", NULL);
-		m_pUser->Release();
-		m_pUser = NULL;
-		break;
-		case 234:
-			if (m_FTPSConnectionPhase == FTPSConnectionPhase::FirstReceive)
-			{
-				auto r = m_pConnection->m_socket.StartHandshake();
-				if (r == CFTPSocket::HandshakeResult::Success)
-				{
-					m_FTPSConnectionPhase = FTPSConnectionPhase::None;
-					m_pConnection->SendDoubleCommand(L"PBSZ", L"0", L"PROT", L"P");
-					StartAuth();
-				}
-				else if (r == CFTPSocket::HandshakeResult::Error)
-				{
-					Disconnect();
-					::MyMessageBoxW(m_hWndOwner, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
-				}
-				else
-				{
-					m_FTPSConnectionPhase = FTPSConnectionPhase::Handshake;
-				}
-			}
-			break;
-		case 530:
-			if (m_FTPSConnectionPhase == FTPSConnectionPhase::FirstReceive)
-			{
-				Disconnect();
-				::MyMessageBoxW(m_hWndOwner, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
-			}
-			else
-			{
-				switch (DoRetryAuthentication(false))
-				{
-				case 1:
-				{
-					BSTR bstrUser;
-					if (FAILED(m_pUser->get_UserName(&bstrUser)))
-						bstrUser = ::SysAllocString(L"");
-					m_pConnection->SendCommand(L"USER", bstrUser);
-					::SysFreeString(bstrUser);
-				}
 				break;
-				case 0:
-					Disconnect();
-					break;
-				case -1:
-					Disconnect();
-					::MyMessageBoxW(m_hWndOwner, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
-					break;
-				}
-			}
-			break;
-		case 500:
-		default:
-			if (m_FTPSConnectionPhase == FTPSConnectionPhase::FirstReceive)
-			{
+			case ProcessLoginResult::Cancel:
+				Disconnect();
+				break;
+			case ProcessLoginResult::Failure:
 				Disconnect();
 				::MyMessageBoxW(m_hWndOwner, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
-			}
-			else if (pWait && pWait->nWaitType == CWaitResponseData::WRD_GETFEATURE)
-			{
-				m_bLoggingIn = false;
-				m_pConnection->InitAvaliableCommands(NULL);
-				delete ((CWaitFeatureData*)pWait);
-			}
-			else
-				Disconnect();
-			break;
+				break;
 		}
-		if (pWait)
-			delete pWait;
 		return;
 	}
 
@@ -2440,6 +2311,133 @@ void CSFTPFolderFTP::_OnFTPSocketReceiveThreadUnsafe()
 		}
 		break;
 	}
+}
+
+CSFTPFolderFTP::ProcessLoginResult CSFTPFolderFTP::DoProcessForLogin(CFTPConnection* pConnection, int code, CMyStringW& strMsg, const CMyStringW& strCommand, CWaitResponseData* pWait)
+{
+	auto resultFTPS = pConnection->OnFirstFTPSHandshake(code);
+	switch (resultFTPS)
+	{
+		case CFTPConnection::FTPSHandshakeResult::Success:
+			StartAuth();
+			return ProcessLoginResult::InProgress;
+		case CFTPConnection::FTPSHandshakeResult::Failure:
+			return ProcessLoginResult::Failure;
+		case CFTPConnection::FTPSHandshakeResult::InProgress:
+			return ProcessLoginResult::InProgress;
+	}
+	ProcessLoginResult result = ProcessLoginResult::InProgress;
+	switch (code)
+	{
+		// response for NOOP, etc.
+	case 200:
+		break;
+		// response for FEAT
+	case 211:
+		if (pWait && pWait->nWaitType == CWaitResponseData::WRD_GETFEATURE)
+		{
+			result = ProcessLoginResult::Finish;
+			pConnection->InitAvaliableCommands(strMsg);
+		}
+		break;
+		// initial message
+	case 220:
+		m_strServerInfo = strMsg;
+		if (m_bIsFTPS)
+		{
+			pConnection->StartFTPSHandshake();
+		}
+		else
+		{
+			StartAuth();
+		}
+		//SetStatusText(MAKEINTRESOURCEW(IDS_AUTHENTICATING));
+		break;
+		// response for SYST
+	case 215:
+		ConvertToLowerLenW(strMsg.GetBuffer(), (SIZE_T)strMsg.GetLength());
+		if (wcsstr(strMsg, L"unix"))
+			m_nServerSystemType = SVT_UNIX;
+		else if (wcsstr(strMsg, L"dos"))
+			m_nServerSystemType = SVT_DOS;
+		else if (wcsstr(strMsg, L"windows"))
+			m_nServerSystemType = SVT_WINDOWS;
+		//else
+		//	m_nServerSystemType = SVT_UNKNOWN;
+		pConnection->SendCommand(L"FEAT", NULL,
+			new CWaitFeatureData());
+		////UpdateServerFolderAbsolute(L"/");
+		//UpdateServerFolderAbsolute(L".");
+		break;
+		// response for USER
+	case 331:
+	{
+		BSTR bstrPass;
+		if (FAILED(m_pUser->get_Password(&bstrPass)))
+			bstrPass = ::SysAllocString(L"");
+		pConnection->SecureSendCommand(L"PASS", bstrPass);
+		_SecureStringW::SecureEmptyBStr(bstrPass);
+		::SysFreeString(bstrPass);
+	}
+	break;
+	case 230:
+		//SetStatusText(MAKEINTRESOURCEW(IDS_CONNECTED));
+		{
+			LPWSTR lpw = strMsg.GetBuffer();
+			LPWSTR lpw2R = wcsrchr(lpw, L'\r');
+			LPWSTR lpw2L = wcsrchr(lpw, L'\n');
+			if (lpw2R || lpw2L)
+			{
+				if (lpw2R)
+					*lpw2R = 0;
+				else
+					*lpw2L = 0;
+				strMsg.ReleaseBuffer();
+			}
+			else
+				strMsg.Empty();
+			m_strWelcomeMessage = strMsg;
+		}
+		pConnection->SendCommand(L"SYST", NULL);
+		break;
+	case 530:
+		switch (DoRetryAuthentication(false))
+		{
+		case 1:
+		{
+			BSTR bstrUser;
+			if (FAILED(m_pUser->get_UserName(&bstrUser)))
+				bstrUser = ::SysAllocString(L"");
+			pConnection->SendCommand(L"USER", bstrUser);
+			::SysFreeString(bstrUser);
+		}
+		break;
+		case 0:
+			result = ProcessLoginResult::Cancel;
+			break;
+		case -1:
+			result = ProcessLoginResult::Failure;
+			break;
+		}
+		break;
+	case 500:
+	default:
+		if (pWait && pWait->nWaitType == CWaitResponseData::WRD_GETFEATURE)
+		{
+			result = ProcessLoginResult::Finish;
+			pConnection->InitAvaliableCommands(NULL);
+			delete ((CWaitFeatureData*)pWait);
+			pWait = NULL;
+		}
+		else
+		{
+			result = ProcessLoginResult::Failure;
+		}
+		break;
+	}
+	if (pWait)
+		delete pWait;
+	return result;
 }
 
 void CSFTPFolderFTP::DoReceiveSocket()

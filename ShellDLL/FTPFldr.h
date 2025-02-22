@@ -105,12 +105,6 @@ public:
 	bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser);
 
 protected:
-	enum class FTPSConnectionPhase : BYTE
-	{
-		None = 0,
-		FirstReceive = 1,
-		Handshake = 2,
-	};
 
 	HWND m_hWndOwner;
 	CFTPConnection* m_pConnection;
@@ -119,7 +113,6 @@ protected:
 	CMyStringW m_strServerInfo;
 	CMyStringW m_strWelcomeMessage;
 	bool m_bIsFTPS;
-	FTPSConnectionPhase m_FTPSConnectionPhase;
 	bool m_bLoggingIn;
 	int m_nServerSystemType;
 	char m_nYearFollows;      // used for DOS system type
@@ -137,11 +130,19 @@ public:
 	CMyStringW m_strChmodCommand;
 
 protected:
+	enum class ProcessLoginResult
+	{
+		InProgress = 0,
+		Finish = 1,
+		Cancel = 2,
+		Failure = 3
+	};
+
 	void ShowFTPErrorMessage(int code, LPCWSTR lpszMessage);
 
 	static void CALLBACK KeepConnectionTimerProc(UINT_PTR idEvent, LPARAM lParam);
-	void OnFTPSocketReceive();
 	void _OnFTPSocketReceiveThreadUnsafe();
+	ProcessLoginResult DoProcessForLogin(CFTPConnection* pConnection, int code, CMyStringW& strMsg, const CMyStringW& strCommand, CWaitResponseData* pWait);
 	void DoReceiveSocket();
 	void StartAuth();
 	CFTPWaitEstablishPassive* StartPassive(CFTPPassiveMessage* pMessage);
