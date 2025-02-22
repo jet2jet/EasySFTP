@@ -638,13 +638,13 @@ STDMETHODIMP_(ULONG) CFTPDirectoryBase::AddRef()
 //	GetCallerName(str2, s_pIgnoreNames);
 //	if (m_pParent)
 //	{
-//		str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p) from '%s', count = %lu (parent 0x%p: %lu)\n",
-//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2, ret, (void*)m_pParent, retParent);
+//		str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p), count = %lu (parent 0x%p: %lu) from '%s'\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, ret, (void*)m_pParent, retParent, (LPCWSTR)str2);
 //	}
 //	else
 //	{
-//		str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p) from '%s', count = %lu (no parent)\n",
-//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2, ret);
+//		str.Format(L"CFTPDirectoryBase::AddRef() for '%s' (0x%p), count = %lu (no parent) from '%s'\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, ret, (LPCWSTR)str2);
 //	}
 //	OutputDebugString(str);
 //#endif
@@ -671,13 +671,13 @@ STDMETHODIMP_(ULONG) CFTPDirectoryBase::Release()
 //	GetCallerName(str2, s_pIgnoreNames);
 //	if (m_pParent)
 //	{
-//		str.Format(L"CFTPDirectoryBase::Release() for '%s' (0x%p) from '%s', count = %lu (parent 0x%p: %lu)\n",
-//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2, ret, (void*)m_pParent, retParent);
+//		str.Format(L"CFTPDirectoryBase::Release() for '%s' (0x%p), count = %lu (parent 0x%p: %lu) from '%s'\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, ret, (void*)m_pParent, retParent, (LPCWSTR)str2);
 //	}
 //	else
 //	{
-//		str.Format(L"CFTPDirectoryBase::Release() for '%s' (0x%p) from '%s', count = %lu\n",
-//			(LPCWSTR)m_strDirectory, (void*)this, (LPCWSTR)str2, ret);
+//		str.Format(L"CFTPDirectoryBase::Release() for '%s' (0x%p), count = %lu (no parent) from '%s'\n",
+//			(LPCWSTR)m_strDirectory, (void*)this, ret, (LPCWSTR)str2);
 //	}
 //	OutputDebugString(str);
 //
