@@ -513,3 +513,69 @@ HRESULT CFTPDirectoryRootBase::DoDeleteDirectoryRecursive(HWND hWndOwner, CMyStr
 	pDir->Release();
 	return hr;
 }
+
+HRESULT CFTPDirectoryRootBase::IsDirectoryExists(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszDirectory)
+{
+	CMyStringW strPartName;
+	pDirectory->AddRef();
+	while (true)
+	{
+		auto* p = wcschr(lpszDirectory, L'/');
+		if (!p)
+		{
+			strPartName = lpszDirectory;
+			lpszDirectory = NULL;
+		}
+		else
+		{
+			strPartName.SetString(lpszDirectory, p - lpszDirectory);
+			lpszDirectory = p + 1;
+		}
+
+		if (!pDirectory->m_bDirReceived)
+		{
+			if (!ReceiveDirectory(hWndOwner, pDirectory, pDirectory->m_strDirectory, &pDirectory->m_bDirReceived))
+			{
+				pDirectory->Release();
+				return E_FAIL;
+			}
+		}
+
+		auto found = false;
+		auto isDir = false;
+		::EnterCriticalSection(&pDirectory->m_csFiles);
+		for (int i = 0; i < pDirectory->m_aFiles.GetCount(); ++i)
+		{
+			auto* p = pDirectory->m_aFiles.GetItem(i);
+			if (p->strFileName.Compare(strPartName) == 0)
+			{
+				found = true;
+				isDir = p->IsDirectory();
+				break;
+			}
+		}
+		::LeaveCriticalSection(&pDirectory->m_csFiles);
+
+		if (!found || !isDir)
+		{
+			pDirectory->Release();
+			return S_FALSE;
+		}
+
+		if (!lpszDirectory || !*lpszDirectory)
+			break;
+
+		{
+			CFTPDirectoryBase* pChildDir;
+			auto hr = pDirectory->OpenNewDirectory(strPartName, &pChildDir);
+			pDirectory->Release();
+			if (FAILED(hr))
+			{
+				return hr;
+			}
+			pDirectory = pChildDir;
+		}
+	}
+	pDirectory->Release();
+	return S_OK;
+}

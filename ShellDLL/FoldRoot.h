@@ -181,6 +181,7 @@ public:
 	void OnDisconnect();
 	virtual HRESULT DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW& astrMsgs, bool bIsDirectory, LPCWSTR lpszFile, CFTPDirectoryBase* pDirectory = NULL) = 0;
 	HRESULT DoDeleteDirectoryRecursive(HWND hWndOwner, CMyStringArrayW& astrMsgs, LPCWSTR lpszName, CFTPDirectoryBase* pDirectory);
+	HRESULT IsDirectoryExists(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszDirectory);
 
 public:
 	CMyStringW m_strHostName;

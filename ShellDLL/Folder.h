@@ -54,6 +54,7 @@ class CFTPDirectoryBase : public CFolderBase,
 	public IEasySFTPOldDirectory//,
 	//public IFTPDataObjectListener
 {
+	friend class CFTPDirectoryRootBase;
 public:
 	CFTPDirectoryBase(CDelegateMallocData* pMallocData,
 		CFTPDirectoryItem* pItemMe,

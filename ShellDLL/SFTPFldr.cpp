@@ -671,6 +671,14 @@ STDMETHODIMP CSFTPFolderSFTP::UpdateFTPItemAttribute(CFTPDirectoryBase* pDirecto
 
 STDMETHODIMP CSFTPFolderSFTP::CreateFTPDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszName)
 {
+	{
+		auto hr = IsDirectoryExists(hWndOwner, pDirectory, lpszName);
+		if (FAILED(hr))
+			return hr;
+		if (hr == S_OK)
+			return S_OK;
+	}
+
 	HRESULT hr = S_OK;
 	CMyStringW strFile, strMsg;
 

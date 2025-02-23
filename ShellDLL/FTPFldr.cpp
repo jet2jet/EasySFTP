@@ -983,6 +983,14 @@ STDMETHODIMP CSFTPFolderFTP::UpdateFTPItemAttribute(CFTPDirectoryBase* pDirector
 
 STDMETHODIMP CSFTPFolderFTP::CreateFTPDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirectory, LPCWSTR lpszName)
 {
+	{
+		auto hr = IsDirectoryExists(hWndOwner, pDirectory, lpszName);
+		if (FAILED(hr))
+			return hr;
+		if (hr == S_OK)
+			return S_OK;
+	}
+
 	CMyStringW strFile(pDirectory->m_strDirectory);
 	if (strFile.IsEmpty() || ((LPCWSTR)strFile)[strFile.GetLength() - 1] != L'/')
 		strFile += L'/';
