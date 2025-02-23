@@ -14,21 +14,16 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CFTPWaitPassive::OnReceiveForHandshake()
+CFTPWaitPassive::~CFTPWaitPassive()
 {
-	auto r = pPassive->ContinueHandshake();
-	if (r == CFTPSocket::HandshakeResult::Success)
-		nWaitFlags = CFTPWaitPassive::WaitFlags::WaitingForEstablish;
-	else if (r == CFTPSocket::HandshakeResult::Error)
+	if (pPassive)
+		delete pPassive;
+	if (pConnection)
 	{
-		bWaiting = false;
-		nWaitFlags = CFTPWaitPassive::WaitFlags::Error;
-		pMessage->EndReceive(NULL);
-		//break;
-		//::LeaveCriticalSection(&m_csSocket);
-		return false;
+		pConnection->SendCommand(L"QUIT", NULL);
+		delete pConnection;
 	}
-	return true;
+	pMessage->Release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +197,7 @@ CFTPStream::CFTPStream(LPCWSTR lpszFileName,
 {
 	m_pPassive = NULL;
 	m_uliNowPos.QuadPart = 0;
+	m_bClosed = false;
 	pRoot->AddRef();
 }
 
@@ -229,6 +225,12 @@ STDMETHODIMP CFTPStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 {
 	if (!pv)
 		return E_POINTER;
+	if (m_bClosed)
+	{
+		if (pcbRead)
+			*pcbRead = 0;
+		return S_FALSE;
+	}
 	HRESULT hr = InitDataSocket();
 	if (FAILED(hr))
 		return hr;
@@ -340,6 +342,8 @@ STDMETHODIMP CFTPStream::Clone(IStream**)
 
 STDMETHODIMP CFTPStream::Seek(LARGE_INTEGER liDistanceToMove, DWORD dwOrigin, ULARGE_INTEGER* lpNewFilePointer)
 { 
+	if (m_bClosed)
+		return S_FALSE;
 	if (dwOrigin == STREAM_SEEK_END || (dwOrigin == STREAM_SEEK_CUR && liDistanceToMove.QuadPart < 0) ||
 		dwOrigin == STREAM_SEEK_SET && (ULONGLONG) liDistanceToMove.QuadPart < m_uliNowPos.QuadPart)
 	{
@@ -409,14 +413,14 @@ HRESULT CFTPStream::InitDataSocket()
 	pMessage->Release();
 	if (!pEstablishWait)
 		return E_FAIL;
-	if (!m_pRoot->WaitForReceive(&pEstablishWait->bWaiting) || !pEstablishWait->pRet)
+	if (!m_pRoot->WaitForReceiveEstablishPassive(&pEstablishWait->bWaiting, pEstablishWait) || !pEstablishWait->pRet)
 	{
 		delete pEstablishWait;
 		return E_FAIL;
 	}
 	CFTPWaitPassive* pPassive = pEstablishWait->pRet;
 	delete pEstablishWait;
-	if (!m_pRoot->WaitForReceive(&pPassive->bWaiting, pPassive))
+	if (!m_pRoot->WaitForReceivePassive(&pPassive->bWaiting, pPassive))
 	{
 		delete pPassive;
 		return E_FAIL;
@@ -431,13 +435,17 @@ void CFTPStream::Close()
 	if (!m_pPassive)
 		return;
 	{
-		CMyScopedCSLock lock(m_pRoot->m_csSocket);
 		m_pPassive->pPassive->Close();
-		m_pPassive->pDone->bWaiting = true;
-		m_pRoot->WaitForReceive(&m_pPassive->pDone->bWaiting);
+		if (m_pPassive->nWaitFlags != CFTPWaitPassive::WaitFlags::Finished && m_pPassive->nWaitFlags != CFTPWaitPassive::WaitFlags::Error)
+		{
+			m_pPassive->nWaitFlags = CFTPWaitPassive::WaitFlags::WaitingForPassiveDone;
+			m_pPassive->bWaiting = true;
+			m_pRoot->WaitForReceivePassive(&m_pPassive->bWaiting, m_pPassive, 5000);
+		}
 	}
 	delete m_pPassive;
 	m_pPassive = NULL;
+	m_bClosed = true;
 }
 
 CFTPFileRecvMessage::CFTPFileRecvMessage(LPCWSTR lpszRemoteFileName, ULONGLONG uliOffset)

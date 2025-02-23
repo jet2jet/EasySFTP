@@ -20,23 +20,21 @@ struct CFTPWaitResponse
 	CMyStringW strCommand;
 	CMyStringW strParameter;
 	CWaitResponseData* pWait;
-	bool bIsWaitingIgnorablePassiveDone;
 
-	CFTPWaitResponse() : pWait(NULL), bIsWaitingIgnorablePassiveDone(false) {}
+	CFTPWaitResponse() : pWait(NULL) {}
 };
 
 struct CFTPWaitEstablishPassive : public CWaitResponseData
 {
-	inline CFTPWaitEstablishPassive(CFTPPassiveMessage* pMessage)
-		: CWaitResponseData(WRD_PASSIVE)
+	inline CFTPWaitEstablishPassive(CFTPPassiveMessage* pMessage, CFTPConnection* pConnection)
+		: CWaitResponseData(WRD_ESTABLISHPASSIVE)
 		, pMessage(pMessage)
+		, pConnection(pConnection)
 		, pRet(NULL)
 		{ pMessage->AddRef(); }
-	~CFTPWaitEstablishPassive()
-	{
-		pMessage->Release();
-	}
+	~CFTPWaitEstablishPassive();
 	CFTPPassiveMessage* pMessage;
+	CFTPConnection* pConnection;
 
 	// out
 	CFTPWaitPassive* pRet;
@@ -162,11 +160,10 @@ public:
 	bool ReceiveMessage(int& nCode, CMyStringW& rstrMessage, CWaitResponseData** ppWait,
 		CMyStringW* pstrCommand = NULL);
 	bool ReceivePassive(CFTPWaitPassive* pPassive);
-	void WaitFinishPassive(CFTPWaitPassiveDone* pPassive);
-	void MarkPassiveDoneIgnorable(CFTPWaitPassiveDone* pPassive);
-	void ReplaceFinishPassive(CFTPWaitPassive* pPassive, CWaitResponseData* pWait);
+	void WaitFinishPassive(CFTPWaitPassive* pPassive);
 
 	void InitAvaliableCommands(LPCWSTR lpszParam);
+	void CopyAvailableCommands(const CFTPConnection* pConnectionFrom);
 	LPCWSTR IsCommandAvailable(LPCWSTR lpszCommand) const;
 
 	enum class FTPSHandshakeResult : BYTE
@@ -184,6 +181,7 @@ public:
 	CFTPSocket m_socket;
 	CRITICAL_SECTION m_csSocket;
 	CMyPtrArrayT<CFTPWaitResponse> m_aWaitResponse;
+	bool m_bIsLoggingIn;
 
 protected:
 	enum class FTPSConnectionPhase : BYTE

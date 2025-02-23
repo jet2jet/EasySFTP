@@ -50,53 +50,40 @@ public:
 	virtual void FinishFileListing() = 0;
 };
 
-struct CFTPWaitPassive;
-
-struct CFTPWaitPassiveDone : public CWaitResponseData
-{
-	inline CFTPWaitPassiveDone(CFTPWaitPassive* _) : CWaitResponseData(WRD_PASSIVEDONE), pPassive(_), nCode(0) { }
-	CFTPWaitPassive* pPassive;
-	int nCode;
-	CMyStringW strMsg;
-};
-
 struct CFTPWaitPassive : public CWaitResponseData
 {
 	enum class WaitFlags : char
 	{
 		WaitingForHandshake = 1,
 		WaitingForEstablish = 2,
-		SendingData = 3,
-		WaitingForPassiveDone = 4,
+		ReceivingData = 3,
+		ReceivingDataExternal = 4,
+		SendingData = 5,
+		WaitingForPassiveDone = 6,
 		Finished = 0,
 		Error = -1
 	};
 
 	inline CFTPWaitPassive(WaitFlags nWaitFlags,
 		CFTPPassiveMessage* pMessage,
+		CFTPConnection* pConnection,
 		CFTPSocket* pPassive)
-		: CWaitResponseData(WRD_PASSIVEMSG)
+		: CWaitResponseData(WRD_STARTPASSIVE)
 		, nWaitFlags(nWaitFlags)
 		, pMessage(pMessage)
+		, pConnection(pConnection)
 		, pPassive(pPassive)
-		, pDone(NULL)
+		, nCode(0)
 	{
 		pMessage->AddRef();
 	}
-	~CFTPWaitPassive()
-	{
-		if (pDone)
-			delete pDone;
-		if (pPassive)
-			delete pPassive;
-		pMessage->Release();
-	}
+	~CFTPWaitPassive();
 	CFTPPassiveMessage* pMessage;
+	CFTPConnection* pConnection;
 	CFTPSocket* pPassive;
-	CFTPWaitPassiveDone* pDone;
 	WaitFlags nWaitFlags;
-
-	bool OnReceiveForHandshake();
+	int nCode;
+	CMyStringW strMsg;
 };
 
 class CFTPFileListingMessage : public CFTPPassiveMessage
@@ -108,7 +95,7 @@ public:
 	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait) override;
 	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) override
 	{
-		pWait->nWaitFlags = CFTPWaitPassive::WaitFlags::WaitingForPassiveDone;
+		pWait->nWaitFlags = CFTPWaitPassive::WaitFlags::ReceivingData;
 		return true;
 	}
 	virtual bool OnReceive(CFTPSocket* pPassive) override;
@@ -129,7 +116,7 @@ public:
 	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait) override;
 	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) override
 	{
-		pWait->nWaitFlags = CFTPWaitPassive::WaitFlags::WaitingForPassiveDone;
+		pWait->nWaitFlags = CFTPWaitPassive::WaitFlags::ReceivingData;
 		return true;
 	}
 	virtual bool OnReceive(CFTPSocket* pPassive) override;
@@ -232,6 +219,7 @@ public:
 	ULARGE_INTEGER m_uliNowPos;
 	CFTPWaitPassive* m_pPassive;
 	CSFTPFolderFTP* m_pRoot;
+	bool m_bClosed;
 };
 
 class CFTPFileRecvMessage : public CFTPPassiveMessage
@@ -241,7 +229,11 @@ public:
 	virtual ~CFTPFileRecvMessage();
 
 	virtual bool SendPassive(CFTPConnection* pConnection, CFTPWaitPassive* pWait) override;
-	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) override { return true; }
+	virtual bool ConnectionEstablished(CFTPWaitPassive* pWait) override
+	{
+		pWait->nWaitFlags = CFTPWaitPassive::WaitFlags::ReceivingDataExternal;
+		return true;
+	}
 	virtual bool OnReceive(CFTPSocket* pPassive) override { return true; }
 	virtual bool ReadyToWrite(CFTPSocket* pPassive) override { return false; }
 	virtual void EndReceive(UINT* puStatusMsgID) override { }

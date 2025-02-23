@@ -112,9 +112,8 @@ protected:
 	IEasySFTPAuthentication* m_pUser;
 	CMyStringW m_strServerInfo;
 	CMyStringW m_strWelcomeMessage;
-	bool m_bIsFTPS;
-	bool m_bLoggingIn;
 	int m_nServerSystemType;
+	bool m_bIsFTPS;
 	char m_nYearFollows;      // used for DOS system type
 	bool m_bY2KProblem;
 	DWORD m_dwTransferringCount;
@@ -141,10 +140,14 @@ protected:
 	void ShowFTPErrorMessage(int code, LPCWSTR lpszMessage);
 
 	static void CALLBACK KeepConnectionTimerProc(UINT_PTR idEvent, LPARAM lParam);
-	void _OnFTPSocketReceiveThreadUnsafe();
 	ProcessLoginResult DoProcessForLogin(CFTPConnection* pConnection, int code, CMyStringW& strMsg, const CMyStringW& strCommand, CWaitResponseData* pWait);
+	// return true if main control connection is disconnected
+	bool DisconnectImpl(CFTPConnection* pConnection);
+	bool DoReceiveSocketCommon(CFTPConnection* pConnection, int& code, CMyStringW& strMsg, CMyStringW& strCommand, CWaitResponseData*& pWait,
+		void (*pfnOnLoginFinished)(CFTPConnection* pConnection, void* pParam) = NULL, void* pParam = NULL);
 	void DoReceiveSocket();
-	void StartAuth();
+	void DoReceiveSocketPassiveControl(CFTPConnection* pConnection, CFTPWaitEstablishPassive* pEstablish = NULL);
+	void StartAuth(CFTPConnection* pConnection);
 	CFTPWaitEstablishPassive* StartPassive(CFTPPassiveMessage* pMessage);
 	CFTPWaitPassive* PassiveStarted(CFTPWaitEstablishPassive* pWait, CFTPSocket* pSocket);
 	void DoReceivePassive(CFTPWaitPassive* pPassive);
@@ -152,7 +155,9 @@ protected:
 	virtual HRESULT DoDeleteFileOrDirectory(HWND hWndOwner, CMyStringArrayW& astrMsgs, bool bIsDirectory, LPCWSTR lpszFile, CFTPDirectoryBase* pDirectory = NULL);
 
 public:
-	bool WaitForReceive(bool* pbWaiting, CFTPWaitPassive* pPassive = NULL);
+	bool WaitForReceive(bool* pbWaiting);
+	bool WaitForReceiveEstablishPassive(bool* pbWaiting, CFTPWaitEstablishPassive* pPassive);
+	bool WaitForReceivePassive(bool* pbWaiting, CFTPWaitPassive* pPassive, DWORD dwTimeoutMilliseconds = INFINITE);
 
 protected:
 	inline int DoRetryAuthentication(bool bFirstAttempt)

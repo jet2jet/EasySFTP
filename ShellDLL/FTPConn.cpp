@@ -8,10 +8,22 @@
 #include "ShellDLL.h"
 #include "FTPConn.h"
 
+///////////////////////////////////////////////////////////////////////////////
+
+CFTPWaitEstablishPassive::~CFTPWaitEstablishPassive()
+{
+	if (pConnection)
+		delete pConnection;
+	pMessage->Release();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 CFTPConnection::CFTPConnection(void)
 {
 	m_lpszAvailableCommands = NULL;
 	m_FTPSConnectionPhase = FTPSConnectionPhase::None;
+	m_bIsLoggingIn = true;
 	::InitializeCriticalSection(&m_csSocket);
 }
 
@@ -383,7 +395,7 @@ bool CFTPConnection::ReceiveMessage(int& nCode, CMyStringW& rstrMessage, CWaitRe
 		// find Passive waiting if code is 226 or 451
 		if (r == 226 || r == 451)
 		{
-			if (p->bIsWaitingIgnorablePassiveDone || (p->pWait && (p->pWait->nWaitType == CWaitResponseData::WRD_PASSIVEDONE || p->pWait->nWaitType == CWaitResponseData::WRD_CONFIRM)))
+			if (p->pWait && p->pWait->nWaitType == CWaitResponseData::WRD_ENDPASSIVE)
 			{
 				b = true;
 				m_aWaitResponse.RemoveItem(i);
@@ -392,20 +404,7 @@ bool CFTPConnection::ReceiveMessage(int& nCode, CMyStringW& rstrMessage, CWaitRe
 		}
 		else
 		{
-			if (p->bIsWaitingIgnorablePassiveDone)
-			{
-#ifdef _DEBUG
-				{
-					CMyStringW str(L"FTP: drop waiting passive done\n");
-					::OutputDebugString(str);
-				}
-#endif
-				m_aWaitResponse.RemoveItem(i);
-				delete p;
-				--i;
-				continue;
-			}
-			if (!p->pWait || p->pWait->nWaitType != CWaitResponseData::WRD_PASSIVEDONE)
+			if (!p->pWait || p->pWait->nWaitType != CWaitResponseData::WRD_ENDPASSIVE)
 			{
 				b = true;
 				m_aWaitResponse.RemoveItem(i);
@@ -467,7 +466,7 @@ bool CFTPConnection::ReceivePassive(CFTPWaitPassive* pPassive)
 	return true;
 }
 
-void CFTPConnection::WaitFinishPassive(CFTPWaitPassiveDone* pPassive)
+void CFTPConnection::WaitFinishPassive(CFTPWaitPassive* pPassive)
 {
 	::EnterCriticalSection(&m_csSocket);
 
@@ -481,52 +480,6 @@ void CFTPConnection::WaitFinishPassive(CFTPWaitPassiveDone* pPassive)
 		OutputDebugString(str);
 	}
 #endif
-	::LeaveCriticalSection(&m_csSocket);
-}
-
-void CFTPConnection::MarkPassiveDoneIgnorable(CFTPWaitPassiveDone* pPassive)
-{
-	::EnterCriticalSection(&m_csSocket);
-
-	for (int i = 0; i < m_aWaitResponse.GetCount(); ++i)
-	{
-		auto* p = m_aWaitResponse.GetItem(i);
-		if (p->pWait == pPassive)
-		{
-			p->pWait = NULL;
-			p->bIsWaitingIgnorablePassiveDone = true;
-			break;
-		}
-	}
-#ifdef _DEBUG
-	{
-		CMyStringW str;
-		str.Format(L"(wait = %p) : mark ignorable for waiting for 226 msg\n", pPassive);
-		OutputDebugString(str);
-	}
-#endif
-	::LeaveCriticalSection(&m_csSocket);
-}
-
-void CFTPConnection::ReplaceFinishPassive(CFTPWaitPassive* pPassive, CWaitResponseData* pWait)
-{
-	::EnterCriticalSection(&m_csSocket);
-
-	for (auto i = 0; i < m_aWaitResponse.GetCount(); ++i)
-	{
-		auto* p = m_aWaitResponse.GetItem(i);
-		if (p->pWait == pPassive)
-		{
-#ifdef _DEBUG
-			p->pWait = pWait;
-			{
-				CMyStringW str;
-				str.Format(L"(wait = %p -> %p) : wait for 226 msg\n", pPassive, pWait);
-				OutputDebugString(str);
-			}
-#endif
-		}
-	}
 	::LeaveCriticalSection(&m_csSocket);
 }
 
@@ -572,6 +525,28 @@ void CFTPConnection::InitAvaliableCommands(LPCWSTR lpszParam)
 			memcpy(w, (LPCWSTR) str, nLen);
 	}
 	m_lpszAvailableCommands = w;
+}
+
+void CFTPConnection::CopyAvailableCommands(const CFTPConnection* pConnectionFrom)
+{
+	if (m_lpszAvailableCommands)
+		free(m_lpszAvailableCommands);
+	if (!pConnectionFrom->m_lpszAvailableCommands)
+		m_lpszAvailableCommands = NULL;
+	else
+	{
+		auto* pStart = pConnectionFrom->m_lpszAvailableCommands;
+		auto* pEnd = pStart;
+		while (*pEnd)
+		{
+			while (*pEnd++);
+		}
+		size_t nLen = static_cast<size_t>(pEnd - pStart) + 1;
+		auto* pNew = static_cast<LPWSTR>(malloc(sizeof(WCHAR) * nLen));
+		if (pNew)
+			memcpy(pNew, pStart, sizeof(WCHAR) * nLen);
+		m_lpszAvailableCommands = pNew;
+	}
 }
 
 LPCWSTR CFTPConnection::IsCommandAvailable(LPCWSTR lpszCommand) const
