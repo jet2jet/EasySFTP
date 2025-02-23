@@ -2668,6 +2668,12 @@ STDMETHODIMP CFTPDirectoryBase::MoveElementTo(const OLECHAR* pwcsName, IStorage*
 		return hr;
 
 	CMyStringArrayW astrMsgs;
+	if (pFile->IsDirectory())
+	{
+		hr = pMyRoot->DoDeleteDirectoryRecursive(NULL, astrMsgs, pFile->strFileName, this);
+		if (FAILED(hr))
+			return hr;
+	}
 	return pMyRoot->DoDeleteFileOrDirectory(NULL, astrMsgs, pFile->IsDirectory(), pFile->strFileName, this);
 }
 
@@ -3620,6 +3626,21 @@ void CFTPDirectoryBase::UpdateRemoveFile(LPCWSTR lpszFileName, bool bDirectory)
 		}
 	}
 	::LeaveCriticalSection(&m_csFiles);
+	if (bDirectory)
+	{
+		for (int i = 0; i < m_aDirectories.GetCount(); i++)
+		{
+			auto* pDirItem = m_aDirectories.GetItem(i);
+			if (pDirItem->strName.Compare(str) == 0)
+			{
+				m_aDirectories.RemoveItem(i);
+				if (pDirItem->pDirectory)
+					pDirItem->pDirectory->DetachAndRelease();
+				pDirItem->Release();
+				break;
+			}
+		}
+	}
 	NotifyUpdate(bDirectory ? SHCNE_RMDIR : SHCNE_DELETE, str, NULL);
 }
 

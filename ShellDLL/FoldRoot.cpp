@@ -442,7 +442,7 @@ HRESULT CFTPDirectoryRootBase::DoDeleteDirectoryRecursive(HWND hWndOwner, CMyStr
 		return hr;
 	}
 	IEnumIDList* pIDList = NULL;
-	hr = pDir->EnumObjects(hWndOwner, SHCONTF_FOLDERS | SHCONTF_NONFOLDERS | SHCONTF_INCLUDEHIDDEN | SHCONTF_FASTITEMS, &pIDList);
+	hr = pDir->EnumObjects(hWndOwner, SHCONTF_FOLDERS | SHCONTF_NONFOLDERS | SHCONTF_INCLUDEHIDDEN, &pIDList);
 	if (FAILED(hr) || !pIDList)
 	{
 		pDir->Release();
@@ -501,7 +501,7 @@ HRESULT CFTPDirectoryRootBase::DoDeleteDirectoryRecursive(HWND hWndOwner, CMyStr
 			{
 				str.InsertChar(L'/', 0);
 				str.InsertString(pDirectory->m_strDirectory, 0);
-				hr = DoDeleteFileOrDirectory(hWndOwner, astrMsgs, (attr & SFGAO_FOLDER) != 0, str, NULL);
+				hr = DoDeleteFileOrDirectory(hWndOwner, astrMsgs, (attr & SFGAO_FOLDER) != 0, str, pDirectory);
 			}
 		}
 		if (FAILED(hr))
