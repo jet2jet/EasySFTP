@@ -1811,6 +1811,15 @@ STDMETHODIMP CFTPDirectoryBase::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lP
 			m_aFiles.RemoveAll();
 			m_bDirReceived = false;
 			::LeaveCriticalSection(&m_csFiles);
+			i = m_aDirectories.GetCount();
+			while (i--)
+			{
+				auto* p = m_aDirectories.GetItem(i);
+				if (p->pDirectory)
+					p->pDirectory->DetachAndRelease();
+				p->Release();
+			}
+			m_aDirectories.RemoveAll();
 		}
 		return S_OK;
 	case SFVM_MERGEMENU:
