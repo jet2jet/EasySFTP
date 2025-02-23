@@ -1020,6 +1020,7 @@ STDMETHODIMP CSFTPFolderFTP::CreateFTPDirectory(HWND hWndOwner, CFTPDirectoryBas
 		return E_FAIL;
 	}
 	delete pWait;
+	pDirectory->UpdateNewFile(lpszName, true);
 	return S_OK;
 }
 
