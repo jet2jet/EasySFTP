@@ -7,7 +7,6 @@
 #pragma once
 
 #include "resource.h"
-#include "version.h"
 
 #include "MyFunc.h"
 #include "Unicode.h"
@@ -39,6 +38,9 @@ inline void __stdcall CallConstructor(T* ptr)
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+// in version.cpp
+EXTERN_C const WCHAR s_wszVersionString[];
 
 #ifdef _DEBUG
 void GetCallerName(CMyStringW& rstr, const WCHAR* const* ppvIgnoreNames = NULL);

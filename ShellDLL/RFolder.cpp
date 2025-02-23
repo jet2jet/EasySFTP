@@ -1444,7 +1444,7 @@ STDMETHODIMP CEasySFTPFolderRoot::get_Version(BSTR* pRet)
 {
 	if (!pRet)
 		return E_POINTER;
-	*pRet = ::SysAllocString(VERSION_STRING_W);
+	*pRet = ::SysAllocString(s_wszVersionString);
 	return *pRet ? S_OK : E_OUTOFMEMORY;
 }
 

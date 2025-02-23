@@ -352,6 +352,7 @@ exit /b 0
     <ClCompile Include="TextStrm.cpp" />
     <ClCompile Include="TferPage.cpp" />
     <ClCompile Include="Transfer.cpp" />
+    <ClCompile Include="version.cpp" />
     <ClCompile Include="WinOpSSH.cpp" />
   </ItemGroup>
   <ItemGroup>
