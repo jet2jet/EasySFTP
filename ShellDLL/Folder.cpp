@@ -3539,6 +3539,18 @@ void CFTPDirectoryBase::UpdateMoveFile(LPCWSTR lpszFromDir, LPCWSTR lpszFileName
 {
 	if (!lpszNewFileName)
 		lpszNewFileName = lpszFileName;
+	bool isExtensionChanged = false;
+	if (!bDirectory)
+	{
+		auto* pExtOld = wcsrchr(lpszFileName, L'.');
+		auto* pExtNew = wcsrchr(lpszNewFileName, L'.');
+		if (!pExtOld)
+			isExtensionChanged = (pExtNew != NULL);
+		else if (!pExtNew)
+			isExtensionChanged = true;
+		else
+			isExtensionChanged = _wcsicmp(pExtOld, pExtNew) != 0;
+	}
 	CMyStringW strFP(lpszFromDir), strTP(m_strDirectory);
 	if (m_strDirectory.Compare(lpszFromDir) != 0)
 	{
@@ -3572,7 +3584,14 @@ void CFTPDirectoryBase::UpdateMoveFile(LPCWSTR lpszFromDir, LPCWSTR lpszFileName
 		::EnterCriticalSection(&m_csFiles);
 		CFTPFileItem* p = GetFileItem(lpszFileName);
 		if (p)
+		{
 			p->strFileName = lpszNewFileName;
+			if (isExtensionChanged)
+			{
+				p->iIconIndex = -1;
+				FillFileItemInfo(p);
+			}
+		}
 		::LeaveCriticalSection(&m_csFiles);
 	}
 	if (strFP.IsEmpty() || ((LPCWSTR)strFP)[strFP.GetLength() - 1] != L'/')
@@ -3582,18 +3601,41 @@ void CFTPDirectoryBase::UpdateMoveFile(LPCWSTR lpszFromDir, LPCWSTR lpszFileName
 	strFP += lpszFileName;
 	strTP += lpszNewFileName;
 	NotifyUpdate(bDirectory ? SHCNE_RENAMEFOLDER : SHCNE_RENAMEITEM, strFP, strTP);
+	if (isExtensionChanged)
+		NotifyUpdate(SHCNE_UPDATEITEM, strTP, NULL);
 }
 
 void CFTPDirectoryBase::UpdateRenameFile(LPCWSTR lpszOldFileName, LPCWSTR lpszNewFileName, bool bDirectory)
 {
+	bool isExtensionChanged = false;
+	if (!bDirectory)
+	{
+		auto* pExtOld = wcsrchr(lpszOldFileName, L'.');
+		auto* pExtNew = wcsrchr(lpszNewFileName, L'.');
+		if (!pExtOld)
+			isExtensionChanged = (pExtNew != NULL);
+		else if (!pExtNew)
+			isExtensionChanged = true;
+		else
+			isExtensionChanged = _wcsicmp(pExtOld, pExtNew) != 0;
+	}
 	CMyStringW strFP(lpszOldFileName);
 	//CMyStringW strFP(m_strDirectory), strTP(m_strDirectory);
 	::EnterCriticalSection(&m_csFiles);
 	CFTPFileItem* p = GetFileItem(lpszOldFileName);
 	if (p)
+	{
 		p->strFileName = lpszNewFileName;
+		if (isExtensionChanged)
+		{
+			p->iIconIndex = -1;
+			FillFileItemInfo(p);
+		}
+	}
 	::LeaveCriticalSection(&m_csFiles);
 	NotifyUpdate(bDirectory ? SHCNE_RENAMEFOLDER : SHCNE_RENAMEITEM, strFP, lpszNewFileName);
+	if (isExtensionChanged)
+		NotifyUpdate(SHCNE_UPDATEITEM, lpszNewFileName, NULL);
 }
 
 void CFTPDirectoryBase::UpdateFileAttrs(LPCWSTR lpszFileName, bool bDirectory)
