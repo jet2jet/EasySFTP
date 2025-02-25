@@ -313,7 +313,6 @@ exit /b 0
     <ClCompile Include="FileIcon.cpp" />
     <ClCompile Include="FileList.cpp" />
     <ClCompile Include="FileProp.cpp" />
-    <ClCompile Include="FileStrm.cpp" />
     <ClCompile Include="FldrMenu.cpp" />
     <ClCompile Include="FNameDlg.cpp" />
     <ClCompile Include="FoldBase.cpp" />
@@ -349,6 +348,7 @@ exit /b 0
     </ClCompile>
     <ClCompile Include="StrList.cpp" />
     <ClCompile Include="SvInfo.cpp" />
+    <ClCompile Include="Sync.cpp" />
     <ClCompile Include="TextStrm.cpp" />
     <ClCompile Include="TferPage.cpp" />
     <ClCompile Include="Transfer.cpp" />
@@ -381,7 +381,6 @@ exit /b 0
     <ClInclude Include="FileIcon.h" />
     <ClInclude Include="FileList.h" />
     <ClInclude Include="FileProp.h" />
-    <ClInclude Include="FileStrm.h" />
     <ClInclude Include="FldrMenu.h" />
     <ClInclude Include="FNameDlg.h" />
     <ClInclude Include="FoldBase.h" />
@@ -414,6 +413,7 @@ exit /b 0
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="StrList.h" />
     <ClInclude Include="SvInfo.h" />
+    <ClInclude Include="Sync.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextStrm.h" />
     <ClInclude Include="TferStat.h" />

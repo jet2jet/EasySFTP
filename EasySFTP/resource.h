@@ -28,13 +28,16 @@
 #define IDS_UNKNOWN_SIZE                124
 #define IDS_REGISTER_BUTTON             125
 #define IDS_UNREGISTER_BUTTON           126
+#define IDS_LEFT_TO_RIGHT               127
 #define IDR_MAINFRAME                   128
+#define IDS_RIGHT_TO_LEFT               128
 #define IDB_TOOLBAR                     134
 #define IDD_OPTION                      134
 #define IDR_POPUP                       135
 #define IDB_ADDRESS_BUTTONS             138
 #define IDB_TOOLBAR_L                   144
 #define IDB_ADDRESS_BUTTONS_L           145
+#define IDD_SYNC_DETAIL                 146
 #define IDS_HEAD_FILE_NAME              201
 #define IDS_HEAD_SIZE                   202
 #define IDS_HEAD_TYPE                   203
@@ -68,6 +71,13 @@
 #define IDC_FEATURES                    1053
 #define IDC_LINK_TO_REPOSITORY          1054
 #define IDC_VERSION                     1055
+#define IDC_DIRECTION                   1056
+#define IDC_EXCLUDE_HIDDEN              1057
+#define IDC_DELETE_NON_EXISTENCE        1058
+#define IDC_COPY_OLD_FILES              1059
+#define IDC_LEFT_PATH                   1060
+#define IDC_RIGHT_PATH                  1061
+#define IDC_DIRECTION_LABEL             1062
 #define IDS_UNKNOWN_HOST                10001
 #define IDS_FAILED_TO_CONNECT           10002
 #define IDS_DIRCHANGE_FAILED            11001
@@ -101,6 +111,9 @@
 #define ID_EDIT_PASTE                   0xA108
 #define ID_EDIT_SELECT_ALL              0xA109
 #define ID_EDIT_INVERT_SELECTION        0xA10A
+#define ID_EDIT_SYNC_LEFT_TO_RIGHT      0xA10B
+#define ID_EDIT_SYNC_RIGHT_TO_LEFT      0xA10C
+#define ID_EDIT_SYNC_DETAIL             0xA10D
 #define ID_VIEW_TRANSFER                0xA201
 #define ID_VIEW_REFRESH                 0xA202
 #define ID_VIEW_GO_FOLDER               0xA203
@@ -136,9 +149,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        146
-#define _APS_NEXT_COMMAND_VALUE         32870
-#define _APS_NEXT_CONTROL_VALUE         1056
+#define _APS_NEXT_RESOURCE_VALUE        147
+#define _APS_NEXT_COMMAND_VALUE         32874
+#define _APS_NEXT_CONTROL_VALUE         1063
 #define _APS_NEXT_SYMED_VALUE           117
 #endif
 #endif

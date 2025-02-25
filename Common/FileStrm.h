@@ -1,5 +1,5 @@
 /*
- EasySFTP - Copyright (C) 2010 Kuri-Applications
+ Copyright (C) 2010 Kuri-Applications
 
  FileStrm.h - declarations of file stream functions
  */

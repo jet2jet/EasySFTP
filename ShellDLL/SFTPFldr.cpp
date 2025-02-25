@@ -1348,6 +1348,7 @@ STDMETHODIMP CSFTPFolderSFTP::OpenFile(CFTPDirectoryBase* pDirectory, LPCWSTR lp
 	data->grfMode = grfMode;
 	data->offset = 0;
 	data->dwRefCount = 1;
+	data->bIsEOF = false;
 	memset(&data->statstg, 0, sizeof(data->statstg));
 
 	IncrementTransferCount();
@@ -1423,6 +1424,8 @@ STDMETHODIMP CSFTPFolderSFTP::ReadFile(HANDLE hFile, void* outBuffer, DWORD dwSi
 	if (!hFile || !outBuffer)
 		return E_POINTER;
 	auto data = static_cast<CSFTPHandleData*>(hFile);
+	if (data->bIsEOF)
+		return S_FALSE;
 
 	::EnterCriticalSection(&m_csSocket);
 	ULONG uMsg = m_pChannel->ReadFile(data->hSFTP, data->offset, dwSize);
@@ -1465,9 +1468,11 @@ STDMETHODIMP CSFTPFolderSFTP::ReadFile(HANDLE hFile, void* outBuffer, DWORD dwSi
 		delete pData;
 		return hr;
 	}
+	if (pData->bIsEOF)
+		data->bIsEOF = true;
 	if (pdwRead)
 		*pdwRead = pData->readBytes;
-	auto hr = pData->bufferCapacity < pData->readBytes ? S_FALSE : S_OK;
+	auto hr = pData->bufferCapacity > pData->readBytes ? S_FALSE : S_OK;
 	delete pData;
 	return hr;
 }
@@ -1549,8 +1554,13 @@ STDMETHODIMP CSFTPFolderSFTP::SeekFile(HANDLE hFile, LARGE_INTEGER liDistanceToM
 		break;
 	}
 	}
-	if (data->offset > data->statstg.cbSize.QuadPart)
+	if (data->offset >= data->statstg.cbSize.QuadPart)
+	{
 		data->offset = data->statstg.cbSize.QuadPart;
+		data->bIsEOF = true;
+	}
+	else
+		data->bIsEOF = false;
 	if (lpNewFilePointer)
 		lpNewFilePointer->QuadPart = data->offset;
 	return S_OK;
@@ -1834,7 +1844,7 @@ STDMETHODIMP CSFTPFolderSFTP::SetFileTime(LPCWSTR lpszFileName, const FILETIME* 
 		auto* pItem = GetFileItem(lpszFileName, &pDirectory);
 		if (pItem && pDirectory)
 		{
-			pDirectory->UpdateFileAttrs(lpszFileName, pItem->IsDirectory());
+			pDirectory->UpdateFileAttrs(pItem->strFileName, pItem->IsDirectory());
 			pDirectory->Release();
 		}
 		return S_OK;
@@ -2732,6 +2742,16 @@ void CSFTPFolderSFTP::SFTPConfirm(CSFTPChannel* pChannel, CSFTPMessage* pMsg, in
 			m_listWaitResponse.Remove(uMsgID);
 		}
 		break;
+		case CWaitResponseData::WRD_READDATA:
+		{
+			CSFTPWaitReadData* pData = static_cast<CSFTPWaitReadData*>(p);
+			pData->uMsgID = 0;
+			//*(pData->pbResult) = (nStatus == SSH_FX_OK);
+			pData->readBytes = 0;
+			pData->bIsEOF = true;
+			m_listWaitResponse.Remove(uMsgID);
+		}
+		break;
 		}
 	}
 }
@@ -3026,6 +3046,8 @@ void CSFTPFolderSFTP::SFTPReceiveData(CSFTPChannel* pChannel, CSFTPMessage* pMsg
 			DWORD dwCopyBytes = pData->bufferCapacity > nLen ? static_cast<DWORD>(nLen) : pData->bufferCapacity;
 			memcpy(pData->outBuffer, pvData, dwCopyBytes);
 			pData->readBytes = dwCopyBytes;
+			if (pbEOF && *pbEOF)
+				pData->bIsEOF = true;
 		}
 	}
 }

@@ -11,6 +11,8 @@
 //#include "SFileVw.h"
 #include "CommndUI.h"
 
+#include "SyncDlg.h"
+
 #ifndef CWM_GETISHELLBROWSER
 #define CWM_GETISHELLBROWSER  (WM_USER + 7)
 #endif
@@ -183,6 +185,7 @@ public:
 	CShellFolderFileView m_wndListViewServer;
 	CMyWindow m_wndToolBar;
 	CMyWindow m_wndStatusBar;
+	CSyncDetailDialog m_SyncDetailDialog;
 	bool m_bLocalAddressSelChanged;
 	bool m_bServerAddressSelChanged;
 
@@ -212,6 +215,9 @@ public:
 	void DoUpload();
 	void DoDownloadAll();
 	void DoUploadAll();
+	void DoSyncLeftToRight();
+	void DoSyncRightToLeft();
+	void DoSyncDetail();
 
 	void DeleteSelection();
 	void ShowOption();

@@ -19,6 +19,7 @@
 #include "FTPStrm.h"
 
 #include "RFolder.h"
+#include "Sync.h"
 
 #ifdef _DEBUG
 #include "FTPFldr.h"
@@ -735,6 +736,12 @@ STDMETHODIMP CFTPDirectoryBase::QueryInterface(REFIID riid, void** ppv)
 	else if (IsEqualIID(riid, IID_CFTPDirectoryBase))
 	{
 		*ppv = static_cast<CFTPDirectoryBase*>(this);
+		AddRef();
+		return S_OK;
+	}
+	else if (IsEqualIID(riid, IID_IEasySFTPDirectorySynchronization))
+	{
+		*ppv = static_cast<IEasySFTPDirectorySynchronization*>(this);
 		AddRef();
 		return S_OK;
 	}
@@ -2501,6 +2508,104 @@ STDMETHODIMP CFTPDirectoryBase::get_Url(BSTR* pRet)
 	return *pRet ? S_OK : E_OUTOFMEMORY;
 }
 
+STDMETHODIMP CFTPDirectoryBase::SynchronizeFrom(LONG_PTR hWndOwner, BSTR bstrSourceDirectory, EasySFTPSynchronizeMode Flags)
+{
+	IShellFolder* pFolder;
+	auto hr = ::SHGetDesktopFolder(&pFolder);
+	if (FAILED(hr))
+		return hr;
+	PIDLIST_RELATIVE pidl = NULL;
+	hr = pFolder->ParseDisplayName(reinterpret_cast<HWND>(hWndOwner), NULL, bstrSourceDirectory, NULL, &pidl, NULL);
+	if (FAILED(hr))
+	{
+		pFolder->Release();
+		return hr;
+	}
+	if (!pidl)
+	{
+		pFolder->Release();
+		return E_UNEXPECTED;
+	}
+	IShellFolder* pChild;
+	hr = pFolder->BindToObject(pidl, NULL, IID_IShellFolder, reinterpret_cast<void**>(&pChild));
+	::CoTaskMemFree(pidl);
+	pFolder->Release();
+	if (FAILED(hr))
+		return hr;
+	hr = SynchronizeFolderFrom(hWndOwner, pChild, Flags);
+	pChild->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::SynchronizeDirectoryFrom(LONG_PTR hWndOwner, IEasySFTPDirectory* pSourceDirectory, EasySFTPSynchronizeMode Flags)
+{
+	return SynchronizeFolderFrom(hWndOwner, pSourceDirectory, Flags);
+}
+
+STDMETHODIMP CFTPDirectoryBase::SynchronizeFolderFrom(LONG_PTR hWndOwner, IUnknown* pSourceShellFolder, EasySFTPSynchronizeMode Flags)
+{
+	if (!pSourceShellFolder)
+		return E_INVALIDARG;
+	IShellFolder* pFolder = NULL;
+	auto hr = pSourceShellFolder->QueryInterface(IID_IShellFolder, reinterpret_cast<void**>(&pFolder));
+	if (FAILED(hr))
+		return DISP_E_TYPEMISMATCH;
+
+	hr = EasySFTPSynchronizeFrom(pFolder, this, reinterpret_cast<HWND>(hWndOwner), Flags);
+
+	pFolder->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::SynchronizeTo(LONG_PTR hWndOwner, BSTR bstrTargetDirectory, EasySFTPSynchronizeMode Flags)
+{
+	IShellFolder* pFolder;
+	auto hr = ::SHGetDesktopFolder(&pFolder);
+	if (FAILED(hr))
+		return hr;
+	PIDLIST_RELATIVE pidl = NULL;
+	hr = pFolder->ParseDisplayName(reinterpret_cast<HWND>(hWndOwner), NULL, bstrTargetDirectory, NULL, &pidl, NULL);
+	if (FAILED(hr))
+	{
+		pFolder->Release();
+		return hr;
+	}
+	if (!pidl)
+	{
+		pFolder->Release();
+		return E_UNEXPECTED;
+	}
+	IShellFolder* pChild;
+	hr = pFolder->BindToObject(pidl, NULL, IID_IShellFolder, reinterpret_cast<void**>(&pChild));
+	::CoTaskMemFree(pidl);
+	pFolder->Release();
+	if (FAILED(hr))
+		return hr;
+	hr = SynchronizeFolderTo(hWndOwner, pChild, Flags);
+	pChild->Release();
+	return hr;
+}
+
+STDMETHODIMP CFTPDirectoryBase::SynchronizeDirectoryTo(LONG_PTR hWndOwner, IEasySFTPDirectory* pTargetDirectory, EasySFTPSynchronizeMode Flags)
+{
+	return SynchronizeFolderFrom(hWndOwner, pTargetDirectory, Flags);
+}
+
+STDMETHODIMP CFTPDirectoryBase::SynchronizeFolderTo(LONG_PTR hWndOwner, IUnknown* pTargetShellFolder, EasySFTPSynchronizeMode Flags)
+{
+	if (!pTargetShellFolder)
+		return E_INVALIDARG;
+	IShellFolder* pFolder = NULL;
+	auto hr = pTargetShellFolder->QueryInterface(IID_IShellFolder, reinterpret_cast<void**>(&pFolder));
+	if (FAILED(hr))
+		return DISP_E_TYPEMISMATCH;
+
+	hr = EasySFTPSynchronizeTo(this, pFolder, reinterpret_cast<HWND>(hWndOwner), Flags);
+
+	pFolder->Release();
+	return hr;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 STDMETHODIMP CFTPDirectoryBase::CreateStream(const OLECHAR* pwcsName, DWORD grfMode, DWORD reserved1, DWORD reserved2, IStream** ppstm)
@@ -2521,7 +2626,13 @@ STDMETHODIMP CFTPDirectoryBase::CreateStorage(const OLECHAR* pwcsName, DWORD grf
 		return E_POINTER;
 	if (grfMode & (STGM_SHARE_DENY_READ | STGM_SHARE_DENY_WRITE | STGM_SHARE_EXCLUSIVE | STGM_PRIORITY | STGM_CONVERT | STGM_TRANSACTED | STGM_NOSCRATCH | STGM_NOSNAPSHOT | STGM_SIMPLE | STGM_DIRECT_SWMR | STGM_DELETEONRELEASE))
 		return STG_E_INVALIDFLAG;
-	auto hr = GetRoot()->CreateFTPDirectory(NULL, this, pwcsName);
+	auto* pRoot = GetRoot();
+	if ((grfMode & STGM_CREATE) == STGM_FAILIFTHERE)
+	{
+		if (pRoot->IsDirectoryExists(NULL, this, pwcsName) == S_OK)
+			return STG_E_FILEALREADYEXISTS;
+	}
+	auto hr = pRoot->CreateFTPDirectory(NULL, this, pwcsName);
 	if (FAILED(hr))
 		return hr;
 	CFTPDirectoryBase* pDir;

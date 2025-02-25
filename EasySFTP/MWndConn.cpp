@@ -8,6 +8,7 @@
 #include "EasySFTP.h"
 #include "MainWnd.h"
 
+#include "CallSync.h"
 #include "IDList.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,5 +161,83 @@ void CMainWindow::DoUploadAll()
 		pObject->Release();
 		//SendObject(DROPEFFECT_COPY, pObject, &hr, m_wndServerAddress.m_strDirectory);
 		//return;
+	}
+}
+
+void CMainWindow::DoSyncLeftToRight()
+{
+	::EasySFTPSynchronizeAuto(m_wndListViewLocal.m_pFolder, m_wndListViewServer.m_pFolder, m_hWnd, EasySFTPSynchronizeMode::SyncNormal);
+}
+
+void CMainWindow::DoSyncRightToLeft()
+{
+	::EasySFTPSynchronizeAuto(m_wndListViewServer.m_pFolder, m_wndListViewLocal.m_pFolder, m_hWnd, EasySFTPSynchronizeMode::SyncNormal);
+}
+
+static HRESULT _GetPath(IShellFolder* pRoot, PCIDLIST_ABSOLUTE pidl, CMyStringW& rstr)
+{
+	PIDLIST_ABSOLUTE pidlParent = NULL;
+	PITEMID_CHILD pidlChild = NULL;
+	if (!IsDesktopIDList(pidl))
+	{
+		pidlParent = ::RemoveOneChild(pidl);
+		if (!pidlParent)
+			return E_OUTOFMEMORY;
+		pidlChild = ::GetChildItemIDList(pidl);
+		if (!pidlChild)
+		{
+			::CoTaskMemFree(pidlParent);
+			return E_OUTOFMEMORY;
+		}
+	}
+	HRESULT hr;
+	STRRET strret;
+	strret.uType = STRRET_WSTR;
+	if (!pidlParent || !pidlChild)
+	{
+		hr = pRoot->GetDisplayNameOf(NULL, SHGDN_NORMAL | SHGDN_FORPARSING | SHGDN_FORADDRESSBAR, &strret);
+	}
+	else
+	{
+		IShellFolder* pParent;
+		hr = pRoot->BindToObject(pidlParent, NULL, IID_IShellFolder, reinterpret_cast<void**>(&pParent));
+		if (SUCCEEDED(hr))
+		{
+			hr = pParent->GetDisplayNameOf(pidlChild, SHGDN_NORMAL | SHGDN_FORPARSING | SHGDN_FORADDRESSBAR, &strret);
+			pParent->Release();
+		}
+	}
+	if (FAILED(hr))
+		return hr;
+
+	switch (strret.uType)
+	{
+		case STRRET_WSTR:
+			rstr = strret.pOleStr;
+			::CoTaskMemFree(strret.pOleStr);
+			break;
+		case STRRET_CSTR:
+			rstr = strret.cStr;
+			break;
+		case STRRET_OFFSET:
+			rstr = (LPCSTR)(((LPCBYTE)pidlChild) + strret.uOffset);
+			break;
+	}
+	if (pidlChild)
+		::CoTaskMemFree(pidlChild);
+	if (pidlParent)
+		::CoTaskMemFree(pidlParent);
+	return S_OK;
+}
+
+void CMainWindow::DoSyncDetail()
+{
+	_GetPath(m_wndAddress.m_pFolderRoot, m_wndListViewLocal.m_lpidlAbsoluteMe, m_SyncDetailDialog.m_strLeft);
+	_GetPath(m_wndAddress.m_pFolderRoot, m_wndListViewServer.m_lpidlAbsoluteMe, m_SyncDetailDialog.m_strRight);
+	if (m_SyncDetailDialog.ModalDialogW(m_hWnd) == IDOK)
+	{
+		auto* pFolderFrom = m_SyncDetailDialog.m_bIsLeftToRight ? m_wndListViewLocal.m_pFolder : m_wndListViewServer.m_pFolder;
+		auto* pFolderTo = m_SyncDetailDialog.m_bIsLeftToRight ? m_wndListViewServer.m_pFolder : m_wndListViewLocal.m_pFolder;
+		::EasySFTPSynchronizeAuto(pFolderFrom, pFolderTo, m_hWnd, m_SyncDetailDialog.m_Flags);
 	}
 }

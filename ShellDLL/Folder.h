@@ -51,6 +51,7 @@ class CFTPDirectoryBase : public CFolderBase,
 	public IStorage,
 	public IThumbnailHandlerFactory,
 	public IShellFolderPropertyInformation,
+	public IEasySFTPDirectorySynchronization,
 	public IEasySFTPOldDirectory//,
 	//public IFTPDataObjectListener
 {
@@ -138,6 +139,13 @@ public:
 	STDMETHODNOVIRTUAL(CreateShortcut)(BSTR LinkName, BSTR TargetName);
 	STDMETHODNOVIRTUAL(get_FullPath)(BSTR* pRet);
 	STDMETHODNOVIRTUAL(get_Url)(BSTR* pRet);
+
+	STDMETHODNOVIRTUAL(SynchronizeFrom)(LONG_PTR hWndOwner, BSTR bstrSourceDirectory, EasySFTPSynchronizeMode Flags);
+	STDMETHODNOVIRTUAL(SynchronizeDirectoryFrom)(LONG_PTR hWndOwner, IEasySFTPDirectory* pSourceDirectory, EasySFTPSynchronizeMode Flags);
+	STDMETHODNOVIRTUAL(SynchronizeFolderFrom)(LONG_PTR hWndOwner, IUnknown* pSourceShellFolder, EasySFTPSynchronizeMode Flags);
+	STDMETHODNOVIRTUAL(SynchronizeTo)(LONG_PTR hWndOwner, BSTR bstrTargetDirectory, EasySFTPSynchronizeMode Flags);
+	STDMETHODNOVIRTUAL(SynchronizeDirectoryTo)(LONG_PTR hWndOwner, IEasySFTPDirectory* pTargetDirectory, EasySFTPSynchronizeMode Flags);
+	STDMETHODNOVIRTUAL(SynchronizeFolderTo)(LONG_PTR hWndOwner, IUnknown* pTargetShellFolder, EasySFTPSynchronizeMode Flags);
 
 	// IEasySFTPOldDirectory
 public:
@@ -249,27 +257,37 @@ public:
 };
 
 template <class T>
-class CFTPDirectoryT : public CFTPDirectoryBase, public CDispatchImplNoUnknownT<T>
+class CFTPDirectoryT : public CFTPDirectoryBase, public CMultipleDispatchImplBase, public T
 {
+private:
+	const CMultipleDispatchImplBase::Entry s_DispatchEntries[3] = {
+		{ ::GetTypeInfo(IID_IEasySFTPDirectory), &IID_IEasySFTPDirectory },
+		{ ::GetTypeInfo(IID_IEasySFTPDirectorySynchronization), &IID_IEasySFTPDirectorySynchronization },
+		{ NULL, NULL }
+	};
 public:
 	CFTPDirectoryT(CDelegateMallocData* pMallocData,
 		CFTPDirectoryItem* pItemMe,
 		CFTPDirectoryBase* pParent,
 		LPCWSTR lpszDirectory)
 		: CFTPDirectoryBase(pMallocData, pItemMe, pParent, lpszDirectory)
-		, CDispatchImplNoUnknownT(::GetTypeInfo(IID_IEasySFTPDirectory))
+		, CMultipleDispatchImplBase(s_DispatchEntries)
 	{
 		static_assert(std::is_base_of<IEasySFTPDirectory, T>::value, "T is not derived from IEasySFTPDirectory");
 	}
 protected:
 	CFTPDirectoryT(CDelegateMallocData* pMallocData, CFTPDirectoryItem* pItemMe, ITypeInfo* pInfo)
 		: CFTPDirectoryBase(pMallocData, pItemMe, pInfo)
-		, CDispatchImplNoUnknownT(pInfo) {}
+		, CMultipleDispatchImplBase(s_DispatchEntries) {
+		const_cast<CMultipleDispatchImplBase::Entry&>(s_DispatchEntries[0]).pInfo = pInfo;
+	}
 
 public:
 	virtual ~CFTPDirectoryT() {}
 
 	FORWARD_UNKNOWN_IMPL_BASE(CFTPDirectoryBase)
+
+	FORWARD_DISPATCH_IMPL_BASE_NO_UNKNOWN(CMultipleDispatchImplBase)
 
 public:
 	STDMETHOD(get_Name)(BSTR* pRet) override { return CFTPDirectoryBase::get_Name(pRet); }
@@ -293,8 +311,22 @@ public:
 	STDMETHOD(CreateShortcut)(BSTR LinkName, BSTR TargetName) override { return CFTPDirectoryBase::CreateShortcut(LinkName, TargetName); }
 	STDMETHOD(get_FullPath)(BSTR* pRet) override { return CFTPDirectoryBase::get_FullPath(pRet); }
 	STDMETHOD(get_Url)(BSTR* pRet) override { return CFTPDirectoryBase::get_Url(pRet); }
+	STDMETHOD(SynchronizeFrom)(LONG_PTR hWndOwner, BSTR bstrSourceDirectory, EasySFTPSynchronizeMode Flags) override { return CFTPDirectoryBase::SynchronizeFrom(hWndOwner, bstrSourceDirectory, Flags); }
+	STDMETHOD(SynchronizeDirectoryFrom)(LONG_PTR hWndOwner, IEasySFTPDirectory* pSourceDirectory, EasySFTPSynchronizeMode Flags) override { return CFTPDirectoryBase::SynchronizeDirectoryFrom(hWndOwner, pSourceDirectory, Flags); }
+	STDMETHOD(SynchronizeFolderFrom)(LONG_PTR hWndOwner, IUnknown* pSourceShellFolder, EasySFTPSynchronizeMode Flags) override { return CFTPDirectoryBase::SynchronizeFolderFrom(hWndOwner, pSourceShellFolder, Flags); }
+	STDMETHOD(SynchronizeTo)(LONG_PTR hWndOwner, BSTR bstrTargetDirectory, EasySFTPSynchronizeMode Flags) override { return CFTPDirectoryBase::SynchronizeTo(hWndOwner, bstrTargetDirectory, Flags); }
+	STDMETHOD(SynchronizeDirectoryTo)(LONG_PTR hWndOwner, IEasySFTPDirectory* pTargetDirectory, EasySFTPSynchronizeMode Flags) override { return CFTPDirectoryBase::SynchronizeDirectoryTo(hWndOwner, pTargetDirectory, Flags); }
+	STDMETHOD(SynchronizeFolderTo)(LONG_PTR hWndOwner, IUnknown* pTargetShellFolder, EasySFTPSynchronizeMode Flags) override { return CFTPDirectoryBase::SynchronizeFolderTo(hWndOwner, pTargetShellFolder, Flags); }
 
-	virtual IEasySFTPDirectory* GetThisDirectory() { return this; }
+	virtual IEasySFTPDirectory* GetThisDirectory() override { return this; }
+	virtual void* GetThisForDispatch(REFIID riid) override
+	{
+		if (IsEqualIID(riid, IID_IEasySFTPDirectory))
+			return static_cast<IEasySFTPDirectory*>(this);
+		if (IsEqualIID(riid, IID_IEasySFTPDirectorySynchronization))
+			return static_cast<IEasySFTPDirectorySynchronization*>(this);
+		return NULL;
+	}
 };
 
 using CFTPDirectory = CFTPDirectoryT<IEasySFTPDirectory>;

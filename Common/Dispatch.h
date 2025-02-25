@@ -50,6 +50,96 @@ private:
 	ITypeInfo* m_pInfo;
 };
 
+class CMultipleDispatchImplBase
+{
+public:
+	struct Entry
+	{
+		ITypeInfo* pInfo;
+		const IID* pIID;
+	};
+
+	CMultipleDispatchImplBase(const Entry* pEntries) : m_pEntries(pEntries) {}
+	virtual ~CMultipleDispatchImplBase()
+	{
+		auto* p = m_pEntries;
+		while (p->pInfo)
+		{
+			p->pInfo->Release();
+			++p;
+		}
+	}
+
+	virtual void* GetThisForDispatch(REFIID iid) = 0;
+
+	HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT* pctinfo)
+	{
+		if (!pctinfo)
+			return E_POINTER;
+		*pctinfo = 0;
+		auto* p = m_pEntries;
+		while (p->pInfo)
+		{
+			(*pctinfo)++;
+			++p;
+		}
+		return S_OK;
+	}
+
+	HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo)
+	{
+		if (!ppTInfo)
+			return E_POINTER;
+		auto* p = m_pEntries;
+		while (true)
+		{
+			if (iTInfo == 0)
+			{
+				*ppTInfo = p->pInfo;
+				p->pInfo->AddRef();
+				return S_OK;
+			}
+			--iTInfo;
+			++p;
+			if (!p->pInfo)
+				return E_INVALIDARG;
+		}
+	}
+
+	HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, LPOLESTR* rgszNames, UINT cNames, LCID lcid, DISPID* rgDispId)
+	{
+		auto* p = m_pEntries;
+		while (p->pInfo)
+		{
+			TYPEATTR* pAttr;
+			p->pInfo->GetTypeAttr(&pAttr);
+			pAttr->cFuncs;
+			auto hr = ::DispGetIDsOfNames(p->pInfo, rgszNames, cNames, rgDispId);
+			if (SUCCEEDED(hr))
+				return hr;
+			++p;
+		}
+		return DISP_E_UNKNOWNNAME;
+	}
+
+	HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS* pDispParams,
+		VARIANT* pVarResult, EXCEPINFO* pExcepInfo, UINT* puArgErr)
+	{
+		auto* p = m_pEntries;
+		while (p->pInfo)
+		{
+			auto hr = ::DispInvoke(GetThisForDispatch(*p->pIID), p->pInfo, dispIdMember, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
+			if (SUCCEEDED(hr))
+				return hr;
+			++p;
+		}
+		return DISP_E_MEMBERNOTFOUND;
+	}
+
+private:
+	const Entry* m_pEntries;
+};
+
 #define FORWARD_DISPATCH_IMPL_BASE_NO_UNKNOWN(base) \
 	STDMETHOD(GetTypeInfoCount)(UINT* pctinfo) override{return base::GetTypeInfoCount(pctinfo);} \
 	STDMETHOD(GetTypeInfo)(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo) override{return base::GetTypeInfo(iTInfo, lcid, ppTInfo);} \

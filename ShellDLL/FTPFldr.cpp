@@ -736,7 +736,7 @@ STDMETHODIMP CSFTPFolderFTP::SetFileTime(LPCWSTR lpszFileName, const FILETIME* p
 		auto* pItem = GetFileItem(lpszFileName, &pDirectory);
 		if (pItem && pDirectory)
 		{
-			pDirectory->UpdateFileAttrs(lpszFileName, pItem->IsDirectory());
+			pDirectory->UpdateFileAttrs(pItem->strFileName, pItem->IsDirectory());
 			pDirectory->Release();
 		}
 	}

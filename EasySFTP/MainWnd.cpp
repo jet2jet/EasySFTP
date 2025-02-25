@@ -8,6 +8,7 @@
 #include "EasySFTP.h"
 #include "MainWnd.h"
 
+#include "CallSync.h"
 #include "IDList.h"
 //#include "MySocket.h"
 
@@ -720,7 +721,7 @@ void CMainWindow::_SetTextMode(bool bServer, LONG nTextMode)
 {
 	if (m_wndListViewServer.m_pRootDirectory)
 	{
-		EasySFTPTextMode nTMode;
+		EasySFTPTextModeFlags nTMode;
 		if (SUCCEEDED(m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode)))
 		{
 			if (bServer)
@@ -1666,6 +1667,15 @@ LRESULT CMainWindow::OnCommand(WPARAM wParam, LPARAM lParam)
 		case ID_EDIT_DOWNLOAD_ALL:
 			DoDownloadAll();
 			break;
+		case ID_EDIT_SYNC_LEFT_TO_RIGHT:
+			DoSyncLeftToRight();
+			break;
+		case ID_EDIT_SYNC_RIGHT_TO_LEFT:
+			DoSyncRightToLeft();
+			break;
+		case ID_EDIT_SYNC_DETAIL:
+			DoSyncDetail();
+			break;
 		case ID_EDIT_SELECT_ALL:
 			if (IsWindowOrChildrenFocused(m_wndListViewServer, ::GetFocus()))
 				//DoPaste();
@@ -2050,6 +2060,12 @@ void CMainWindow::UpdateUIItem(CCommandUIItem* pUIItem)
 		case ID_EDIT_UPLOAD_ALL:
 			pUIItem->Enable(IS_CONNECTED());
 			break;
+		case ID_EDIT_SYNC_LEFT_TO_RIGHT:
+			pUIItem->Enable(IsSynchronizationSupported(m_wndListViewLocal.m_pFolder, m_wndListViewServer.m_pFolder));
+			break;
+		case ID_EDIT_SYNC_RIGHT_TO_LEFT:
+			pUIItem->Enable(IsSynchronizationSupported(m_wndListViewServer.m_pFolder, m_wndListViewLocal.m_pFolder));
+			break;
 		//case ID_EDIT_PASTE:
 		//	if (IsWindowOrChildrenFocused(m_wndListViewServer, hWndFocus))
 		//		//pUIItem->Enable(IS_CONNECTED() && CanPaste());
@@ -2364,7 +2380,7 @@ LRESULT CMainWindow::OnToolBarDropDown(WPARAM wParam, LPARAM lParam)
 	// NMTOOLBARA and NMTOOLBARW are the same
 	LPNMTOOLBAR lptb = (LPNMTOOLBAR) lParam;
 	bool bServer;
-	EasySFTPTextMode nTMode = EasySFTPTextMode::NoConversion;
+	EasySFTPTextModeFlags nTMode = EasySFTPTextMode::NoConversion;
 	if (m_wndListViewServer.m_pRootDirectory)
 		m_wndListViewServer.m_pRootDirectory->get_TextMode(&nTMode);
 
@@ -2412,22 +2428,22 @@ LRESULT CMainWindow::OnToolBarDropDown(WPARAM wParam, LPARAM lParam)
 	{
 		if (!bServer)
 		{
-			nTMode = static_cast<EasySFTPTextMode>(nTMode & ~EasySFTPTextMode::BufferMask);
+			nTMode &= ~EasySFTPTextMode::BufferMask;
 			switch (uRet)
 			{
-				case ID_RETURN_MODE_CRLF: nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::BufferCrLf); break;
-				case ID_RETURN_MODE_CR:   nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::BufferCr); break;
-				case ID_RETURN_MODE_LF:   nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::BufferLf); break;
+				case ID_RETURN_MODE_CRLF: nTMode |= EasySFTPTextMode::BufferCrLf; break;
+				case ID_RETURN_MODE_CR:   nTMode |= EasySFTPTextMode::BufferCr; break;
+				case ID_RETURN_MODE_LF:   nTMode |= EasySFTPTextMode::BufferLf; break;
 			}
 		}
 		else
 		{
-			nTMode = static_cast<EasySFTPTextMode>(nTMode & ~EasySFTPTextMode::StreamMask);
+			nTMode &= ~EasySFTPTextMode::StreamMask;
 			switch (uRet)
 			{
-				case ID_RETURN_MODE_CRLF: nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::StreamCrLf); break;
-				case ID_RETURN_MODE_CR:   nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::StreamCr); break;
-				case ID_RETURN_MODE_LF:   nTMode = static_cast<EasySFTPTextMode>(nTMode | EasySFTPTextMode::StreamLf); break;
+				case ID_RETURN_MODE_CRLF: nTMode |= EasySFTPTextMode::StreamCrLf; break;
+				case ID_RETURN_MODE_CR:   nTMode |= EasySFTPTextMode::StreamCr; break;
+				case ID_RETURN_MODE_LF:   nTMode |= EasySFTPTextMode::StreamLf; break;
 			}
 		}
 		m_wndListViewServer.m_pRootDirectory->put_TextMode(nTMode);

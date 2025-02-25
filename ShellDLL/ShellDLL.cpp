@@ -405,33 +405,6 @@ void GetCallerName(CMyStringW& rstr, const WCHAR* const* ppvIgnoreNames)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef HRESULT (STDAPICALLTYPE* T_SHCreateItemFromIDList)(__in PCIDLIST_ABSOLUTE pidl, __in REFIID riid, __deref_out void **ppv);
-typedef HRESULT (STDAPICALLTYPE* T_SHCreateShellItem)(__in_opt PCIDLIST_ABSOLUTE pidlParent, __in_opt IShellFolder *psfParent, __in PCUITEMID_CHILD pidl, __out IShellItem **ppsi);
-static bool s_bSHItemFuncInitialized = false;
-static T_SHCreateItemFromIDList s_pfnSHCreateItemFromIDList = NULL;
-static T_SHCreateShellItem s_pfnSHCreateShellItem = NULL;
-
-STDAPI MyCreateShellItem(PCIDLIST_ABSOLUTE pidl, IShellItem** ppItem)
-{
-	if (!s_bSHItemFuncInitialized)
-	{
-		HINSTANCE hInstShell32 = ::GetModuleHandle(_T("shell32.dll"));
-		if (hInstShell32)
-		{
-			s_pfnSHCreateItemFromIDList = (T_SHCreateItemFromIDList) ::GetProcAddress(hInstShell32, "SHCreateItemFromIDList");
-			if (!s_pfnSHCreateItemFromIDList)
-				s_pfnSHCreateShellItem = (T_SHCreateShellItem) ::GetProcAddress(hInstShell32, "SHCreateShellItem");
-		}
-		s_bSHItemFuncInitialized = true;
-	}
-
-	if (s_pfnSHCreateItemFromIDList)
-		return s_pfnSHCreateItemFromIDList(pidl, IID_IShellItem, (void**) ppItem);
-	if (s_pfnSHCreateShellItem)
-		return s_pfnSHCreateShellItem(NULL, NULL, (PCUITEMID_CHILD) pidl, ppItem);
-	return E_NOTIMPL;
-}
-
 static bool __stdcall _GetThumbnailProviderCLSID(HKEY hKeyParent, CLSID* pclsid)
 {
 	HKEY hKey;

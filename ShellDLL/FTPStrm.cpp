@@ -68,6 +68,8 @@ CFTPFileStream::CFTPFileStream(CFTPDirectoryRootBase* pRoot)
 
 CFTPFileStream::~CFTPFileStream()
 {
+	if (m_hFile)
+		m_pRoot->CloseFile(m_hFile);
 	m_pRoot->Release();
 }
 

@@ -146,12 +146,14 @@
   <ItemGroup>
     <ClCompile Include="AppClass.cpp" />
     <ClCompile Include="Convert.cpp" />
+    <ClCompile Include="FileStrm.cpp" />
     <ClCompile Include="IDList.cpp" />
     <ClCompile Include="INIFile.cpp" />
     <ClCompile Include="MyDialog.cpp" />
     <ClCompile Include="MyFunc.cpp" />
     <ClCompile Include="MyProp.cpp" />
     <ClCompile Include="MyWindow.cpp" />
+    <ClCompile Include="ShlItem.cpp" />
     <ClCompile Include="Splitter.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -160,16 +162,19 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="SUString.cpp" />
+    <ClCompile Include="SyncUtil.cpp" />
     <ClCompile Include="unicode.cpp" />
     <ClCompile Include="UString.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AppClass.h" />
     <ClInclude Include="Array.h" />
+    <ClInclude Include="BitFlags.h" />
     <ClInclude Include="Convert.h" />
     <ClInclude Include="Dispatch.h" />
     <ClInclude Include="EnmArray.h" />
     <ClInclude Include="ESFTPFld.h" />
+    <ClInclude Include="FileStrm.h" />
     <ClInclude Include="IDList.h" />
     <ClInclude Include="INIFile.h" />
     <ClInclude Include="KeyList.h" />
@@ -179,9 +184,11 @@
     <ClInclude Include="MyProp.h" />
     <ClInclude Include="MyWindow.h" />
     <ClInclude Include="RefDelg.h" />
+    <ClInclude Include="ShlItem.h" />
     <ClInclude Include="Splitter.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="SUString.h" />
+    <ClInclude Include="SyncUtil.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextMode.h" />
     <ClInclude Include="unicode.h" />

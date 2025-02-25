@@ -18,6 +18,7 @@
 #include "Dispatch.h"
 #include "IDList.h"
 #include "Func.h"
+#include "ShlItem.h"
 #include "TextStrm.h"
 #include "MySocket.h"
 #include "Lock.h"
@@ -139,8 +140,6 @@ struct CSFTPFileItem
 void LogWin32LastError(const WCHAR* pszFuncName);
 
 LPWSTR __stdcall DuplicateCoMemString(const CMyStringW& string);
-
-STDAPI MyCreateShellItem(PCIDLIST_ABSOLUTE pidl, IShellItem** ppItem);
 
 EXTERN_C PITEMID_CHILD __stdcall CreateRootCommandItem(IMalloc* pMalloc, WORD wID);
 EXTERN_C PITEMID_CHILD __stdcall CreateHostItem(IMalloc* pMalloc, EasySFTPConnectionMode ConnectionMode, WORD nPort, LPCWSTR lpszHostName);

@@ -68,11 +68,12 @@ struct CSFTPWaitAttrData : public CSFTPWaitConfirm
 
 struct CSFTPWaitReadData : public CSFTPWaitConfirm
 {
-	inline CSFTPWaitReadData() : CSFTPWaitConfirm(WRD_READDATA), outBuffer(NULL), bufferCapacity(0), readBytes(0) {}
+	inline CSFTPWaitReadData() : CSFTPWaitConfirm(WRD_READDATA), outBuffer(NULL), bufferCapacity(0), readBytes(0), bIsEOF(false){}
 
 	void* outBuffer;
 	DWORD bufferCapacity;
 	DWORD readBytes;
+	bool bIsEOF;
 };
 
 struct CSFTPSendFileData
@@ -333,5 +334,6 @@ protected:
 		STATSTG statstg;
 		DWORD grfMode;
 		DWORD dwRefCount;
+		bool bIsEOF;
 	};
 };

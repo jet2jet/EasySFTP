@@ -97,11 +97,74 @@ typedef interface IEasySFTPRoot IEasySFTPRoot;
 #endif 	/* __IEasySFTPRoot_FWD_DEFINED__ */
 
 
+#ifndef __DEasySFTPFile_FWD_DEFINED__
+#define __DEasySFTPFile_FWD_DEFINED__
+typedef interface DEasySFTPFile DEasySFTPFile;
+
+#endif 	/* __DEasySFTPFile_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPFiles_FWD_DEFINED__
+#define __DEasySFTPFiles_FWD_DEFINED__
+typedef interface DEasySFTPFiles DEasySFTPFiles;
+
+#endif 	/* __DEasySFTPFiles_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPStream_FWD_DEFINED__
+#define __DEasySFTPStream_FWD_DEFINED__
+typedef interface DEasySFTPStream DEasySFTPStream;
+
+#endif 	/* __DEasySFTPStream_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPDirectory_FWD_DEFINED__
+#define __DEasySFTPDirectory_FWD_DEFINED__
+typedef interface DEasySFTPDirectory DEasySFTPDirectory;
+
+#endif 	/* __DEasySFTPDirectory_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPRootDirectory_FWD_DEFINED__
+#define __DEasySFTPRootDirectory_FWD_DEFINED__
+typedef interface DEasySFTPRootDirectory DEasySFTPRootDirectory;
+
+#endif 	/* __DEasySFTPRootDirectory_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPAuthentication_FWD_DEFINED__
+#define __DEasySFTPAuthentication_FWD_DEFINED__
+typedef interface DEasySFTPAuthentication DEasySFTPAuthentication;
+
+#endif 	/* __DEasySFTPAuthentication_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPRoot_FWD_DEFINED__
+#define __DEasySFTPRoot_FWD_DEFINED__
+typedef interface DEasySFTPRoot DEasySFTPRoot;
+
+#endif 	/* __DEasySFTPRoot_FWD_DEFINED__ */
+
+
+#ifndef __IEasySFTPDirectorySynchronization_FWD_DEFINED__
+#define __IEasySFTPDirectorySynchronization_FWD_DEFINED__
+typedef interface IEasySFTPDirectorySynchronization IEasySFTPDirectorySynchronization;
+
+#endif 	/* __IEasySFTPDirectorySynchronization_FWD_DEFINED__ */
+
+
 #ifndef __IEasySFTPStringList_FWD_DEFINED__
 #define __IEasySFTPStringList_FWD_DEFINED__
 typedef interface IEasySFTPStringList IEasySFTPStringList;
 
 #endif 	/* __IEasySFTPStringList_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPStringList_FWD_DEFINED__
+#define __DEasySFTPStringList_FWD_DEFINED__
+typedef interface DEasySFTPStringList DEasySFTPStringList;
+
+#endif 	/* __DEasySFTPStringList_FWD_DEFINED__ */
 
 
 #ifndef __IEasySFTPHostSetting_FWD_DEFINED__
@@ -111,11 +174,25 @@ typedef interface IEasySFTPHostSetting IEasySFTPHostSetting;
 #endif 	/* __IEasySFTPHostSetting_FWD_DEFINED__ */
 
 
+#ifndef __DEasySFTPHostSetting_FWD_DEFINED__
+#define __DEasySFTPHostSetting_FWD_DEFINED__
+typedef interface DEasySFTPHostSetting DEasySFTPHostSetting;
+
+#endif 	/* __DEasySFTPHostSetting_FWD_DEFINED__ */
+
+
 #ifndef __IEasySFTPHostSettingList_FWD_DEFINED__
 #define __IEasySFTPHostSettingList_FWD_DEFINED__
 typedef interface IEasySFTPHostSettingList IEasySFTPHostSettingList;
 
 #endif 	/* __IEasySFTPHostSettingList_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPHostSettingList_FWD_DEFINED__
+#define __DEasySFTPHostSettingList_FWD_DEFINED__
+typedef interface DEasySFTPHostSettingList DEasySFTPHostSettingList;
+
+#endif 	/* __DEasySFTPHostSettingList_FWD_DEFINED__ */
 
 
 #ifndef __EasySFTPRoot_FWD_DEFINED__
@@ -260,6 +337,16 @@ extern "C"{
 
 
 
+
+
+
+
+
+
+
+#ifdef __cplusplus
+#include "BitFlags.h"
+#endif
 #define _ENUM_CLASS enum class
 #define enum _ENUM_CLASS
 typedef 
@@ -291,6 +378,9 @@ enum EasySFTPTextMode
         EncodeMask	= 0xf0
     } 	EasySFTPTextMode;
 
+#ifdef __cplusplus
+using EasySFTPTextModeFlags = BitFlags<EasySFTPTextMode>;
+#endif
 #define enum _ENUM_CLASS
 typedef 
 enum EasySFTPTransferMode
@@ -327,8 +417,25 @@ enum EasySFTPServerCharset
     } 	EasySFTPServerCharset;
 
 #undef enum
+typedef 
+enum EasySFTPSynchronizeMode
+    {
+        SyncNormal	= 0,
+        SyncExcludeHidden	= 0x1,
+        SyncDeleteIfNotExist	= 0x2,
+        SyncCopyOld	= 0x4,
+        SyncNoProgress	= 0x8,
+        SyncNoAsync	= 0x10
+    } 	EasySFTPSynchronizeMode;
+
+#ifdef __cplusplus
+using EasySFTPSynchronizeModeFlags = BitFlags<EasySFTPSynchronizeMode>;
+#endif
+#define enum _ENUM_CLASS
+#undef enum
 #undef _ENUM_CLASS
 #define NoConversion EasySFTPTextMode::NoConversion
+#define SyncNormal EasySFTPSynchronizeMode::SyncNormal
 
 EXTERN_C const IID LIBID_EasySFTP;
 
@@ -336,7 +443,7 @@ EXTERN_C const IID LIBID_EasySFTP;
 #define __IEasySFTPFile_INTERFACE_DEFINED__
 
 /* interface IEasySFTPFile */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 
 EXTERN_C const IID IID_IEasySFTPFile;
@@ -661,7 +768,7 @@ EXTERN_C const IID IID_IEasySFTPFile;
 #define __IEasySFTPFiles_INTERFACE_DEFINED__
 
 /* interface IEasySFTPFiles */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 
 EXTERN_C const IID IID_IEasySFTPFiles;
@@ -823,7 +930,7 @@ EXTERN_C const IID IID_IEasySFTPFiles;
 #define __IEasySFTPStream_INTERFACE_DEFINED__
 
 /* interface IEasySFTPStream */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 
 EXTERN_C const IID IID_IEasySFTPStream;
@@ -1047,7 +1154,7 @@ EXTERN_C const IID IID_IEasySFTPStream;
 #define __IEasySFTPDirectory_INTERFACE_DEFINED__
 
 /* interface IEasySFTPDirectory */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 
 EXTERN_C const IID IID_IEasySFTPDirectory;
@@ -1447,7 +1554,7 @@ EXTERN_C const IID IID_IEasySFTPDirectory;
 #define __IEasySFTPRootDirectory_INTERFACE_DEFINED__
 
 /* interface IEasySFTPRootDirectory */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 
 EXTERN_C const IID IID_IEasySFTPRootDirectory;
@@ -1896,7 +2003,7 @@ EXTERN_C const IID IID_IEasySFTPRootDirectory;
 #define __IEasySFTPAuthentication_INTERFACE_DEFINED__
 
 /* interface IEasySFTPAuthentication */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 
 EXTERN_C const IID IID_IEasySFTPAuthentication;
@@ -2133,9 +2240,10 @@ EXTERN_C const IID IID_IEasySFTPAuthentication;
 #define __IEasySFTPRoot_INTERFACE_DEFINED__
 
 /* interface IEasySFTPRoot */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 #undef NoConversion
+#undef SyncNormal
 
 EXTERN_C const IID IID_IEasySFTPRoot;
 
@@ -2390,11 +2498,1082 @@ EXTERN_C const IID IID_IEasySFTPRoot;
 #endif 	/* __IEasySFTPRoot_INTERFACE_DEFINED__ */
 
 
+#ifndef __DEasySFTPFile_DISPINTERFACE_DEFINED__
+#define __DEasySFTPFile_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPFile */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPFile;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-4848-9DF6-D7DA5B8D0199")
+    DEasySFTPFile : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPFileVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPFile * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPFile * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPFile * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPFile * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPFile * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPFile * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPFile * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPFileVtbl;
+
+    interface DEasySFTPFile
+    {
+        CONST_VTBL struct DEasySFTPFileVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPFile_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPFile_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPFile_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPFile_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPFile_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPFile_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPFile_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPFile_DISPINTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPFiles_DISPINTERFACE_DEFINED__
+#define __DEasySFTPFiles_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPFiles */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPFiles;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-484a-9DF6-D7DA5B8D0199")
+    DEasySFTPFiles : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPFilesVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPFiles * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPFiles * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPFiles * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPFiles * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPFiles * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPFiles * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPFiles * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPFilesVtbl;
+
+    interface DEasySFTPFiles
+    {
+        CONST_VTBL struct DEasySFTPFilesVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPFiles_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPFiles_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPFiles_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPFiles_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPFiles_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPFiles_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPFiles_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPFiles_DISPINTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPStream_DISPINTERFACE_DEFINED__
+#define __DEasySFTPStream_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPStream */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPStream;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-484c-9DF6-D7DA5B8D0199")
+    DEasySFTPStream : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPStreamVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPStream * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPStream * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPStream * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPStream * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPStream * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPStream * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPStream * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPStreamVtbl;
+
+    interface DEasySFTPStream
+    {
+        CONST_VTBL struct DEasySFTPStreamVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPStream_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPStream_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPStream_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPStream_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPStream_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPStream_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPStream_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPStream_DISPINTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPDirectory_DISPINTERFACE_DEFINED__
+#define __DEasySFTPDirectory_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPDirectory */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPDirectory;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-4846-9DF6-D7DA5B8D0199")
+    DEasySFTPDirectory : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPDirectoryVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPDirectory * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPDirectory * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPDirectory * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPDirectory * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPDirectory * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPDirectory * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPDirectory * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPDirectoryVtbl;
+
+    interface DEasySFTPDirectory
+    {
+        CONST_VTBL struct DEasySFTPDirectoryVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPDirectory_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPDirectory_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPDirectory_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPDirectory_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPDirectory_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPDirectory_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPDirectory_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPDirectory_DISPINTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPRootDirectory_DISPINTERFACE_DEFINED__
+#define __DEasySFTPRootDirectory_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPRootDirectory */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPRootDirectory;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-484e-9DF6-D7DA5B8D0199")
+    DEasySFTPRootDirectory : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPRootDirectoryVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPRootDirectory * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPRootDirectory * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPRootDirectory * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPRootDirectory * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPRootDirectory * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPRootDirectory * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPRootDirectory * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPRootDirectoryVtbl;
+
+    interface DEasySFTPRootDirectory
+    {
+        CONST_VTBL struct DEasySFTPRootDirectoryVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPRootDirectory_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPRootDirectory_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPRootDirectory_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPRootDirectory_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPRootDirectory_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPRootDirectory_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPRootDirectory_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPRootDirectory_DISPINTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPAuthentication_DISPINTERFACE_DEFINED__
+#define __DEasySFTPAuthentication_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPAuthentication */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPAuthentication;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-4850-9DF6-D7DA5B8D0199")
+    DEasySFTPAuthentication : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPAuthenticationVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPAuthentication * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPAuthentication * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPAuthentication * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPAuthentication * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPAuthentication * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPAuthentication * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPAuthentication * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPAuthenticationVtbl;
+
+    interface DEasySFTPAuthentication
+    {
+        CONST_VTBL struct DEasySFTPAuthenticationVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPAuthentication_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPAuthentication_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPAuthentication_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPAuthentication_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPAuthentication_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPAuthentication_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPAuthentication_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPAuthentication_DISPINTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPRoot_DISPINTERFACE_DEFINED__
+#define __DEasySFTPRoot_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPRoot */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPRoot;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-4844-9DF6-D7DA5B8D0199")
+    DEasySFTPRoot : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPRootVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPRoot * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPRoot * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPRoot * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPRoot * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPRoot * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPRoot * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPRoot * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPRootVtbl;
+
+    interface DEasySFTPRoot
+    {
+        CONST_VTBL struct DEasySFTPRootVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPRoot_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPRoot_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPRoot_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPRoot_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPRoot_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPRoot_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPRoot_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPRoot_DISPINTERFACE_DEFINED__ */
+
+
+#ifndef __IEasySFTPDirectorySynchronization_INTERFACE_DEFINED__
+#define __IEasySFTPDirectorySynchronization_INTERFACE_DEFINED__
+
+/* interface IEasySFTPDirectorySynchronization */
+/* [object][hidden][unique][uuid] */ 
+
+
+EXTERN_C const IID IID_IEasySFTPDirectorySynchronization;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("AD29C042-B9E3-465c-9DF6-D7DA5B8D0199")
+    IEasySFTPDirectorySynchronization : public IDispatch
+    {
+    public:
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE SynchronizeFrom( 
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ BSTR bstrSourceDirectory,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags = SyncNormal) = 0;
+        
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE SynchronizeDirectoryFrom( 
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ IEasySFTPDirectory *pSourceDirectory,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags = SyncNormal) = 0;
+        
+        virtual /* [hidden][id] */ HRESULT STDMETHODCALLTYPE SynchronizeFolderFrom( 
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ IUnknown *pSourceShellFolder,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags = SyncNormal) = 0;
+        
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE SynchronizeTo( 
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ BSTR bstrTargetDirectory,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags = SyncNormal) = 0;
+        
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE SynchronizeDirectoryTo( 
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ IEasySFTPDirectory *pTargetDirectory,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags = SyncNormal) = 0;
+        
+        virtual /* [hidden][id] */ HRESULT STDMETHODCALLTYPE SynchronizeFolderTo( 
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ IUnknown *pTargetShellFolder,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags = SyncNormal) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IEasySFTPDirectorySynchronizationVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IEasySFTPDirectorySynchronization * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IEasySFTPDirectorySynchronization * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPDirectorySynchronization, SynchronizeFrom)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *SynchronizeFrom )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ BSTR bstrSourceDirectory,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPDirectorySynchronization, SynchronizeDirectoryFrom)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *SynchronizeDirectoryFrom )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ IEasySFTPDirectory *pSourceDirectory,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPDirectorySynchronization, SynchronizeFolderFrom)
+        /* [hidden][id] */ HRESULT ( STDMETHODCALLTYPE *SynchronizeFolderFrom )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ IUnknown *pSourceShellFolder,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPDirectorySynchronization, SynchronizeTo)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *SynchronizeTo )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ BSTR bstrTargetDirectory,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPDirectorySynchronization, SynchronizeDirectoryTo)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *SynchronizeDirectoryTo )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ IEasySFTPDirectory *pTargetDirectory,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPDirectorySynchronization, SynchronizeFolderTo)
+        /* [hidden][id] */ HRESULT ( STDMETHODCALLTYPE *SynchronizeFolderTo )( 
+            IEasySFTPDirectorySynchronization * This,
+            /* [in] */ LONG_PTR hWndOwner,
+            /* [in] */ IUnknown *pTargetShellFolder,
+            /* [defaultvalue][in] */ EasySFTPSynchronizeMode Flags);
+        
+        END_INTERFACE
+    } IEasySFTPDirectorySynchronizationVtbl;
+
+    interface IEasySFTPDirectorySynchronization
+    {
+        CONST_VTBL struct IEasySFTPDirectorySynchronizationVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IEasySFTPDirectorySynchronization_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IEasySFTPDirectorySynchronization_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IEasySFTPDirectorySynchronization_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IEasySFTPDirectorySynchronization_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define IEasySFTPDirectorySynchronization_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define IEasySFTPDirectorySynchronization_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define IEasySFTPDirectorySynchronization_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+
+#define IEasySFTPDirectorySynchronization_SynchronizeFrom(This,hWndOwner,bstrSourceDirectory,Flags)	\
+    ( (This)->lpVtbl -> SynchronizeFrom(This,hWndOwner,bstrSourceDirectory,Flags) ) 
+
+#define IEasySFTPDirectorySynchronization_SynchronizeDirectoryFrom(This,hWndOwner,pSourceDirectory,Flags)	\
+    ( (This)->lpVtbl -> SynchronizeDirectoryFrom(This,hWndOwner,pSourceDirectory,Flags) ) 
+
+#define IEasySFTPDirectorySynchronization_SynchronizeFolderFrom(This,hWndOwner,pSourceShellFolder,Flags)	\
+    ( (This)->lpVtbl -> SynchronizeFolderFrom(This,hWndOwner,pSourceShellFolder,Flags) ) 
+
+#define IEasySFTPDirectorySynchronization_SynchronizeTo(This,hWndOwner,bstrTargetDirectory,Flags)	\
+    ( (This)->lpVtbl -> SynchronizeTo(This,hWndOwner,bstrTargetDirectory,Flags) ) 
+
+#define IEasySFTPDirectorySynchronization_SynchronizeDirectoryTo(This,hWndOwner,pTargetDirectory,Flags)	\
+    ( (This)->lpVtbl -> SynchronizeDirectoryTo(This,hWndOwner,pTargetDirectory,Flags) ) 
+
+#define IEasySFTPDirectorySynchronization_SynchronizeFolderTo(This,hWndOwner,pTargetShellFolder,Flags)	\
+    ( (This)->lpVtbl -> SynchronizeFolderTo(This,hWndOwner,pTargetShellFolder,Flags) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IEasySFTPDirectorySynchronization_INTERFACE_DEFINED__ */
+
+
 #ifndef __IEasySFTPStringList_INTERFACE_DEFINED__
 #define __IEasySFTPStringList_INTERFACE_DEFINED__
 
 /* interface IEasySFTPStringList */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 
 EXTERN_C const IID IID_IEasySFTPStringList;
@@ -2602,11 +3781,133 @@ EXTERN_C const IID IID_IEasySFTPStringList;
 #endif 	/* __IEasySFTPStringList_INTERFACE_DEFINED__ */
 
 
+#ifndef __DEasySFTPStringList_DISPINTERFACE_DEFINED__
+#define __DEasySFTPStringList_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPStringList */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPStringList;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-4854-9DF6-D7DA5B8D0199")
+    DEasySFTPStringList : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPStringListVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPStringList * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPStringList * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPStringList * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPStringList * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPStringList * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPStringList * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPStringList * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPStringListVtbl;
+
+    interface DEasySFTPStringList
+    {
+        CONST_VTBL struct DEasySFTPStringListVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPStringList_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPStringList_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPStringList_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPStringList_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPStringList_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPStringList_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPStringList_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPStringList_DISPINTERFACE_DEFINED__ */
+
+
 #ifndef __IEasySFTPHostSetting_INTERFACE_DEFINED__
 #define __IEasySFTPHostSetting_INTERFACE_DEFINED__
 
 /* interface IEasySFTPHostSetting */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 
 EXTERN_C const IID IID_IEasySFTPHostSetting;
@@ -3059,11 +4360,133 @@ EXTERN_C const IID IID_IEasySFTPHostSetting;
 #endif 	/* __IEasySFTPHostSetting_INTERFACE_DEFINED__ */
 
 
+#ifndef __DEasySFTPHostSetting_DISPINTERFACE_DEFINED__
+#define __DEasySFTPHostSetting_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPHostSetting */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPHostSetting;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-4852-9DF6-D7DA5B8D0199")
+    DEasySFTPHostSetting : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPHostSettingVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPHostSetting * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPHostSetting * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPHostSetting * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPHostSetting * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPHostSetting * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPHostSetting * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPHostSetting * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPHostSettingVtbl;
+
+    interface DEasySFTPHostSetting
+    {
+        CONST_VTBL struct DEasySFTPHostSettingVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPHostSetting_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPHostSetting_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPHostSetting_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPHostSetting_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPHostSetting_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPHostSetting_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPHostSetting_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPHostSetting_DISPINTERFACE_DEFINED__ */
+
+
 #ifndef __IEasySFTPHostSettingList_INTERFACE_DEFINED__
 #define __IEasySFTPHostSettingList_INTERFACE_DEFINED__
 
 /* interface IEasySFTPHostSettingList */
-/* [object][dual][unique][uuid] */ 
+/* [object][hidden][unique][uuid] */ 
 
 
 EXTERN_C const IID IID_IEasySFTPHostSettingList;
@@ -3260,6 +4683,128 @@ EXTERN_C const IID IID_IEasySFTPHostSettingList;
 
 
 #endif 	/* __IEasySFTPHostSettingList_INTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPHostSettingList_DISPINTERFACE_DEFINED__
+#define __DEasySFTPHostSettingList_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPHostSettingList */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPHostSettingList;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-4856-9DF6-D7DA5B8D0199")
+    DEasySFTPHostSettingList : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPHostSettingListVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPHostSettingList * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPHostSettingList * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPHostSettingList * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPHostSettingList * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPHostSettingList * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPHostSettingList * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPHostSettingList * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPHostSettingListVtbl;
+
+    interface DEasySFTPHostSettingList
+    {
+        CONST_VTBL struct DEasySFTPHostSettingListVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPHostSettingList_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPHostSettingList_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPHostSettingList_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPHostSettingList_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPHostSettingList_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPHostSettingList_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPHostSettingList_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPHostSettingList_DISPINTERFACE_DEFINED__ */
 
 
 EXTERN_C const CLSID CLSID_EasySFTPRoot;
