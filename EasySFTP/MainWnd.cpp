@@ -290,11 +290,14 @@ void CMainWindow::UpdateCurrentFolder(PCUIDLIST_RELATIVE lpidl)
 	}
 }
 
-void CMainWindow::UpdateCurrentFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl)
+void CMainWindow::UpdateCurrentFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder)
 {
 	HRESULT hr;
 
-	hr = m_wndListViewLocal.ReplaceViewAbsolute(lpidl);
+	if (pFolder)
+		hr = m_wndListViewLocal.ReplaceViewAbsolute(lpidl, pFolder);
+	else
+		hr = m_wndListViewLocal.ReplaceViewAbsolute(lpidl);
 	if (SUCCEEDED(hr))
 	{
 		//::SetWindowPos(m_wndListViewLocal, m_wndAddrButtons, 0, 0, 0, 0,
@@ -384,17 +387,14 @@ void CMainWindow::UpdateServerFolder(PCUIDLIST_RELATIVE lpidl)
 	}
 }
 
-void CMainWindow::UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl)
+void CMainWindow::UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder)
 {
 	HRESULT hr;
-	//IShellFolder* pFolder;
 
-	//hr = theApp.m_pEasySFTPRoot->QueryInterface(IID_IShellFolder, (void**) &pFolder);
-	//if (FAILED(hr))
-	//	return;
-	//hr = m_wndListViewServer.ReplaceViewAbsolute(lpidl, pFolder);
-	//pFolder->Release();
-	hr = m_wndListViewServer.ReplaceViewAbsolute(lpidl);
+	if (pFolder)
+		hr = m_wndListViewServer.ReplaceViewAbsolute(lpidl, pFolder);
+	else
+		hr = m_wndListViewServer.ReplaceViewAbsolute(lpidl);
 	if (SUCCEEDED(hr))
 	{
 		//::SetWindowPos(m_wndListViewServer, m_wndServerAddrButtons, 0, 0, 0, 0,
@@ -2459,7 +2459,7 @@ LRESULT CMainWindow::OnToolBarDropDown(WPARAM wParam, LPARAM lParam)
 	return TBDDRET_DEFAULT;
 }
 
-static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR lpszAddress)
+static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR lpszAddress, IShellFolder** ppFolder)
 {
 	if (wcschr(lpszAddress, L':') == NULL)
 		return NULL;
@@ -2483,23 +2483,15 @@ static PIDLIST_ABSOLUTE __stdcall GetEasySFTPItemIfAvailable(HWND hWnd, LPCWSTR 
 		pRoot->Release();
 		if (pDir)
 		{
-			//VARIANT_BOOL b1, b2;
-			//int n1, n2;
-			//BSTR bstr1, bstr2;
-			//if (SUCCEEDED(pDir->GetHostInfo(&b1, &n1, &bstr1)))
-			//{
-			//	if (pDirectoryCurrent && SUCCEEDED(pDirectoryCurrent->GetHostInfo(&b2, &n2, &bstr2)))
-			//	{
-			//		if (b1 == b2 && n1 == n2 && _wcsicmp(bstr1, bstr2) == 0)
-			//			pidlRet = ::AppendItemIDList(theApp.m_pidlEasySFTP, pidlRel);
-			//		::SysFreeString(bstr2);
-			//	}
-			//	// ホストが一致しなくても sftp モードであれば IDLIST を生成して成功にする
-			//	if (!pidlRet && b1)
-					pidlRet = ::AppendItemIDList(theApp.m_pidlEasySFTP, pidlRel);
-			//	::SysFreeString(bstr1);
-			//}
-			//pDir->Release();
+			IEasySFTPFiles* pFiles;
+			// force connect
+			if (SUCCEEDED(pDir->get_Files(&pFiles)))
+			{
+				pidlRet = ::AppendItemIDList(theApp.m_pidlEasySFTP, pidlRel);
+				pFiles->Release();
+			}
+			pDir->QueryInterface(IID_IShellFolder, reinterpret_cast<void**>(ppFolder));
+			pDir->Release();
 		}
 		if (pidlRel)
 			::CoTaskMemFree(pidlRel);
@@ -2517,10 +2509,12 @@ void CMainWindow::OnLocalAddressTextReturn(LPCWSTR lpszText)
 			UpdateCurrentFolderAbsolute(pidl);
 		return;
 	}
-	pidl = GetEasySFTPItemIfAvailable(m_hWnd, lpszText);
+	IShellFolder* pFolder;
+	pidl = GetEasySFTPItemIfAvailable(m_hWnd, lpszText, &pFolder);
 	if (pidl)
 	{
-		UpdateCurrentFolderAbsolute(pidl);
+		UpdateCurrentFolderAbsolute(pidl, pFolder);
+		pFolder->Release();
 		::CoTaskMemFree(pidl);
 		return;
 	}
@@ -2602,10 +2596,12 @@ void CMainWindow::OnServerAddressTextReturn(LPCWSTR lpszText)
 			UpdateServerFolderAbsolute(pidl);
 		return;
 	}
-	pidl = GetEasySFTPItemIfAvailable(m_hWnd, lpszText);
+	IShellFolder* pFolder;
+	pidl = GetEasySFTPItemIfAvailable(m_hWnd, lpszText, &pFolder);
 	if (pidl)
 	{
-		UpdateServerFolderAbsolute(pidl);
+		UpdateServerFolderAbsolute(pidl, pFolder);
+		pFolder->Release();
 		::CoTaskMemFree(pidl);
 		return;
 	}

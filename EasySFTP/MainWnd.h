@@ -192,11 +192,11 @@ public:
 	UINT m_uLastStatusTextModeID;
 
 	void UpdateCurrentFolder(PCUIDLIST_RELATIVE lpidl);
-	void UpdateCurrentFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl);
+	void UpdateCurrentFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder = NULL);
 	void UpdateCurrentFolderAbsolute(LPCWSTR lpszPath);
 	//void UpdateServerFolder(LPCWSTR lpszPath);
 	void UpdateServerFolder(PCUIDLIST_RELATIVE lpidl);
-	void UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl);
+	void UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder = NULL);
 	void UpdateServerFolderAbsolute(LPCWSTR lpszPath);
 	void SetServerListenerToMe();
 	void OnChangeServerFolderFailed();
