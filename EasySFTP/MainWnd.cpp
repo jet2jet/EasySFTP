@@ -240,6 +240,13 @@ bool CMainWindow::PreTranslateMessage(LPMSG lpMsg)
 		if (hr == S_OK)
 			return true;
 	}
+	if (m_wndListViewServer.m_pView && IsWindowOrChildrenFocused(m_wndListViewServer, ::GetFocus()))
+	{
+		HRESULT hr;
+		hr = m_wndListViewServer.m_pView->TranslateAccelerator(lpMsg);
+		if (hr == S_OK)
+			return true;
+	}
 	if (!IsEditBox(lpMsg->hwnd))
 	{
 		if (::TranslateAccelerator(m_hWnd, m_hAccel, lpMsg))
