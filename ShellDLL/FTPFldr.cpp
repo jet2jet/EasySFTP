@@ -243,7 +243,7 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySF
 	m_pConnection = new CFTPConnection();
 	m_pConnection->m_socket.SetCharset((ServerCharset)m_nServerCharset);
 
-	if (!m_pConnection->Connect(nPort, lpszHostName))
+	if (!m_pConnection->Connect(nPort, m_strHostName))
 	{
 		delete m_pConnection;
 		m_pConnection = NULL;
