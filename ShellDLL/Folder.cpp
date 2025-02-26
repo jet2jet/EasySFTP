@@ -3300,6 +3300,7 @@ HRESULT CFTPDirectoryBase::OpenNewDirectory(LPCWSTR lpszRelativePath, CFTPDirect
 				return E_OUTOFMEMORY;
 			}
 		}
+		pDirectory->SetHwndOwnerCache(GetHwndOwnerCache());
 		pDirItem->pDirectory = pDirectory;
 	}
 

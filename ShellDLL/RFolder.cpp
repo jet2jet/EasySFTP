@@ -448,6 +448,7 @@ STDMETHODIMP CEasySFTPFolderRoot::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc
 	HRESULT hr = _BindToObject(NULL, (PCUITEMID_CHILD)pidl, pbc, NULL, &pRet);
 	if (FAILED(hr))
 		return hr;
+	pRet->SetHwndOwnerCache(GetHwndOwnerCache());
 	if (pidlNext->mkid.cb)
 		hr = pRet->BindToObject(pidlNext, pbc, riid, ppv);
 	else
@@ -625,6 +626,7 @@ HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl,
 			return E_ABORT;
 		}
 	}
+	pDirectory->SetHwndOwnerCache(hWndOwner);
 
 	pDirectory->AddRef();
 	*ppRoot = pDirectory;

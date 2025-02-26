@@ -72,6 +72,7 @@ public:
 
 public:
 	inline HWND GetHwndOwnerCache() const { return m_hWndOwnerCache; }
+	inline void SetHwndOwnerCache(HWND hWnd) { m_hWndOwnerCache = hWnd; }
 	inline IMalloc* GetDelegateMalloc() const { return m_pMallocData->pMalloc; }
 
 	// utility methods
