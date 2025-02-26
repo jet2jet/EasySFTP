@@ -457,6 +457,8 @@ CMyDialog::CMyDialog(UINT uID)
 
 INT_PTR CMyDialog::ModalDialogA(HWND hWndParent)
 {
+	if (m_hWnd)
+		return (INT_PTR) -1;
 	HGLOBAL hGlobal;
 	INT_PTR nRet;
 	HINSTANCE hInst = MyGetCurrentInstance();
@@ -485,6 +487,8 @@ INT_PTR CMyDialog::ModalDialogA(HWND hWndParent)
 
 INT_PTR CMyDialog::ModalDialogW(HWND hWndParent)
 {
+	if (m_hWnd)
+		return (INT_PTR) -1;
 	HGLOBAL hGlobal;
 	INT_PTR nRet;
 	HINSTANCE hInst = MyGetCurrentInstance();
@@ -519,6 +523,8 @@ INT_PTR CMyDialog::ModalDialogW(HWND hWndParent)
 
 HWND CMyDialog::CreateA(HWND hWndParent)
 {
+	if (m_hWnd)
+		return NULL;
 	HGLOBAL hGlobal;
 	HWND hRet;
 	HINSTANCE hInst = MyGetCurrentInstance();
@@ -547,6 +553,8 @@ HWND CMyDialog::CreateA(HWND hWndParent)
 
 HWND CMyDialog::CreateW(HWND hWndParent)
 {
+	if (m_hWnd)
+		return NULL;
 	HGLOBAL hGlobal;
 	HWND hRet;
 	HINSTANCE hInst = MyGetCurrentInstance();
