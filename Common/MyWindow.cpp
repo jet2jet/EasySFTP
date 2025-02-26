@@ -126,13 +126,21 @@ EXTERN_C void WINAPI _CenterWindow(HWND hWnd, HWND hWndBase, LPRECT lpRect)
 static CMyWindowData* s_pWndData = NULL;
 static DWORD s_dwTLSMessageData = 0;
 static DWORD s_dwTLSHookData = 0;
+static CRITICAL_SECTION s_csWndData{};
+static bool s_bCsWndDataCreated = false;
 
 void WINAPI AddWndHandle(HWND hWnd, CMyWindow* pWnd)
 {
+	if (!s_bCsWndDataCreated)
+	{
+		::InitializeCriticalSection(&s_csWndData);
+		s_bCsWndDataCreated = true;
+	}
 	CMyWindowData* pData = (CMyWindowData*) malloc(sizeof(CMyWindowData));
 	pData->hWnd = hWnd;
 	pData->pWnd = pWnd;
 	pData->pNext = NULL;
+	::EnterCriticalSection(&s_csWndData);
 	CMyWindowData* pFirst = s_pWndData;
 	if (pFirst)
 	{
@@ -143,11 +151,16 @@ void WINAPI AddWndHandle(HWND hWnd, CMyWindow* pWnd)
 	}
 	else
 		s_pWndData = pData;
+	::LeaveCriticalSection(&s_csWndData);
 }
 
 void WINAPI RemoveWndHandle(HWND hWnd)
 {
+	if (!s_bCsWndDataCreated)
+		return;
+
 	CMyWindowData* pData, * p;
+	::EnterCriticalSection(&s_csWndData);
 	pData = s_pWndData;
 	p = NULL;
 	while (pData)
@@ -164,32 +177,47 @@ void WINAPI RemoveWndHandle(HWND hWnd)
 		p = pData;
 		pData = pData->pNext;
 	}
+	::LeaveCriticalSection(&s_csWndData);
 }
 
 CMyWindow* WINAPI FindWndHandle(HWND hWnd)
 {
+	if (!s_bCsWndDataCreated)
+		return NULL;
+
 	CMyWindowData* pData;
+	::EnterCriticalSection(&s_csWndData);
 	pData = s_pWndData;
 	while (pData)
 	{
 		if (pData->hWnd == hWnd)
+		{
+			::LeaveCriticalSection(&s_csWndData);
 			return pData->pWnd;
+		}
 		pData = pData->pNext;
 	}
+	::LeaveCriticalSection(&s_csWndData);
 	return NULL;
 }
 
 extern "C" void WINAPI EndWindowData()
 {
-	CMyWindowData* pData, * pData2;
-	pData = s_pWndData;
-	while (pData)
+	if (s_bCsWndDataCreated)
 	{
-		pData2 = pData;
-		pData = pData->pNext;
-		free(pData2);
+		::EnterCriticalSection(&s_csWndData);
+		CMyWindowData* pData, * pData2;
+		pData = s_pWndData;
+		while (pData)
+		{
+			pData2 = pData;
+			pData = pData->pNext;
+			free(pData2);
+		}
+		s_pWndData = NULL;
+		::LeaveCriticalSection(&s_csWndData);
+		::DeleteCriticalSection(&s_csWndData);
 	}
-	s_pWndData = NULL;
 
 	if (s_dwTLSHookData)
 		::TlsFree(s_dwTLSHookData);
