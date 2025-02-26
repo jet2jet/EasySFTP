@@ -27,7 +27,7 @@ typedef BOOL (WINAPI* T_EnumProcessModules)(HANDLE hProcess, HMODULE* lphModule,
 
 typedef bool (CALLBACK* PFNENUMMODULECALLBACK)(HMODULE hModule);
 
-static bool __stdcall MyEnumModulesUsingSnapshot(T_CreateToolhelp32Snapshot pfnCreateToolhelp32Snapshot,
+static HRESULT __stdcall MyEnumModulesUsingSnapshot(T_CreateToolhelp32Snapshot pfnCreateToolhelp32Snapshot,
 	T_Module32First pfnModule32First, T_Module32Next pfnModule32Next, PFNENUMMODULECALLBACK pfnCallback)
 {
 	HANDLE hSnapshot;
@@ -35,7 +35,7 @@ static bool __stdcall MyEnumModulesUsingSnapshot(T_CreateToolhelp32Snapshot pfnC
 
 	hSnapshot = pfnCreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetCurrentProcessId());
 	if (hSnapshot == INVALID_HANDLE_VALUE)
-		return false;
+		return HRESULT_FROM_WIN32(GetLastError());
 
 	me.dwSize = sizeof(me);
 	BOOL bRet = pfnModule32First(hSnapshot, &me);
@@ -46,10 +46,10 @@ static bool __stdcall MyEnumModulesUsingSnapshot(T_CreateToolhelp32Snapshot pfnC
 		bRet = pfnModule32Next(hSnapshot, &me);
 	}
 	CloseHandle(hSnapshot);
-	return true;
+	return S_OK;
 }
 
-static bool __stdcall MyEnumModulesUsingPsapi(T_EnumProcessModules pfnEnumProcessModules, PFNENUMMODULECALLBACK pfnCallback)
+static HRESULT __stdcall MyEnumModulesUsingPsapi(T_EnumProcessModules pfnEnumProcessModules, PFNENUMMODULECALLBACK pfnCallback)
 {
 	DWORD dwCount, dwRet;
 	HMODULE* pModules;
@@ -57,14 +57,15 @@ static bool __stdcall MyEnumModulesUsingPsapi(T_EnumProcessModules pfnEnumProces
 	dwCount = 32;
 	pModules = (HMODULE*) malloc(sizeof(HMODULE) * dwCount);
 	if (!pModules)
-		return false;
+		return E_OUTOFMEMORY;
 
 	while (true)
 	{
 		if (!pfnEnumProcessModules(::GetCurrentProcess(), pModules, sizeof(HMODULE) * dwCount, &dwRet))
 		{
+			auto err = GetLastError();
 			free(pModules);
-			return false;
+			return HRESULT_FROM_WIN32(err);
 		}
 		dwRet /= sizeof(HMODULE);
 		if (dwCount < dwRet)
@@ -74,7 +75,7 @@ static bool __stdcall MyEnumModulesUsingPsapi(T_EnumProcessModules pfnEnumProces
 			if (!pModules2)
 			{
 				free(pModules);
-				return false;
+				return E_OUTOFMEMORY;
 			}
 			pModules = pModules2;
 		}
@@ -90,7 +91,7 @@ static bool __stdcall MyEnumModulesUsingPsapi(T_EnumProcessModules pfnEnumProces
 			break;
 	}
 	free(pModules);
-	return true;
+	return S_OK;
 }
 
 #define SIZE_OF_NT_SIGNATURE       (sizeof(DWORD))
@@ -412,6 +413,13 @@ static bool __stdcall InitOldRegFunctions()
 	//		s_pszAdvapi32_name = "kernel32.dll";
 	//}
 	//if (!hInstAdvapi32)
+	hInstAdvapi32 = ::GetModuleHandle(_T("advapi32.dll"));
+	if (!hInstAdvapi32)
+	{
+		if (!::LoadLibrary(_T("advapi32.dll")))
+			return false;
+	}
+
 	{
 		// for Windows 8
 		hInstAdvapi32 = ::GetModuleHandle(_T("api-ms-win-core-registry-l1-1-0.dll"));
@@ -517,12 +525,12 @@ private:
 static CMySimpleArray<CMyHookRegKeyData*>* s_pRegData = NULL;
 static CRITICAL_SECTION s_csRegData;
 
-EXTERN_C bool __stdcall InitRegHook()
+EXTERN_C HRESULT __stdcall InitRegHook()
 {
 	if (!s_pszAdvapi32_name)
 	{
 		if (!InitOldRegFunctions())
-			return false;
+			return HRESULT_FROM_WIN32(GetLastError());
 	}
 
 	{
@@ -541,32 +549,34 @@ EXTERN_C bool __stdcall InitRegHook()
 			pfnModule32Next = (T_Module32Next)
 				::GetProcAddress(hInstKernel32, "Module32Next");
 			if (!pfnModule32First || !pfnModule32Next)
-				return false;
+				return HRESULT_FROM_WIN32(GetLastError());
 
-			if (!MyEnumModulesUsingSnapshot(pfnCreateToolhelp32Snapshot, pfnModule32First,
-				pfnModule32Next, MyReplaceRegFunctions))
-				return false;
+			auto hr = MyEnumModulesUsingSnapshot(pfnCreateToolhelp32Snapshot, pfnModule32First,
+				pfnModule32Next, MyReplaceRegFunctions);
+			if (FAILED(hr))
+				return hr;
 		}
 		else
 		{
 			HINSTANCE hInstPsapi = ::LoadLibrary(_T("psapi.dll"));
 			if (!hInstPsapi)
-				return false;
+				return HRESULT_FROM_WIN32(GetLastError());
 
 			T_EnumProcessModules pfnEnumProcessModules;
 
 			pfnEnumProcessModules = (T_EnumProcessModules) ::GetProcAddress(hInstPsapi, "EnumProcessModules");
 			if (!pfnEnumProcessModules)
 			{
+				auto err = GetLastError();
 				::FreeLibrary(hInstPsapi);
-				return false;
+				return HRESULT_FROM_WIN32(err);
 			}
 
-			bool bRet = MyEnumModulesUsingPsapi(pfnEnumProcessModules, MyReplaceRegFunctions);
+			auto hr = MyEnumModulesUsingPsapi(pfnEnumProcessModules, MyReplaceRegFunctions);
 
 			::FreeLibrary(hInstPsapi);
-			if (!bRet)
-				return false;
+			if (FAILED(hr))
+				return hr;
 		}
 	}
 
@@ -575,7 +585,7 @@ EXTERN_C bool __stdcall InitRegHook()
 		s_pRegData = new CMySimpleArray<CMyHookRegKeyData*>();
 		::InitializeCriticalSection(&s_csRegData);
 	}
-	return true;
+	return S_OK;
 }
 
 EXTERN_C void __stdcall TermRegHook()

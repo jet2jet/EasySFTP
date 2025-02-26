@@ -204,10 +204,13 @@ CMainApplication::~CMainApplication()
 
 bool CMainApplication::InitInstance()
 {
-	if (!InitRegistryHook())
+	auto hr = InitRegistryHook();
+	if (FAILED(hr))
 	{
-		if (::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK), NULL,
-			MB_ICONEXCLAMATION | MB_YESNO) == IDYES)
+		CMyStringW strMsg, str;
+		MyGetErrorMessageString(static_cast<DWORD>(hr), strMsg);
+		str.Format(IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK, hr, strMsg.operator LPCWSTR());
+		if (::MyMessageBoxW(NULL, str, NULL, MB_ICONEXCLAMATION | MB_YESNO) == IDYES)
 			m_bExitWithRegister = true;
 		return false;
 	}
@@ -222,9 +225,13 @@ bool CMainApplication::InitInstance()
 	}
 #endif
 
-	if (!InitSystemLibraries())
+	hr = InitSystemLibraries();
+	if (FAILED(hr))
 	{
-		::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_LOAD_SYSLIBS), NULL, MB_ICONEXCLAMATION);
+		CMyStringW strMsg, str;
+		MyGetErrorMessageString(static_cast<DWORD>(hr), strMsg);
+		str.Format(IDS_FAILED_TO_LOAD_SYSLIBS, hr, strMsg.operator LPCWSTR());
+		::MyMessageBoxW(NULL, str, NULL, MB_ICONEXCLAMATION);
 		return false;
 	}
 
@@ -237,24 +244,53 @@ bool CMainApplication::InitInstance()
 		return false;
 	}
 
-	if ((m_bEmulatingRegistry && !InitRegHook()) || !InitEasySFTP())
+	if (m_bEmulatingRegistry)
+	{
+		hr = InitRegHook();
+		if (FAILED(hr))
+		{
+			CMyStringW strMsg, str;
+			MyGetErrorMessageString(static_cast<DWORD>(hr), strMsg);
+			str.Format(IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK, hr, strMsg.operator LPCWSTR());
+			if (::MyMessageBoxW(NULL, str, NULL, MB_ICONEXCLAMATION | MB_YESNO) == IDYES)
+				m_bExitWithRegister = true;
+			return false;
+		}
+	}
+	hr = InitEasySFTP();
+	if (FAILED(hr))
 	{
 		if (m_bEmulatingRegistry)
 		{
-			if (::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK), NULL,
-				MB_ICONEXCLAMATION | MB_YESNO) == IDYES)
+			CMyStringW strMsg, str;
+			MyGetErrorMessageString(static_cast<DWORD>(hr), strMsg);
+			str.Format(IDS_FAILED_TO_INIT_EASYSFTP_IN_REGHOOK, hr, strMsg.operator LPCWSTR());
+			if (::MyMessageBoxW(NULL, str, NULL, MB_ICONEXCLAMATION | MB_YESNO) == IDYES)
 				m_bExitWithRegister = true;
 		}
 		else
 		{
-			::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_INIT_SHELLDLL), NULL, MB_ICONEXCLAMATION);
+			CMyStringW strMsg, str;
+			MyGetErrorMessageString(static_cast<DWORD>(hr), strMsg);
+			str.Format(IDS_FAILED_TO_INIT_SHELLDLL, hr, strMsg.operator LPCWSTR());
+			::MyMessageBoxW(NULL, str, NULL, MB_ICONEXCLAMATION);
 		}
 		return false;
 	}
 
-	if (!InitGraphics() || !InitWindowClasses() || !InitAppData())
+	hr = InitGraphics();
+	if (SUCCEEDED(hr))
 	{
-		::MyMessageBoxW(NULL, MAKEINTRESOURCEW(IDS_FAILED_TO_INIT_APP), NULL, MB_ICONEXCLAMATION);
+		hr = InitWindowClasses();
+		if (SUCCEEDED(hr))
+			hr = InitAppData();
+	}
+	if (FAILED(hr))
+	{
+		CMyStringW strMsg, str;
+		MyGetErrorMessageString(static_cast<DWORD>(hr), strMsg);
+		str.Format(IDS_FAILED_TO_INIT_APP, hr, strMsg.operator LPCWSTR());
+		::MyMessageBoxW(NULL, str, NULL, MB_ICONEXCLAMATION);
 		return false;
 	}
 
@@ -262,7 +298,13 @@ bool CMainApplication::InitInstance()
 
 	CMainWindow* pWnd = new CMainWindow();
 	if (!pWnd->CreateEx())
+	{
+		CMyStringW strMsg, str;
+		MyGetErrorMessageString(GetLastError(), strMsg);
+		str.Format(IDS_FAILED_TO_INIT_APP, hr, strMsg.operator LPCWSTR());
+		::MyMessageBoxW(NULL, str, NULL, MB_ICONEXCLAMATION);
 		return false;
+	}
 
 	m_pMainWnd = pWnd;
 	//m_pEasySFTPRoot->SetListener(pWnd);
@@ -352,7 +394,7 @@ bool CMainApplication::OnIdle(long lCount)
 	return pWnd ? pWnd->OnIdle(lCount) : false;
 }
 
-bool CMainApplication::InitRegistryHook()
+HRESULT CMainApplication::InitRegistryHook()
 {
 	m_bNeedEmulationMode = false;
 	{
@@ -375,23 +417,25 @@ bool CMainApplication::InitRegistryHook()
 
 	if (m_bNeedEmulationMode)
 	{
-		if (!InitRegHook())
+		auto hr = InitRegHook();
+		if (FAILED(hr))
 		{
-			return false;
+			return hr;
 		}
 		m_bEmulatingRegistry = true;
 	}
-	return true;
+	return S_OK;
 }
 
-bool CMainApplication::InitSystemLibraries()
+HRESULT CMainApplication::InitSystemLibraries()
 {
 #ifdef _DEBUG
 	_CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_REPORT_FLAG) | _CRTDBG_LEAK_CHECK_DF);
 #endif
 	//WSADATA wsa;
-	if (FAILED(::OleInitialize(NULL)))
-		return false;
+	auto hr = ::OleInitialize(NULL);
+	if (FAILED(hr))
+		return hr;
 	//if (::WSAStartup(MAKEWORD(2, 0), &wsa))
 	//	return false;
 
@@ -403,7 +447,7 @@ bool CMainApplication::InitSystemLibraries()
 		icex.dwSize = sizeof(icex);
 		icex.dwICC = ICC_LISTVIEW_CLASSES | ICC_BAR_CLASSES | ICC_USEREX_CLASSES | ICC_LINK_CLASS;
 		if (!::InitCommonControlsEx(&icex))
-			return false;
+			return E_UNEXPECTED;
 	}
 
 	{
@@ -474,7 +518,7 @@ bool CMainApplication::InitSystemLibraries()
 		}
 	}
 
-	return true;
+	return S_OK;
 }
 
 int CMainApplication::ParseCommandLine()
@@ -595,12 +639,13 @@ void CMainApplication::CheckCommandParameter(LPCWSTR lpszParam, int& nCurrentSta
 	}
 }
 
-bool CMainApplication::InitEasySFTP()
+HRESULT CMainApplication::InitEasySFTP()
 {
 	HRESULT hr;
 	IShellFolder* pDesktop, * pFolder;
-	if (FAILED(::SHGetDesktopFolder(&pDesktop)))
-		return false;
+	hr = ::SHGetDesktopFolder(&pDesktop);
+	if (FAILED(hr))
+		return hr;
 	hr = pDesktop->ParseDisplayName(NULL, NULL, (LPWSTR) L"::{AD29C042-B9E3-4740-9DF6-D7DA5B8D0199}",
 		NULL, (PIDLIST_RELATIVE*) &m_pidlEasySFTP, NULL);
 	if (FAILED(hr))
@@ -609,17 +654,16 @@ bool CMainApplication::InitEasySFTP()
 	if (!m_pidlEasySFTP)
 	{
 		pDesktop->Release();
-		::MessageBeep(MB_ICONHAND);
-		return false;
+		return FAILED(hr) ? hr : E_OUTOFMEMORY;
 	}
 	hr = pDesktop->BindToObject(m_pidlEasySFTP, NULL, IID_IShellFolder, (void**) &pFolder);
 	pDesktop->Release();
 	if (FAILED(hr))
-		return false;
+		return hr;
 	hr = pFolder->QueryInterface(IID_IEasySFTPOldRoot, (void**) &m_pEasySFTPRoot);
 	pFolder->Release();
 	if (FAILED(hr))
-		return false;
+		return hr;
 
 	IEasySFTPInternal* pInternal;
 	hr = m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPInternal, (void**) &pInternal);
@@ -646,16 +690,16 @@ bool CMainApplication::InitEasySFTP()
 		}
 	}
 
-	return true;
+	return S_OK;
 }
 
-bool CMainApplication::InitGraphics()
+HRESULT CMainApplication::InitGraphics()
 {
 	MyFileIconInit(TRUE);
 
 	m_hImageListFileIcon = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListFileIcon)
-		return false;
+		return E_OUTOFMEMORY;
 
 	//m_hImageListToolBar = ::ImageList_LoadImage(m_hInstance, MAKEINTRESOURCE(IDB_TOOLBAR),
 	//	16, 0, CLR_NONE, IMAGE_BITMAP, LR_LOADTRANSPARENT);
@@ -663,28 +707,28 @@ bool CMainApplication::InitGraphics()
 	//	return false;
 	m_hImageListToolBar = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListToolBar)
-		return false;
+		return E_OUTOFMEMORY;
 	::ImageList_Add(m_hImageListToolBar, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_TOOLBAR)), NULL);
 	m_hImageListToolBarL = ::ImageList_Create(32, 32, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListToolBarL)
-		return false;
+		return E_OUTOFMEMORY;
 	::ImageList_Add(m_hImageListToolBarL, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_TOOLBAR_L)), NULL);
 	m_hImageListAddrButtons = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListAddrButtons)
-		return false;
+		return E_OUTOFMEMORY;
 	::ImageList_Add(m_hImageListAddrButtons, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_ADDRESS_BUTTONS)), NULL);
 	m_hImageListAddrButtonsL = ::ImageList_Create(32, 32, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListAddrButtonsL)
-		return false;
+		return E_OUTOFMEMORY;
 	::ImageList_Add(m_hImageListAddrButtonsL, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_ADDRESS_BUTTONS_L)), NULL);
 
-	return true;
+	return S_OK;
 }
 
-bool CMainApplication::InitWindowClasses()
+HRESULT CMainApplication::InitWindowClasses()
 {
 	if (!::InitSplitter(m_hInstance))
-		return false;
+		return HRESULT_FROM_WIN32(GetLastError());
 
 	union
 	{
@@ -714,7 +758,7 @@ bool CMainApplication::InitWindowClasses()
 	{
 		wcexA.lpszClassName = strC;
 		if (!::RegisterClassExA(&wcexA))
-			return false;
+			return HRESULT_FROM_WIN32(GetLastError());
 	}
 	strC = s_szViewParentWndClass;
 	wcex.lpszClassName	= strC;
@@ -723,12 +767,12 @@ bool CMainApplication::InitWindowClasses()
 	{
 		wcexA.lpszClassName = strC;
 		if (!::RegisterClassExA(&wcexA))
-			return false;
+			return HRESULT_FROM_WIN32(GetLastError());
 	}
-	return true;
+	return S_OK;
 }
 
-bool CMainApplication::InitAppData()
+HRESULT CMainApplication::InitAppData()
 {
 	::GetDDEVariables();
 
@@ -821,7 +865,7 @@ bool CMainApplication::InitAppData()
 
 	m_strTitle.LoadString(IDS_APP_TITLE);
 
-	return true;
+	return S_OK;
 }
 
 

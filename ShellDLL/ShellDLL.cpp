@@ -25,17 +25,7 @@ void LogWin32LastError(const WCHAR* pszFuncName)
 #ifdef _DEBUG
 	auto lastError = ::GetLastError();
 	CMyStringW strBuf;
-	LPVOID lpMsgBuf;
-	::FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-		FORMAT_MESSAGE_FROM_SYSTEM,
-		NULL,
-		lastError,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf,
-		0,
-		NULL);
-	strBuf = (LPCTSTR)lpMsgBuf;
-	::LocalFree(lpMsgBuf);
+	MyGetErrorMessageString(lastError, strBuf);
 	CMyStringW strMsg;
 	strMsg.Format(L"[EasySFTP] %s failed with %lu: %s\n", pszFuncName, lastError, strMsg.operator LPCWSTR());
 	OutputDebugString(strMsg);

@@ -51,7 +51,7 @@ inline void __stdcall CallConstructor(T* ptr)
 #endif
 
 // in RegHook.cpp
-EXTERN_C bool __stdcall InitRegHook();
+EXTERN_C HRESULT __stdcall InitRegHook();
 EXTERN_C void __stdcall TermRegHook();
 
 // from MySocket.h
@@ -131,12 +131,12 @@ public:
 	virtual bool OnIdle(long lCount);
 
 public:
-	bool InitRegistryHook();
-	bool InitSystemLibraries();
-	bool InitEasySFTP();
-	bool InitGraphics();
-	bool InitWindowClasses();
-	bool InitAppData();
+	HRESULT InitRegistryHook();
+	HRESULT InitSystemLibraries();
+	HRESULT InitEasySFTP();
+	HRESULT InitGraphics();
+	HRESULT InitWindowClasses();
+	HRESULT InitAppData();
 	int ParseCommandLine();
 	void CheckCommandParameter(LPCWSTR lpszParam, int& nCurrentStatus);
 

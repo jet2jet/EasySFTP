@@ -969,3 +969,49 @@ EXTERN_C BOOL __stdcall MySetMenuItemInfoW(_In_ HMENU hmenu, _In_ UINT item, _In
 	free(buffer);
 	return TRUE;
 }
+
+void __stdcall MyGetErrorMessageString(_In_ DWORD dwError, _Inout_ CMyStringW& rString)
+{
+	CMyStringW strBuf;
+	LPVOID lpMsgBuf = NULL;
+	if (!::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM,
+		NULL,
+		dwError,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		reinterpret_cast<LPWSTR>(&lpMsgBuf),
+		0,
+		NULL) && GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+	{
+		::FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+			FORMAT_MESSAGE_FROM_SYSTEM,
+			NULL,
+			dwError,
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			reinterpret_cast<LPSTR>(&lpMsgBuf),
+			0,
+			NULL);
+		if (lpMsgBuf)
+		{
+			rString = reinterpret_cast<LPCSTR>(lpMsgBuf);
+			::LocalFree(lpMsgBuf);
+		}
+	}
+	else
+	{
+		rString = reinterpret_cast<LPCWSTR>(lpMsgBuf);
+		::LocalFree(lpMsgBuf);
+	}
+	auto len = rString.GetLength();
+	if (len > 0)
+	{
+		if (rString[len - 1] == L'\n')
+			--len;
+	}
+	if (len > 0)
+	{
+		if (rString[len - 1] == L'\r')
+			--len;
+	}
+	rString.ReleaseBuffer(len);
+}
