@@ -215,19 +215,21 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySF
 
 	if (m_pUser)
 		m_pUser->Release();
+	IEasySFTPAuthentication* pMyUser;
 	if (pUser)
 	{
-		m_pUser = pUser;
-		pUser->AddRef();
+		m_pUser = pMyUser = pUser;
+		pMyUser->AddRef();
 		//m_nServerCharset = scsUTF8;
 	}
 	else
 	{
-		m_pUser = new CAuthentication();
+		m_pUser = pMyUser = new CAuthentication();
 		if (DoRetryAuthentication(true) <= 0)
 		{
-			m_pUser->Release();
-			m_pUser = NULL;
+			pMyUser->Release();
+			if (m_pUser == pMyUser)
+				m_pUser = NULL;
 			return false;
 		}
 		//m_nServerCharset = scsUTF8;
@@ -247,8 +249,9 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySF
 	{
 		delete m_pConnection;
 		m_pConnection = NULL;
-		m_pUser->Release();
-		m_pUser = NULL;
+		pMyUser->Release();
+		if (m_pUser == pMyUser)
+			m_pUser = NULL;
 		return false;
 	}
 	//m_pSocket->AsyncSelect(m_hWnd, MY_WM_SOCKETMESSAGE, FD_READ | FD_CLOSE);

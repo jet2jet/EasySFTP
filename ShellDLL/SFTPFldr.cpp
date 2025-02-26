@@ -1087,15 +1087,16 @@ STDMETHODIMP CSFTPFolderSFTP::CreateInstance(CFTPDirectoryItem* pItemMe, CFTPDir
 
 bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser)
 {
+	IEasySFTPAuthentication* pMyUser;
 	if (pUser)
 	{
-		m_pUser = pUser;
+		m_pUser = pMyUser = pUser;
 		pUser->AddRef();
 		m_bFirstAuthenticate = false;
 	}
 	else
 	{
-		m_pUser = new CAuthentication();
+		m_pUser = pMyUser = new CAuthentication();
 		//// set this flag to show password dialog when connected
 		m_bFirstAuthenticate = true;
 	}
@@ -1117,9 +1118,9 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasyS
 		{
 			m_pClient->Release();
 			m_pClient = NULL;
-			if (m_pUser)
+			pMyUser->Release();
+			if (m_pUser == pMyUser)
 			{
-				m_pUser->Release();
 				m_pUser = NULL;
 			}
 
@@ -1136,9 +1137,9 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasyS
 		{
 			m_pClient->Release();
 			m_pClient = NULL;
-			if (m_pUser)
+			pMyUser->Release();
+			if (m_pUser == pMyUser)
 			{
-				m_pUser->Release();
 				m_pUser = NULL;
 			}
 
