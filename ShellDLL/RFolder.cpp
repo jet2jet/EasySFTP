@@ -1821,11 +1821,16 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, IEasySFTPAuthenti
 		::MessageBeep(MB_ICONEXCLAMATION);
 		m_dlgConnect.m_strMessage.LoadString(IDS_AUTH_FAILED);
 	}
+	pUser->AddRef();
 	if (m_dlgConnect.ModalDialogW(hWndOwner) == IDOK)
 	{
 		if (SUCCEEDED(m_dlgConnect.SetToAuthentication(pUser)))
+		{
+			pUser->Release();
 			return 1;
+		}
 	}
+	pUser->Release();
 	return 0;
 }
 
