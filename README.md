@@ -1,6 +1,6 @@
 # ReadMe (ja)
 
-EasySFTPはFTPとSFTPに対応したファイル転送を行うWindows用クライアントアプリケーションです。
+EasySFTPはSFTP・FTP・FTPSに対応したファイル転送を行うWindows用クライアントアプリケーションです。
 
 ## 使い方
 
@@ -21,7 +21,7 @@ EasySFTPはFTPとSFTPに対応したファイル転送を行うWindows用クラ�
 
 # ReadMe (en)
 
-EasySFTP is a file transfer client application for Windows using FTP and SFTP.
+EasySFTP is a file transfer client application for Windows using SFTP, FTP, and FTPS.
 
 Currently only Japanese language version is provided.
 

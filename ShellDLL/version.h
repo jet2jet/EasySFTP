@@ -8,7 +8,7 @@
 
 #include "../version-hash.h"
 
-#define VERSION_NUMBER "0.12.0.1"
+#define VERSION_NUMBER "0.13.0.1"
 
 #define __W(x) L##x
 #define _W(x) __W(x)

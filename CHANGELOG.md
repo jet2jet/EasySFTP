@@ -1,5 +1,17 @@
 # ChangeLog
 
+## v0.13.0.1
+
+- Support FTPS (FTP over SSL/TLS)
+  - EasySFTP uses Explicit mode
+	- Data transfer is also encrypted (using `PROT P` command)
+  - `ftps` protocol (schema) is used
+- Make new connection when establishing data connection for FTP/FTPS
+  - This enables multiple transaction
+- Add 'Synchronize' feature
+  - This works on both remote and local directories (e.g. local <-> remote, local <-> local)
+- Fix some bugs
+
 ## v0.12.0.1
 
 - Add implementation for use from VBA, PowerShell, and etc.
