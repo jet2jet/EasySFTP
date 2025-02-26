@@ -815,6 +815,9 @@ static const CMyHookRegEntry s_arrDummyKeys[] = {
 	{ HKEY_CLASSES_ROOT, NULL, true, REG_SZ, L"ftp", NULL },
 	{ HKEY_CLASSES_ROOT, L"ftp", false, REG_SZ, L"ShellFolder", "%CLSID%" },
 	{ HKEY_CLASSES_ROOT, L"ftp", false, REG_SZ, L"URL Protocol", NULL },
+	{ HKEY_CLASSES_ROOT, NULL, true, REG_SZ, L"ftps", NULL },
+	{ HKEY_CLASSES_ROOT, L"ftps", false, REG_SZ, L"ShellFolder", "%CLSID%" },
+	{ HKEY_CLASSES_ROOT, L"ftps", false, REG_SZ, L"URL Protocol", NULL },
 	{ HKEY_CLASSES_ROOT, NULL, true, REG_SZ, L"sftp", NULL },
 	{ HKEY_CLASSES_ROOT, L"sftp", false, REG_SZ, L"ShellFolder", "%CLSID%" },
 	{ HKEY_CLASSES_ROOT, L"sftp", false, REG_SZ, L"URL Protocol", NULL },
@@ -1490,25 +1493,32 @@ static LSTATUS __stdcall _MyHookRegGetValueAW(bool bUnicode, HKEY hKey, LPCVOID 
 				str = (LPCWSTR) pEntry->lpszValue;
 				_ExpandRegEnvs(str);
 				DWORD dw;
-				dw = (DWORD) (bUnicode ? str.GetLength() : str.GetLengthA()) + 1;
-				if (pvData)
+				if (str.IsEmpty())
 				{
-					if (*pcbData < dw)
+					dw = 0;
+				}
+				else
+				{
+					dw = (DWORD)(bUnicode ? str.GetLength() : str.GetLengthA()) + 1;
+					if (pvData)
 					{
-						if (dwFlags & RRF_ZEROONFAILURE)
-							memset(pvData, 0, (size_t) *pcbData);
-						*pcbData = dw;
-						return ERROR_MORE_DATA;
+						if (*pcbData < dw)
+						{
+							if (dwFlags & RRF_ZEROONFAILURE)
+								memset(pvData, 0, (size_t)*pcbData);
+							*pcbData = dw;
+							return ERROR_MORE_DATA;
+						}
+						if (bUnicode)
+							memcpy(pvData, (LPCWSTR)str, sizeof(WCHAR) * dw);
+						else
+							memcpy(pvData, (LPCSTR)str, sizeof(CHAR) * dw);
 					}
 					if (bUnicode)
-						memcpy(pvData, (LPCWSTR) str, sizeof(WCHAR) * dw);
+						dw *= sizeof(WCHAR);
 					else
-						memcpy(pvData, (LPCSTR) str, sizeof(CHAR) * dw);
+						dw *= sizeof(CHAR);
 				}
-				if (bUnicode)
-					dw *= sizeof(WCHAR);
-				else
-					dw *= sizeof(CHAR);
 				*pcbData = dw;
 			}
 			break;

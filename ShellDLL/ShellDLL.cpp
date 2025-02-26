@@ -537,8 +537,8 @@ STDAPI DllRegisterServer()
 
 STDAPI EasySFTPRegisterServer(bool bForUser)
 {
-	HKEY hKeyClasses, hKeyCLSID, hKeyCLSIDMe, hKeySFTP, hKeyExplorer, hKeyInstance, hKey2;
-	bool bMySFTPProcotol;
+	HKEY hKeyClasses, hKeyCLSID, hKeyCLSIDMe, hKeyProtocol, hKeyExplorer, hKeyInstance, hKey2;
+	bool bMySFTPProcotol, bMyFTPSProcotol;
 	LSTATUS lError;
 
 	TLIBATTR* pAttr;
@@ -835,13 +835,13 @@ STDAPI EasySFTPRegisterServer(bool bForUser)
 			::RegCloseKey(hKey2);
 		::RegCloseKey(hKeyCLSIDMe);
 
-	lError = ::RegOpenKeyEx(hKeyClasses, _T("sftp"), 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hKeySFTP);
+	lError = ::RegOpenKeyEx(hKeyClasses, _T("sftp"), 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hKeyProtocol);
 	if (lError == ERROR_SUCCESS)
 	{
 		CMyStringW str;
 		// maximum GUID length is 39 (including NULL character)
 		DWORD dwType = REG_SZ, dwLength = 40;
-		lError = ::RegQueryValueEx(hKeySFTP, _T("ShellFolder"), NULL, &dwType,
+		lError = ::RegQueryValueEx(hKeyProtocol, _T("ShellFolder"), NULL, &dwType,
 #ifdef _UNICODE
 			(LPBYTE) str.GetBuffer(dwLength),
 #else
@@ -860,7 +860,7 @@ STDAPI EasySFTPRegisterServer(bool bForUser)
 	else
 	{
 		lError = ::RegCreateKeyEx(hKeyClasses, _T("sftp"), 0, NULL,
-			REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKeySFTP, NULL);
+			REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKeyProtocol, NULL);
 		if (lError != ERROR_SUCCESS)
 		{
 			MyRegDeleteKey2(hKeyCLSID, strCLSIDOld);
@@ -876,11 +876,60 @@ STDAPI EasySFTPRegisterServer(bool bForUser)
 	}
 	if (bMySFTPProcotol)
 	{
-		::RegSetStringValue(hKeySFTP, _T("ShellFolder"), strCLSID);
-		::RegSetStringValue(hKeySFTP, _T("URL Protocol"), _T(""));
-		::RegSetDWordValue(hKeySFTP, _T("EditFlags"), 0x00000002); // FTA_Show
+		::RegSetStringValue(hKeyProtocol, _T("ShellFolder"), strCLSID);
+		::RegSetStringValue(hKeyProtocol, _T("URL Protocol"), _T(""));
+		::RegSetDWordValue(hKeyProtocol, _T("EditFlags"), 0x00000002); // FTA_Show
 	}
-	::RegCloseKey(hKeySFTP);
+	::RegCloseKey(hKeyProtocol);
+
+	lError = ::RegOpenKeyEx(hKeyClasses, _T("ftps"), 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hKeyProtocol);
+	if (lError == ERROR_SUCCESS)
+	{
+		CMyStringW str;
+		// maximum GUID length is 39 (including NULL character)
+		DWORD dwType = REG_SZ, dwLength = 40;
+		lError = ::RegQueryValueEx(hKeyProtocol, _T("ShellFolder"), NULL, &dwType,
+#ifdef _UNICODE
+			(LPBYTE) str.GetBuffer(dwLength),
+#else
+			(LPBYTE) str.GetBufferA(dwLength),
+#endif
+			&dwLength);
+		if (lError != ERROR_SUCCESS)
+			dwLength = 0;
+#ifdef _UNICODE
+		str.ReleaseBuffer(dwLength);
+#else
+		str.ReleaseBufferA(dwLength);
+#endif
+		bMyFTPSProcotol = (str.Compare(strCLSID, true) == 0);
+	}
+	else
+	{
+		lError = ::RegCreateKeyEx(hKeyClasses, _T("ftps"), 0, NULL,
+			REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKeyProtocol, NULL);
+		if (lError != ERROR_SUCCESS)
+		{
+			MyRegDeleteKey2(hKeyCLSID, strCLSIDOld);
+			MyRegDeleteKey2(hKeyCLSID, strCLSID);
+			::RegCloseKey(hKeyCLSID);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
+			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
+			if (bMySFTPProcotol)
+				MyRegDeleteKey2(hKeyClasses, _T("sftp"));
+			if (!theApp.IsWin9x())
+				::RegCloseKey(hKeyClasses);
+			return HRESULT_FROM_WIN32(lError);
+		}
+		bMyFTPSProcotol = true;
+	}
+	if (bMyFTPSProcotol)
+	{
+		::RegSetStringValue(hKeyProtocol, _T("ShellFolder"), strCLSID);
+		::RegSetStringValue(hKeyProtocol, _T("URL Protocol"), _T(""));
+		::RegSetDWordValue(hKeyProtocol, _T("EditFlags"), 0x00000002); // FTA_Show
+	}
+	::RegCloseKey(hKeyProtocol);
 
 	lError = ::RegCreateKeyEx(theApp.IsWin9x() || !bForUser ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
 		_T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace"),
@@ -892,6 +941,8 @@ STDAPI EasySFTPRegisterServer(bool bForUser)
 		::RegCloseKey(hKeyCLSID);
 		if (bMySFTPProcotol)
 			MyRegDeleteKey2(hKeyClasses, _T("sftp"));
+		if (bMyFTPSProcotol)
+			MyRegDeleteKey2(hKeyClasses, _T("ftps"));
 		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
 		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
 		if (!theApp.IsWin9x())
@@ -908,6 +959,8 @@ STDAPI EasySFTPRegisterServer(bool bForUser)
 		::RegCloseKey(hKeyCLSID);
 		if (bMySFTPProcotol)
 			MyRegDeleteKey2(hKeyClasses, _T("sftp"));
+		if (bMyFTPSProcotol)
+			MyRegDeleteKey2(hKeyClasses, _T("ftps"));
 		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
 		MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
 		if (!theApp.IsWin9x())
@@ -938,6 +991,8 @@ STDAPI EasySFTPRegisterServer(bool bForUser)
 			::RegCloseKey(hKeyCLSID);
 			if (bMySFTPProcotol)
 				MyRegDeleteKey2(hKeyClasses, _T("sftp"));
+			if (bMyFTPSProcotol)
+				MyRegDeleteKey2(hKeyClasses, _T("ftps"));
 			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgIdCurrent);
 			MyRegDeleteKey2(hKeyClasses, s_szEasySFTPProgId);
 			if (!theApp.IsWin9x())
@@ -1039,6 +1094,33 @@ STDAPI EasySFTPUnregisterServer(bool bForUser)
 		if (str.Compare(strCLSID, true) == 0)
 		{
 			MyRegDeleteKey2(HKEY_CLASSES_ROOT, _T("sftp"), lpBuffer, dwBufferLen);
+		}
+	}
+
+	lError = ::RegOpenKeyEx(hKeyClasses, _T("ftps"), 0, KEY_QUERY_VALUE, &hKey);
+	if (lError == ERROR_SUCCESS)
+	{
+		CMyStringW str;
+		// maximum GUID length is 39 (including NULL character)
+		DWORD dwType = REG_SZ, dwLength = 40;
+		lError = ::RegQueryValueEx(hKey, _T("ShellFolder"), NULL, &dwType,
+#ifdef _UNICODE
+			(LPBYTE) str.GetBuffer(dwLength),
+#else
+			(LPBYTE) str.GetBufferA(dwLength),
+#endif
+			&dwLength);
+		if (lError != ERROR_SUCCESS)
+			dwLength = 0;
+#ifdef _UNICODE
+		str.ReleaseBuffer(dwLength);
+#else
+		str.ReleaseBufferA(dwLength);
+#endif
+		::RegCloseKey(hKey);
+		if (str.Compare(strCLSID, true) == 0)
+		{
+			MyRegDeleteKey2(HKEY_CLASSES_ROOT, _T("ftps"), lpBuffer, dwBufferLen);
 		}
 	}
 
