@@ -293,7 +293,10 @@ STDMETHODIMP CFTPDirectoryRootBase::IsTextFile(BSTR lpszFileName, VARIANT_BOOL* 
 	for (int i = 0; i < m_arrTextFileType.GetCount(); i++)
 	{
 		if (::MyMatchWildcardW(lpFile, m_arrTextFileType.GetItem(i)))
+		{
+			*pbRet = VARIANT_TRUE;
 			return S_OK;
+		}
 	}
 	if (m_bUseSystemTextFileType)
 	{
