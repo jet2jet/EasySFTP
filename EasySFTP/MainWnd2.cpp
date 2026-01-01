@@ -705,9 +705,9 @@ STDMETHODIMP CMainWindow::CBrowserLocal::OnDefaultCommand(IShellView* ppshv)
 	hr = GetSelectedIDList(ppshv, 0, NULL, &pidl);
 	if (FAILED(hr))
 		return hr;
-	This()->UpdateCurrentFolderAbsolute(pidl);
+	hr = This()->UpdateCurrentFolderAbsolute(pidl);
 	::CoTaskMemFree(pidl);
-	return S_OK;
+	return hr;
 }
 
 STDMETHODIMP CMainWindow::CBrowserLocal::OnStateChange(IShellView* ppshv, ULONG uChange)
@@ -753,23 +753,23 @@ STDMETHODIMP CMainWindow::CBrowserLocal::IncludeObject(IShellView* ppshv, PCUITE
 	PIDLIST_ABSOLUTE lp;
 	CMainWindow* pThis = This();
 
-	lp = AppendItemIDList(pThis->m_wndListViewLocal.m_lpidlAbsoluteMeCur, pidl);
+	lp = AppendItemIDList(pThis->m_wndListViewLocal.m_lpidlAbsoluteMe, pidl);
 	if (IsMyComputerIDList(lp))
 	{
 		::CoTaskMemFree(lp);
 		return S_OK;
 	}
 	::CoTaskMemFree(lp);
-	//if (pThis->m_wndListViewLocal.m_pView == ppshv)
-	{
-		SFGAOF rgf;
-		HRESULT hr;
-		hr = pThis->m_wndListViewLocal.m_pFolderCur->GetAttributesOf(1, &pidl, &rgf);
-		//if (rgf & (SFGAO_FILESYSTEM))
-			return S_OK;
-		//else
-		//	return S_FALSE;
-	}
+	////if (pThis->m_wndListViewLocal.m_pView == ppshv)
+	//{
+	//	SFGAOF rgf;
+	//	HRESULT hr;
+	//	hr = pThis->m_wndListViewLocal.m_pFolderCur->GetAttributesOf(1, &pidl, &rgf);
+	//	//if (rgf & (SFGAO_FILESYSTEM))
+	//		return S_OK;
+	//	//else
+	//	//	return S_FALSE;
+	//}
 	return S_OK;
 }
 
@@ -787,9 +787,9 @@ STDMETHODIMP CMainWindow::CBrowserServer::OnDefaultCommand(IShellView* ppshv)
 	hr = GetSelectedIDList(ppshv, 0, NULL, &pidl);
 	if (FAILED(hr))
 		return hr;
-	This()->UpdateServerFolderAbsolute(pidl);
+	hr = This()->UpdateServerFolderAbsolute(pidl);
 	::CoTaskMemFree(pidl);
-	return S_OK;
+	return hr;
 }
 
 STDMETHODIMP CMainWindow::CBrowserServer::OnStateChange(IShellView* ppshv, ULONG uChange)
@@ -835,23 +835,23 @@ STDMETHODIMP CMainWindow::CBrowserServer::IncludeObject(IShellView* ppshv, PCUIT
 	PIDLIST_ABSOLUTE lp;
 	CMainWindow* pThis = This();
 
-	lp = AppendItemIDList(pThis->m_wndListViewServer.m_lpidlAbsoluteMeCur, pidl);
+	lp = AppendItemIDList(pThis->m_wndListViewServer.m_lpidlAbsoluteMe, pidl);
 	if (IsMyComputerIDList(lp))
 	{
 		::CoTaskMemFree(lp);
 		return S_OK;
 	}
 	::CoTaskMemFree(lp);
-	//if (pThis->m_wndListViewServer.m_pView == ppshv)
-	{
-		SFGAOF rgf;
-		HRESULT hr;
-		hr = pThis->m_wndListViewServer.m_pFolderCur->GetAttributesOf(1, &pidl, &rgf);
-		//if (rgf & (SFGAO_FILESYSTEM))
-			return S_OK;
-		//else
-		//	return S_FALSE;
-	}
+	////if (pThis->m_wndListViewServer.m_pView == ppshv)
+	//{
+	//	SFGAOF rgf;
+	//	HRESULT hr;
+	//	hr = pThis->m_wndListViewServer.m_pFolderCur->GetAttributesOf(1, &pidl, &rgf);
+	//	//if (rgf & (SFGAO_FILESYSTEM))
+	//		return S_OK;
+	//	//else
+	//	//	return S_FALSE;
+	//}
 	return S_OK;
 }
 

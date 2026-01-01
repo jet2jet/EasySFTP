@@ -290,7 +290,7 @@ void CMainWindow::UpdateCurrentFolder(PCUIDLIST_RELATIVE lpidl)
 	}
 }
 
-void CMainWindow::UpdateCurrentFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder)
+HRESULT CMainWindow::UpdateCurrentFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder)
 {
 	HRESULT hr;
 
@@ -305,6 +305,7 @@ void CMainWindow::UpdateCurrentFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFo
 		m_wndAddress.ChangeCurrentFolder(m_wndListViewLocal.m_lpidlAbsoluteMe);
 		::SetFocus(m_wndListViewLocal);
 	}
+	return hr;
 }
 
 void CMainWindow::UpdateCurrentFolderAbsolute(LPCWSTR lpszPath)
@@ -387,7 +388,7 @@ void CMainWindow::UpdateServerFolder(PCUIDLIST_RELATIVE lpidl)
 	}
 }
 
-void CMainWindow::UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder)
+HRESULT CMainWindow::UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder)
 {
 	HRESULT hr;
 
@@ -403,6 +404,7 @@ void CMainWindow::UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFol
 		SetServerListenerToMe();
 		::SetFocus(m_wndListViewServer);
 	}
+	return hr;
 }
 
 void CMainWindow::UpdateServerFolderAbsolute(LPCWSTR lpszPath)

@@ -61,6 +61,7 @@ public:
 		public ICommDlgBrowser,
 #endif
 		public IServiceProvider,
+		//public IOleCommandTarget,
 		public IInternetHostSecurityManager
 	{
 	public:
@@ -99,6 +100,10 @@ public:
 			DWORD cbContext, DWORD dwFlags, DWORD dwReserved);
 		STDMETHOD(QueryCustomPolicy)(REFGUID guidKey, BYTE** ppPolicy, DWORD* pcbPolicy,
 			BYTE* pContext, DWORD cbContext, DWORD dwReserved);
+
+		//// IOleCommandTarget
+		//STDMETHOD(QueryStatus)(const GUID* pguidCmdGroup, ULONG cCmds, OLECMD prgCmds[], OLECMDTEXT* pCmdText);
+		//STDMETHOD(Exec)(const GUID* pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT* pvaIn, VARIANT* pvaOut);
 
 	protected:
 		LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
@@ -192,11 +197,11 @@ public:
 	UINT m_uLastStatusTextModeID;
 
 	void UpdateCurrentFolder(PCUIDLIST_RELATIVE lpidl);
-	void UpdateCurrentFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder = NULL);
+	HRESULT UpdateCurrentFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder = NULL);
 	void UpdateCurrentFolderAbsolute(LPCWSTR lpszPath);
 	//void UpdateServerFolder(LPCWSTR lpszPath);
 	void UpdateServerFolder(PCUIDLIST_RELATIVE lpidl);
-	void UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder = NULL);
+	HRESULT UpdateServerFolderAbsolute(PCUIDLIST_ABSOLUTE lpidl, IShellFolder* pFolder = NULL);
 	void UpdateServerFolderAbsolute(LPCWSTR lpszPath);
 	void SetServerListenerToMe();
 	void OnChangeServerFolderFailed();
