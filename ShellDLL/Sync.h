@@ -1,5 +1,5 @@
 /*
- EasySFTP - Copyright (C) 2025 Kuri-Applications
+ EasySFTP - Copyright (C) 2025 jet (ジェット)
 
  Sync.h - declarations of synchronization between CFTPDirectoryBase and IShellFolder
  */

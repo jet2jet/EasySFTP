@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2011 Kuri-Applications
+ Copyright (C) 2011 jet (ジェット)
 
  Unknown.h - declarations and implementations of CUnknownImplT
  */

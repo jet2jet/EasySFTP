@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2025 Kuri-Applications
+ Copyright (C) 2025 jet (ジェット)
 
  ShlItem.h - declarations of utility functions for IShellItem
  */

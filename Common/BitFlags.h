@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2025 Kuri-Applications
+ Copyright (C) 2025 jet (ジェット)
 
  BitFlags.h - declaration of BitFlags utility type
  */

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2011 Kuri-Applications
+ Copyright (C) 2011 jet (ジェット)
 
  UString.cpp - implementations of CMyStringW
  */

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2025 Kuri-Applications
+ Copyright (C) 2025 jet (ジェット)
 
  Dispatch.h - declarations and implementations of CDispatchImplT
  */

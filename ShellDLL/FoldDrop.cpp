@@ -1,5 +1,5 @@
 /*
- EasySFTP - Copyright (C) 2010 Kuri-Applications
+ EasySFTP - Copyright (C) 2010 jet (ジェット)
 
  FoldDrop.cpp - implementations of drop handlers of folder-helper classes
  */

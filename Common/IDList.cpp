@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2010 Kuri-Applications
+ Copyright (C) 2010 jet (ジェット)
 
  IDList.cpp - implementations of utility functions for ITEMIDLIST
  */

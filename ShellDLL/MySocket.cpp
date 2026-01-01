@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2010 Kuri-Applications
+ Copyright (C) 2010 jet (ジェット)
 
  MySocket.cpp - implementations of CMySocket, CTextSocket, and CFTPSocket
  */

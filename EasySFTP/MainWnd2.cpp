@@ -1,5 +1,5 @@
 /*
- EasySFTP - Copyright (C) 2010 Kuri-Applications
+ EasySFTP - Copyright (C) 2010 jet (ジェット)
 
  MainWnd2.cpp - implementations of CMainWindow (implementations of interfaces)
  */

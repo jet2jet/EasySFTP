@@ -1,5 +1,5 @@
 /*
- EasySFTP - Copyright (C) 2010 Kuri-Applications
+ EasySFTP - Copyright (C) 2010 jet (ジェット)
 
  FTPConn.h - declarations of FTP connection (command exchange, synchronization, and so on)
  */

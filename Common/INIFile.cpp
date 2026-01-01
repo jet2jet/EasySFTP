@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2010 Kuri-Applications
+ Copyright (C) 2010 jet (ジェット)
 
  INIFile.cpp - implementations of functions for INI file
  */

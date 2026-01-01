@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2025 Kuri-Applications
+ Copyright (C) 2025 jet (ジェット)
 
  SyncUtil.h - declarations of utility functions/structures/classes for synchronization
  */

@@ -1,5 +1,5 @@
 /*
- EasySFTP - Copyright (C) 2026 Kuri-Applications
+ EasySFTP - Copyright (C) 2026 jet (ジェット)
 
  Logger.cpp - implementations of IEasySFTPLogger
  */

@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2010 Kuri-Applications
+ Copyright (C) 2010 jet (ジェット)
 
  MyProp.cpp - implementations of CMyPropertySheet and CMyPropertyPage
  */
