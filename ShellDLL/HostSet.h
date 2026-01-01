@@ -93,8 +93,7 @@ public:
 	STDMETHOD(get_PassKeyStoreType)(EasySFTPPassKeyStoreType* pRet) override;
 	STDMETHOD(put_PassKeyStoreType)(EasySFTPPassKeyStoreType Value) override;
 
-	void SetHostName(const CMyStringW& strHostName);
-	void SetUserName(const CMyStringW& strUserName);
+	void SetHostAndUserName(const CMyStringW& strHostName, const CMyStringW& strUserName);
 
 	CAuthentication* CreateAuthentication() const;
 

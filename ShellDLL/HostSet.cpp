@@ -19,14 +19,16 @@
 namespace
 {
 
+static constexpr const auto* s_TargetNamePrefix = L"EasySFTP:cred_";
+
 DWORD _GetCredPersistType(EasySFTPPassKeyStoreType type)
 {
 	return type == EasySFTPPassKeyStoreType::CurrentUser ? CRED_PERSIST_ENTERPRISE : CRED_PERSIST_LOCAL_MACHINE;
 }
 
-void _MakeCredTargetName(CMyStringW& rstrTarget, LPCWSTR lpszHostName)
+void _MakeCredTargetName(CMyStringW& rstrTarget, LPCWSTR lpszHostName, LPCWSTR lpszUserName)
 {
-	rstrTarget.Format(L"EasySFTP:cred_%s", lpszHostName);
+	rstrTarget.Format(L"%s%s_%s", s_TargetNamePrefix, lpszHostName, lpszUserName ? lpszUserName : L"");
 }
 
 void _FreeSecureMemory(void* buffer, size_t size)
@@ -38,14 +40,14 @@ void _FreeSecureMemory(void* buffer, size_t size)
 HRESULT _WriteCredentialsRaw(LPCWSTR lpszHost, LPCWSTR lpszUserName, EasySFTPPassKeyStoreType type, const BYTE* pbBuffer, size_t bufferSize)
 {
 	CMyStringW strTarget;
-	_MakeCredTargetName(strTarget, lpszHost);
+	_MakeCredTargetName(strTarget, lpszHost, lpszUserName);
 
 	CREDENTIALW newCred{};
 	newCred.Type = CRED_TYPE_GENERIC;
 	newCred.CredentialBlob = const_cast<BYTE*>(pbBuffer);
 	newCred.CredentialBlobSize = static_cast<DWORD>(bufferSize);
 	newCred.TargetName = strTarget.GetBuffer();
-	newCred.UserName = const_cast<LPWSTR>(lpszUserName);
+	newCred.UserName = const_cast<LPWSTR>(lpszUserName ? lpszUserName : L"");
 	newCred.Persist = _GetCredPersistType(type);
 	auto hr = ::CredWriteW(&newCred, 0) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 	_SecureStringW::SecureEmptyBuffer(&newCred, sizeof(newCred));
@@ -99,15 +101,15 @@ HRESULT _WriteCredentialsPrivateKey(LPCWSTR lpszHost, LPCWSTR lpszUserName, Easy
 	return hr;
 }
 
-HRESULT _CopyCredentials(LPCWSTR lpszHostFrom, LPCWSTR lpszHostTo, LPCWSTR lpszUserName)
+HRESULT _CopyCredentials(LPCWSTR lpszHostFrom, LPCWSTR lpszUserNameFrom, LPCWSTR lpszHostTo, LPCWSTR lpszUserNameTo)
 {
-	if (!lpszHostFrom || !*lpszHostFrom || !lpszHostTo || !*lpszHostTo || !lpszUserName)
+	if (!lpszHostFrom || !*lpszHostFrom || !lpszHostTo || !*lpszHostTo)
 	{
 		return E_INVALIDARG;
 	}
 
 	CMyStringW strTargetFrom;
-	_MakeCredTargetName(strTargetFrom, lpszHostFrom);
+	_MakeCredTargetName(strTargetFrom, lpszHostFrom, lpszUserNameFrom);
 
 	PCREDENTIALW pcred;
 	if (!::CredReadW(strTargetFrom, CRED_TYPE_GENERIC, 0, &pcred))
@@ -115,14 +117,14 @@ HRESULT _CopyCredentials(LPCWSTR lpszHostFrom, LPCWSTR lpszHostTo, LPCWSTR lpszU
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
 	CMyStringW strTargetTo;
-	_MakeCredTargetName(strTargetTo, lpszHostTo);
+	_MakeCredTargetName(strTargetTo, lpszHostTo, lpszUserNameTo);
 
 	CREDENTIALW newCred{};
 	newCred.Type = pcred->Type;
 	newCred.CredentialBlob = pcred->CredentialBlob;
 	newCred.CredentialBlobSize = pcred->CredentialBlobSize;
 	newCred.TargetName = strTargetTo.GetBuffer();
-	newCred.UserName = const_cast<LPWSTR>(lpszUserName);
+	newCred.UserName = const_cast<LPWSTR>(lpszUserNameTo ? lpszUserNameTo : L"");
 	newCred.Persist = pcred->Persist;
 	auto hr = ::CredWriteW(&newCred, 0) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 	::CredFree(pcred);
@@ -130,51 +132,34 @@ HRESULT _CopyCredentials(LPCWSTR lpszHostFrom, LPCWSTR lpszHostTo, LPCWSTR lpszU
 	return hr;
 }
 
-HRESULT _MoveCredentials(LPCWSTR lpszHostFrom, LPCWSTR lpszHostTo, LPCWSTR lpszUserName)
+HRESULT _MoveCredentials(LPCWSTR lpszHostFrom, LPCWSTR lpszUserNameFrom, LPCWSTR lpszHostTo, LPCWSTR lpszUserNameTo)
 {
-	auto hr = _CopyCredentials(lpszHostFrom, lpszHostTo, lpszUserName);
+	auto hr = _CopyCredentials(lpszHostFrom, lpszUserNameFrom, lpszHostTo, lpszUserNameTo);
 	if (FAILED(hr))
 	{
 		return hr;
 	}
 
 	CMyStringW strTargetFrom;
-	_MakeCredTargetName(strTargetFrom, lpszHostFrom);
+	_MakeCredTargetName(strTargetFrom, lpszHostFrom, lpszUserNameFrom);
 	return ::CredDeleteW(strTargetFrom, CRED_TYPE_GENERIC, 0) != 0 ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 }
 
-HRESULT _DeleteCredentials(LPCWSTR lpszHost)
+HRESULT _DeleteCredentials(LPCWSTR lpszHost, LPCWSTR lpszUserName)
 {
 	if (!lpszHost || !*lpszHost)
 		return S_OK;
 	CMyStringW strTarget;
-	_MakeCredTargetName(strTarget, lpszHost);
+	_MakeCredTargetName(strTarget, lpszHost, lpszUserName);
 	return ::CredDeleteW(strTarget, CRED_TYPE_GENERIC, 0) != 0 ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 }
 
-HRESULT _RenameCredentialsUserName(LPCWSTR lpszHost, LPCWSTR lpszUserName)
+HRESULT _RenameCredentialsUserName(LPCWSTR lpszHost, LPCWSTR lpszUserNameFrom, LPCWSTR lpszUserNameTo)
 {
-	if (!lpszHost || !*lpszHost || !lpszUserName)
-	{
-		return E_INVALIDARG;
-	}
-
-	CMyStringW strTargetFrom;
-	_MakeCredTargetName(strTargetFrom, lpszHost);
-
-	PCREDENTIALW pcred;
-	if (!::CredReadW(strTargetFrom, CRED_TYPE_GENERIC, 0, &pcred))
-	{
-		return HRESULT_FROM_WIN32(GetLastError());
-	}
-	pcred->UserName = const_cast<LPWSTR>(lpszUserName);
-
-	auto hr = ::CredWriteW(pcred, 0) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
-	::CredFree(pcred);
-	return hr;
+	return _MoveCredentials(lpszHost, lpszUserNameFrom, lpszHost, lpszUserNameTo);
 }
 
-HRESULT _ChangeCredentialsPersistType(LPCWSTR lpszHost, EasySFTPPassKeyStoreType type)
+HRESULT _ChangeCredentialsPersistType(LPCWSTR lpszHost, LPCWSTR lpszUserName, EasySFTPPassKeyStoreType type)
 {
 	if (!lpszHost || !*lpszHost)
 	{
@@ -182,7 +167,7 @@ HRESULT _ChangeCredentialsPersistType(LPCWSTR lpszHost, EasySFTPPassKeyStoreType
 	}
 
 	CMyStringW strTargetFrom;
-	_MakeCredTargetName(strTargetFrom, lpszHost);
+	_MakeCredTargetName(strTargetFrom, lpszHost, lpszUserName);
 
 	PCREDENTIALW pcred;
 	if (!::CredReadW(strTargetFrom, CRED_TYPE_GENERIC, 0, &pcred))
@@ -196,7 +181,7 @@ HRESULT _ChangeCredentialsPersistType(LPCWSTR lpszHost, EasySFTPPassKeyStoreType
 	return hr;
 }
 
-PCREDENTIALW _GetCredientials(LPCWSTR lpszHost)
+PCREDENTIALW _GetCredientials(LPCWSTR lpszHost, LPCWSTR lpszUserName)
 {
 	if (!lpszHost || !*lpszHost)
 	{
@@ -204,7 +189,7 @@ PCREDENTIALW _GetCredientials(LPCWSTR lpszHost)
 	}
 
 	CMyStringW strTargetFrom;
-	_MakeCredTargetName(strTargetFrom, lpszHost);
+	_MakeCredTargetName(strTargetFrom, lpszHost, lpszUserName);
 
 	PCREDENTIALW pcred;
 	if (!::CredReadW(strTargetFrom, CRED_TYPE_GENERIC, 0, &pcred))
@@ -226,7 +211,7 @@ PCREDENTIALW _GetCredientials(LPCWSTR lpszHost)
 	return pcred;
 }
 
-WORD _GetCredientialsType(LPCWSTR lpszHost)
+WORD _GetCredientialsType(LPCWSTR lpszHost, LPCWSTR lpszUserName)
 {
 	if (!lpszHost || !*lpszHost)
 	{
@@ -234,7 +219,7 @@ WORD _GetCredientialsType(LPCWSTR lpszHost)
 	}
 
 	CMyStringW strTargetFrom;
-	_MakeCredTargetName(strTargetFrom, lpszHost);
+	_MakeCredTargetName(strTargetFrom, lpszHost, lpszUserName);
 
 	PCREDENTIALW pcred;
 	if (!::CredReadW(strTargetFrom, CRED_TYPE_GENERIC, 0, &pcred))
@@ -296,8 +281,7 @@ void CEasySFTPHostSetting::Copy(const CEasySFTPHostSetting* pSettings)
 {
 	ConnectionMode = pSettings->ConnectionMode;
 	strDisplayName = pSettings->strDisplayName;
-	SetHostName(pSettings->strHostName);
-	SetUserName(pSettings->strUserName);
+	SetHostAndUserName(pSettings->strHostName, pSettings->strUserName);
 	nPort = pSettings->nPort;
 	//strUserName = pSettings->strUserName;
 	strInitLocalPath = pSettings->strInitLocalPath;
@@ -354,9 +338,9 @@ STDMETHODIMP CEasySFTPHostSetting::get_HostName(BSTR* pRet)
 
 STDMETHODIMP CEasySFTPHostSetting::put_HostName(BSTR Value)
 {
-	CMyStringW str;
+	CMyStringW str, strUser(strUserName);
 	MyBSTRToString(Value, str);
-	SetHostName(str);
+	SetHostAndUserName(str, strUser);
 	return S_OK;
 }
 
@@ -551,6 +535,7 @@ STDMETHODIMP CEasySFTPHostSetting::CopyFrom(IEasySFTPHostSetting* pSetting)
 {
 	HRESULT hr;
 	BSTR bstr;
+	CMyStringW strHostName, strUserName;
 	do
 	{
 		hr = pSetting->get_Name(&bstr);
@@ -561,12 +546,8 @@ STDMETHODIMP CEasySFTPHostSetting::CopyFrom(IEasySFTPHostSetting* pSetting)
 		hr = pSetting->get_HostName(&bstr);
 		if (FAILED(hr))
 			break;
-		{
-			CMyStringW str;
-			MyBSTRToString(bstr, str);
-			::SysFreeString(bstr);
-			SetHostName(str);
-		}
+		MyBSTRToString(bstr, strHostName);
+		::SysFreeString(bstr);
 		hr = pSetting->get_ConnectionMode(&ConnectionMode);
 		if (FAILED(hr))
 			break;
@@ -662,25 +643,58 @@ STDMETHODIMP CEasySFTPHostSetting::CopyFrom(IEasySFTPHostSetting* pSetting)
 			break;
 		MyBSTRToString(bstr, strChmodCommand);
 		::SysFreeString(bstr);
+
+		IEasySFTPHostSetting2* pSetting2 = nullptr;
+		hr = pSetting->QueryInterface(IID_IEasySFTPHostSetting2, reinterpret_cast<void**>(&pSetting2));
+		if (SUCCEEDED(hr) && pSetting2)
+		{
+			do
+			{
+				{
+					VARIANT_BOOL b;
+					hr = pSetting2->get_AutoLogin(&b);
+					if (FAILED(hr))
+						break;
+					bAutoLogin = b != VARIANT_FALSE;
+				}
+				hr = pSetting2->get_UserName(&bstr);
+				if (FAILED(hr))
+					break;
+				MyBSTRToString(bstr, strUserName);
+				::SysFreeString(bstr);
+				{
+					EasySFTPAuthenticationMode mode;
+					hr = pSetting2->get_AuthenticationMode(&mode);
+					if (FAILED(hr))
+						break;
+					AuthMode = mode;
+				}
+				{
+					EasySFTPPassKeyStoreType type;
+					hr = pSetting2->get_PassKeyStoreType(&type);
+					if (FAILED(hr))
+						break;
+					PassKeyStoreType = type;
+				}
+			} while (0);
+			pSetting2->Release();
+			if (FAILED(hr))
+				break;
+		}
+		SetHostAndUserName(strHostName, strUserName);
 	} while (0);
 	return hr;
 }
 
-void CEasySFTPHostSetting::SetHostName(const CMyStringW& strHostName)
+void CEasySFTPHostSetting::SetHostAndUserName(const CMyStringW& strHostName, const CMyStringW& strUserName)
 {
-	if (this->strHostName.Compare(strHostName) == 0)
+	if (this->strHostName.Compare(strHostName) == 0 && this->strUserName.Compare(strUserName) == 0)
 		return;
 	if (strHostName.IsEmpty())
-		_DeleteCredentials(this->strHostName);
+		_DeleteCredentials(this->strHostName, this->strUserName);
 	else
-		_MoveCredentials(this->strHostName, strHostName, strUserName);
+		_MoveCredentials(this->strHostName, this->strUserName, strHostName, strUserName);
 	this->strHostName = strHostName;
-}
-
-void CEasySFTPHostSetting::SetUserName(const CMyStringW& strUserName)
-{
-	if (!strHostName.IsEmpty())
-		_RenameCredentialsUserName(strHostName, strUserName);
 	this->strUserName = strUserName;
 }
 
@@ -708,15 +722,15 @@ STDMETHODIMP CEasySFTPHostSetting::get_UserName(BSTR* pRet)
 
 STDMETHODIMP CEasySFTPHostSetting::put_UserName(BSTR Value)
 {
-	CMyStringW str;
-	MyBSTRToString(Value, str);
-	SetUserName(str);
+	CMyStringW strHost(strHostName), strUser;
+	MyBSTRToString(Value, strUser);
+	SetHostAndUserName(strHost, strUser);
 	return S_OK;
 }
 
 STDMETHODIMP CEasySFTPHostSetting::ClearCredentials()
 {
-	auto hr = _DeleteCredentials(strHostName);
+	auto hr = _DeleteCredentials(strHostName, strUserName);
 	if (SUCCEEDED(hr))
 	{
 		strUserName.Empty();
@@ -730,7 +744,7 @@ STDMETHODIMP CEasySFTPHostSetting::get_HasPassword(VARIANT_BOOL* pRet)
 {
 	if (!pRet)
 		return E_POINTER;
-	*pRet = _GetCredientialsType(strHostName) == CREDENTIAL_TYPE_PASSWORD ? VARIANT_TRUE : VARIANT_FALSE;
+	*pRet = _GetCredientialsType(strHostName, strUserName) == CREDENTIAL_TYPE_PASSWORD ? VARIANT_TRUE : VARIANT_FALSE;
 	return S_OK;
 }
 
@@ -761,7 +775,7 @@ STDMETHODIMP CEasySFTPHostSetting::get_HasPrivateKey(VARIANT_BOOL* pRet)
 {
 	if (!pRet)
 		return E_POINTER;
-	*pRet = _GetCredientialsType(strHostName) == CREDENTIAL_TYPE_PRIVATE_KEY ? VARIANT_TRUE : VARIANT_FALSE;
+	*pRet = _GetCredientialsType(strHostName, strUserName) == CREDENTIAL_TYPE_PRIVATE_KEY ? VARIANT_TRUE : VARIANT_FALSE;
 	return S_OK;
 }
 
@@ -870,9 +884,9 @@ STDMETHODIMP CEasySFTPHostSetting::get_PassKeyStoreType(EasySFTPPassKeyStoreType
 
 STDMETHODIMP CEasySFTPHostSetting::put_PassKeyStoreType(EasySFTPPassKeyStoreType Value)
 {
-	if (_GetCredientialsType(strHostName) != CREDENTIAL_TYPE_INVALID)
+	if (_GetCredientialsType(strHostName, strUserName) != CREDENTIAL_TYPE_INVALID)
 	{
-		auto hr = _ChangeCredentialsPersistType(strHostName, Value);
+		auto hr = _ChangeCredentialsPersistType(strHostName, strUserName, Value);
 		if (FAILED(hr))
 			return hr;
 	}
@@ -891,7 +905,7 @@ CAuthentication* CEasySFTPHostSetting::CreateAuthentication() const
 
 	if (AuthMode == EasySFTPAuthenticationMode::Password || AuthMode == EasySFTPAuthenticationMode::PrivateKey)
 	{
-		auto* pcred = _GetCredientials(strHostName);
+		auto* pcred = _GetCredientials(strHostName, strUserName);
 		if (!pcred)
 		{
 			delete pAuth;
@@ -930,8 +944,8 @@ CAuthentication* CEasySFTPHostSetting::CreateAuthentication() const
 
 bool CEasySFTPHostSetting::HasCredentials()
 {
-	CMyStringW str;
-	_MakeCredTargetName(str, L"*");
+	CMyStringW str(s_TargetNamePrefix);
+	str += L"*";
 	DWORD dw = 0;
 	PCREDENTIALW* ppcred;
 	if (!::CredEnumerateW(str, 0, &dw, &ppcred))
@@ -943,8 +957,8 @@ bool CEasySFTPHostSetting::HasCredentials()
 
 void CEasySFTPHostSetting::ClearAllCredentials()
 {
-	CMyStringW str;
-	_MakeCredTargetName(str, L"*");
+	CMyStringW str(s_TargetNamePrefix);
+	str += L"*";
 	DWORD dw = 0;
 	PCREDENTIALW* ppcred;
 	if (!::CredEnumerateW(str, 0, &dw, &ppcred))

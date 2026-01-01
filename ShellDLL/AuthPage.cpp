@@ -185,7 +185,8 @@ LRESULT CHostAuthPage::OnSearchPKeyFile(WPARAM wParam, LPARAM lParam)
 LRESULT CHostAuthPage::OnApply(WPARAM wParam, LPARAM lParam)
 {
 	// Host name is necessary for storing credentials
-	CMyStringW strHost, strOldHost(m_pSettings->strHostName);
+	CMyStringW strHost;
+	CMyStringW strOldHost(m_pSettings->strHostName), strOldUser(m_pSettings->strUserName);
 	auto oldStoreType = m_pSettings->PassKeyStoreType;
 	{
 		::SyncDialogData(m_pHostSettingPage->GetSafeHwnd(), IDC_HOST_NAME, strHost, true);
@@ -247,7 +248,7 @@ LRESULT CHostAuthPage::OnApply(WPARAM wParam, LPARAM lParam)
 					GetParentSheet()->SetCurSel(this);
 					return PSNRET_INVALID_NOCHANGEPAGE;
 				}
-				m_pSettings->SetHostName(strHost);
+				m_pSettings->SetHostAndUserName(strHost, strUserName);
 				m_pSettings->PassKeyStoreType = nStoreType;
 				BSTR bstrPKeyFile = ::MyStringToBSTR(strPKey);
 				BSTR bstrPassword = ::MyStringToBSTR(strPassword);
@@ -260,7 +261,7 @@ LRESULT CHostAuthPage::OnApply(WPARAM wParam, LPARAM lParam)
 					::SysFreeString(bstrPassword);
 					_SecureStringW::SecureEmptyString(strPassword);
 					m_pSettings->PassKeyStoreType = oldStoreType;
-					m_pSettings->SetHostName(strOldHost);
+					m_pSettings->SetHostAndUserName(strOldHost, strOldUser);
 
 					ERR_error_string_n(uErr, strHost.GetBufferA(MAX_PATH), MAX_PATH);
 					strHost.ReleaseBufferA();
@@ -280,7 +281,7 @@ LRESULT CHostAuthPage::OnApply(WPARAM wParam, LPARAM lParam)
 			{
 				BSTR bstrPassword = ::MyStringToBSTR(strPassword);
 				m_pSettings->PassKeyStoreType = nStoreType;
-				m_pSettings->SetHostName(strHost);
+				m_pSettings->SetHostAndUserName(strHost, strUserName);
 				auto hr = m_pSettings->SetPassword(bstrPassword);
 				if (FAILED(hr))
 				{
@@ -288,7 +289,7 @@ LRESULT CHostAuthPage::OnApply(WPARAM wParam, LPARAM lParam)
 					::SysFreeString(bstrPassword);
 					_SecureStringW::SecureEmptyString(strPassword);
 					m_pSettings->PassKeyStoreType = oldStoreType;
-					m_pSettings->SetHostName(strOldHost);
+					m_pSettings->SetHostAndUserName(strOldHost, strOldUser);
 
 					MyGetErrorMessageString(hr, strOldHost);
 					::MyMessageBoxW(m_hWnd, strOldHost, NULL, MB_ICONEXCLAMATION);
@@ -310,8 +311,8 @@ LRESULT CHostAuthPage::OnApply(WPARAM wParam, LPARAM lParam)
 		nAuthType = EasySFTPAuthenticationMode::Password;
 		nStoreType = EasySFTPPassKeyStoreType::Local;
 		m_pSettings->ClearCredentials();
+		m_pSettings->strUserName.Empty();
 	}
-	m_pSettings->SetUserName(strUserName);
 	m_pSettings->bAutoLogin = bAutoLogin;
 	m_pSettings->AuthMode = nAuthType;
 	m_pSettings->PassKeyStoreType = nStoreType;
