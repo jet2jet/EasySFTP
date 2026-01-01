@@ -14,6 +14,7 @@
 
 #include "IDList.h"
 #include "FileStrm.h"
+#include "Logger.h"
 
 CMainApplication theApp;
 
@@ -325,7 +326,20 @@ int CMainApplication::ExitInstance()
 	if (m_pUnkThreadRef)
 		m_pUnkThreadRef->Release();
 	if (m_pEasySFTPRoot)
+	{
+		if (m_pMyLogger)
+		{
+			IEasySFTPRoot2* pRoot2;
+			if (SUCCEEDED(m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPRoot2, reinterpret_cast<void**>(&pRoot2))))
+			{
+				pRoot2->RemoveLogger(m_pMyLogger);
+				pRoot2->Release();
+			}
+			m_pMyLogger->Release();
+			m_pMyLogger = nullptr;
+		}
 		m_pEasySFTPRoot->Release();
+	}
 	if (m_pidlEasySFTP)
 		::CoTaskMemFree(m_pidlEasySFTP);
 	if (m_hImageListAddrButtonsL)
@@ -665,12 +679,24 @@ HRESULT CMainApplication::InitEasySFTP()
 	if (FAILED(hr))
 		return hr;
 
-	IEasySFTPInternal* pInternal;
-	hr = m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPInternal, (void**) &pInternal);
-	if (SUCCEEDED(hr))
 	{
-		pInternal->SetEmulateRegMode(m_bEmulatingRegistry);
-		pInternal->Release();
+		IEasySFTPInternal* pInternal;
+		hr = m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPInternal, (void**)&pInternal);
+		if (SUCCEEDED(hr))
+		{
+			pInternal->SetEmulateRegMode(m_bEmulatingRegistry);
+			pInternal->Release();
+		}
+	}
+	{
+		IEasySFTPRoot2* pRoot2 = nullptr;
+		hr = m_pEasySFTPRoot->QueryInterface(IID_IEasySFTPRoot2, reinterpret_cast<void**>(&pRoot2));
+		if (SUCCEEDED(hr))
+		{
+			m_pMyLogger = new CEasySFTPLogger();
+			pRoot2->AddLogger(m_pMyLogger);
+			pRoot2->Release();
+		}
 	}
 
 	// check where to register

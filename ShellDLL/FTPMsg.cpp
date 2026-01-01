@@ -238,6 +238,7 @@ STDMETHODIMP CFTPStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 	if (m_pPassive->pPassive->IsRemoteClosed())
 	{
 		Close();
+		theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_DOWNLOADED_FILE, m_strFileName.operator LPCWSTR()), S_OK);
 		if (pcbRead)
 			*pcbRead = 0;
 		return S_FALSE;
@@ -251,6 +252,7 @@ STDMETHODIMP CFTPStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 		if (m_pPassive->pPassive->IsRemoteClosed())
 		{
 			Close();
+			theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_DOWNLOADED_FILE, m_strFileName.operator LPCWSTR()), S_OK);
 			break;
 		}
 		if (!m_pPassive->pPassive->CanReceive(WAIT_RECEIVE_TIME))
@@ -261,7 +263,14 @@ STDMETHODIMP CFTPStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 		if (needMoreData)
 			continue;
 		if (!ret)
+		{
+			if (!read)
+			{
+				Close();
+				theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_DOWNLOADED_FILE, m_strFileName.operator LPCWSTR()), S_OK);
+			}
 			break;
+		}
 		m_uliNowPos.QuadPart += (ULONG) ret;
 		read += (ULONG) ret;
 		pv = ((LPBYTE) pv) + (ULONG) ret;

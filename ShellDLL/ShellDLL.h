@@ -138,6 +138,8 @@ struct CSFTPFileItem
 #include "FileList.h"
 
 void LogWin32LastError(const WCHAR* pszFuncName);
+CMyStringW HResultToString(HRESULT hr);
+void LogLastSSLError(EasySFTPLogLevel Level = EasySFTPLogLevel::Error);
 
 LPWSTR __stdcall DuplicateCoMemString(const CMyStringW& string);
 
@@ -346,6 +348,10 @@ public:
 
 	inline bool IsWin9x() const { return !m_bUseOFNUnicode; }
 
+	void Log(EasySFTPLogLevel Level, const CMyStringW& Message, HRESULT hResult);
+	void AddLogger(IEasySFTPLogger* pLogger);
+	void RemoveLogger(IEasySFTPLogger* pLogger);
+
 public:
 	MSG m_msg;
 
@@ -411,6 +417,9 @@ public:
 
 	CRITICAL_SECTION m_csHosts;
 	CMyPtrArrayT<CHostFolderData> m_aHosts;
+
+	CRITICAL_SECTION m_csLoggers;
+	CMyPtrArrayT<IEasySFTPLogger> m_aLoggers;
 
 	UINT m_nCFShellIDList;
 	UINT m_nCFFileContents;

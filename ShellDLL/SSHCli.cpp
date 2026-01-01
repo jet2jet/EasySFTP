@@ -7,6 +7,7 @@
 #include "StdAfx.h"
 #include "SSHCli.h"
 
+#include "ShellDLL.h"
 #include "Func.h"
 #include "unicode.h"
 
@@ -44,17 +45,15 @@ bool CSSH2Client::OnFirstReceive()
 		);
 	if (!m_pSession)
 		return false;
-#ifdef _DEBUG
 	libssh2_trace(m_pSession, LIBSSH2_TRACE_KEX | LIBSSH2_TRACE_AUTH | LIBSSH2_TRACE_CONN);
 	libssh2_trace_sethandler(m_pSession, NULL, [](LIBSSH2_SESSION* session,
 		void* context,
 		const char* data,
 		size_t length) {
-			OutputDebugStringA(data);
-			if (length > 0 && data[length - 1] != '\n')
-				OutputDebugStringA("\r\n");
+			CMyStringW str;
+			str.SetString(data, length);
+			theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 		});
-#endif
 	libssh2_session_set_blocking(m_pSession, 0);
 	libssh2_keepalive_config(m_pSession, 0, 2);
 
@@ -129,13 +128,9 @@ void CSSH2Client::SendKeepAlive()
 {
 	int seconds = 0;
 	auto r = libssh2_keepalive_send(m_pSession, &seconds);
-	(void)seconds;
-	(void)r;
-#ifdef _DEBUG
 	{
 		CMyStringW str;
-		str.Format(L"[ssh] Sending keep-alive result:%d, seconds:%d\n", r, seconds);
-		OutputDebugStringW(str);
+		str.Format(L"[ssh] Sending keep-alive result:%d, seconds:%d", r, seconds);
+		theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 	}
-#endif
 }

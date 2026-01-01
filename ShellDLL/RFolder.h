@@ -99,6 +99,8 @@ public:
 public:
 	STDMETHOD(ClearAllCredentials)() override;
 	STDMETHOD(HasCredentials)(VARIANT_BOOL* pRet) override;
+	STDMETHOD(AddLogger)(IEasySFTPLogger* Logger) override;
+	STDMETHOD(RemoveLogger)(IEasySFTPLogger* Logger) override;
 
 	// IEasySFTPOldRoot
 public:

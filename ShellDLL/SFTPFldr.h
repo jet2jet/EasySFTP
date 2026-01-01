@@ -90,7 +90,7 @@ struct CSFTPSendFileData
 
 struct CSFTPWaitDirectoryData : public CWaitResponseData
 {
-	inline CSFTPWaitDirectoryData() : CWaitResponseData(WRD_DIRECTORY) { }
+	inline CSFTPWaitDirectoryData() : CWaitResponseData(WRD_DIRECTORY), nStep(stepFinished), bResult(false), nStatus(SSH_FX_OK) { }
 	enum
 	{
 		stepFinished = 0,
@@ -99,6 +99,7 @@ struct CSFTPWaitDirectoryData : public CWaitResponseData
 	};
 	char nStep;
 	bool bResult;
+	int nStatus;
 	HSFTPHANDLE hSFTPHandle;
 	DWORD dwReadLinkCount;
 	CFTPDirectoryBase* pDirectory;

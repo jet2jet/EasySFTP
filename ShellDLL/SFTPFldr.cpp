@@ -333,6 +333,7 @@ STDMETHODIMP CSFTPFolderSFTP::SetFTPItemNameOf(HWND hWnd, CFTPDirectoryBase* pDi
 	ULONG uMsgID = m_pChannel->Rename(strFrom, strTo);
 	if (!uMsgID)
 	{
+		theApp.Log(EasySFTPLogLevel::Error, CMyStringW(IDS_COMMAND_OUTOFMEMORY), E_OUTOFMEMORY);
 		if (hWnd)
 			::MyMessageBoxW(hWnd, MAKEINTRESOURCEW(IDS_COMMAND_OUTOFMEMORY), NULL, MB_ICONHAND);
 		return E_OUTOFMEMORY;
@@ -343,6 +344,7 @@ STDMETHODIMP CSFTPFolderSFTP::SetFTPItemNameOf(HWND hWnd, CFTPDirectoryBase* pDi
 	if (!pData)
 	{
 		hr = E_OUTOFMEMORY;
+		theApp.Log(EasySFTPLogLevel::Error, CMyStringW(IDS_COMMAND_OUTOFMEMORY), E_OUTOFMEMORY);
 		if (hWnd)
 			::MyMessageBoxW(hWnd, MAKEINTRESOURCEW(IDS_COMMAND_OUTOFMEMORY), NULL, MB_ICONHAND);
 	}
@@ -381,11 +383,13 @@ STDMETHODIMP CSFTPFolderSFTP::SetFTPItemNameOf(HWND hWnd, CFTPDirectoryBase* pDi
 			hr = E_FAIL;
 			break;
 		}
-		if (FAILED(hr) && hWnd)
+		if (FAILED(hr))
 		{
 			CMyStringW str;
 			GetSFTPStatusMessage(pData->nResult, pData->strMessage, str);
-			::MyMessageBoxW(hWnd, str, NULL, MB_ICONHAND);
+			theApp.Log(EasySFTPLogLevel::Error, str, E_OUTOFMEMORY);
+			if (hWnd)
+				::MyMessageBoxW(hWnd, str, NULL, MB_ICONHAND);
 		}
 		delete pData;
 	}
@@ -560,6 +564,8 @@ STDMETHODIMP CSFTPFolderSFTP::RenameFTPItem(LPCWSTR lpszSrcFileName, LPCWSTR lps
 			}
 		}
 	}
+	if (FAILED(hr))
+		theApp.Log(EasySFTPLogLevel::Error, strMsg, hr);
 	if (pstrMsg)
 	{
 		if (FAILED(hr))
@@ -601,13 +607,14 @@ STDMETHODIMP CSFTPFolderSFTP::UpdateFTPItemAttribute(CFTPDirectoryBase* pDirecto
 
 	if (!uMsgID)
 	{
+		CMyStringW str, str2;
+		str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
+		str = strFile;
+		str += L": ";
+		str += str2;
+		theApp.Log(EasySFTPLogLevel::Error, str, E_OUTOFMEMORY);
 		if (pstrMsg)
 		{
-			CMyStringW str, str2;
-			str2.LoadString(IDS_COMMAND_UNKNOWN_ERROR);
-			str = strFile;
-			str += L": ";
-			str += str2;
 			*pstrMsg = str;
 		}
 		return E_OUTOFMEMORY;
@@ -616,13 +623,14 @@ STDMETHODIMP CSFTPFolderSFTP::UpdateFTPItemAttribute(CFTPDirectoryBase* pDirecto
 	CSFTPWaitSetStat* pWait = new CSFTPWaitSetStat();
 	if (!pWait)
 	{
+		CMyStringW str, str2;
+		str2.LoadString(IDS_COMMAND_OUTOFMEMORY);
+		str = strFile;
+		str += L": ";
+		str += str2;
+		theApp.Log(EasySFTPLogLevel::Error, str, E_OUTOFMEMORY);
 		if (pstrMsg)
 		{
-			CMyStringW str, str2;
-			str2.LoadString(IDS_COMMAND_OUTOFMEMORY);
-			str = strFile;
-			str += L": ";
-			str += str2;
 			*pstrMsg = str;
 		}
 		return E_OUTOFMEMORY;
@@ -650,13 +658,14 @@ STDMETHODIMP CSFTPFolderSFTP::UpdateFTPItemAttribute(CFTPDirectoryBase* pDirecto
 	HRESULT hr2 = SFTPResultToHResult(pWait->nResult);
 	if (FAILED(hr2))
 	{
+		CMyStringW str, str2;
+		GetSFTPStatusMessage(pWait->nResult, pWait->strMessage, str2);
+		str = strFile;
+		str += L": ";
+		str += str2;
+		theApp.Log(EasySFTPLogLevel::Error, str, hr2);
 		if (pstrMsg)
 		{
-			CMyStringW str, str2;
-			GetSFTPStatusMessage(pWait->nResult, pWait->strMessage, str2);
-			str = strFile;
-			str += L": ";
-			str += str2;
 			*pstrMsg = str;
 		}
 	}
@@ -741,8 +750,14 @@ STDMETHODIMP CSFTPFolderSFTP::CreateFTPDirectory(HWND hWndOwner, CFTPDirectoryBa
 			delete pData;
 		}
 	}
-	if (FAILED(hr) && !strMsg.IsEmpty() && hWndOwner)
-		::MyMessageBoxW(hWndOwner, strMsg, NULL, MB_ICONHAND);
+	if (FAILED(hr))
+	{
+		if (strMsg.IsEmpty())
+			strMsg = HResultToString(hr);
+		theApp.Log(EasySFTPLogLevel::Error, strMsg, hr);
+		if (hWndOwner)
+			::MyMessageBoxW(hWndOwner, strMsg, NULL, MB_ICONHAND);
+	}
 	return hr;
 }
 
@@ -829,23 +844,41 @@ STDMETHODIMP CSFTPFolderSFTP::CreateShortcut(HWND hWndOwner, CFTPDirectoryBase* 
 			delete pData;
 		}
 	}
-	if (FAILED(hr) && !strMsg.IsEmpty() && hWndOwner)
-		::MyMessageBoxW(hWndOwner, strMsg, NULL, MB_ICONHAND);
+	if (FAILED(hr))
+	{
+		if (strMsg.IsEmpty())
+			strMsg = HResultToString(hr);
+		theApp.Log(EasySFTPLogLevel::Error, strMsg, hr);
+		if (hWndOwner)
+			::MyMessageBoxW(hWndOwner, strMsg, NULL, MB_ICONHAND);
+	}
 	return hr;
 }
 
 STDMETHODIMP CSFTPFolderSFTP::CreateFTPItemStream(CFTPDirectoryBase* pDirectory, CFTPFileItem* pItem, IStream** ppStream)
 {
+	{
+		CMyStringW strFileName = pDirectory->m_strDirectory;
+		if (strFileName.IsEmpty() ||
+			((LPCWSTR)strFileName)[strFileName.GetLength() - 1] != L'/')
+			strFileName += L'/';
+		strFileName += pItem->strFileName;
+		theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_DOWNLOADING_FILE, strFileName.operator LPCWSTR()), S_OK);
+	}
 	CSFTPStream* pStream = new CSFTPStream(&m_xStreamCounter,
 		this,
 		m_pChannel,
 		pDirectory->m_strDirectory);
 	if (!pStream)
+	{
+		theApp.Log(EasySFTPLogLevel::Info, HResultToString(E_OUTOFMEMORY), E_OUTOFMEMORY);
 		return E_OUTOFMEMORY;
+	}
 	pStream->m_uliDataSize.QuadPart = pItem->uliSize.QuadPart;
 	if (!pStream->TryOpenFile(pItem))
 	{
 		pStream->Release();
+		theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_ERROR_OCCURRED), E_FAIL);
 		return E_FAIL;
 	}
 	*ppStream = pStream;
@@ -1071,8 +1104,14 @@ STDMETHODIMP CSFTPFolderSFTP::WriteFTPItem(
 		}
 	}
 	DecrementTransferCount();
-	if (FAILED(hr) && !strMsg.IsEmpty() && hWndOwner)
-		::MyMessageBoxW(hWndOwner, strMsg, NULL, MB_ICONHAND);
+	if (FAILED(hr))
+	{
+		if (strMsg.IsEmpty())
+			strMsg = HResultToString(hr);
+		theApp.Log(EasySFTPLogLevel::Error, strMsg, hr);
+		if (hWndOwner)
+			::MyMessageBoxW(hWndOwner, strMsg, NULL, MB_ICONHAND);
+	}
 	return hr;
 }
 
@@ -1113,6 +1152,8 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasyS
 
 		m_pClient = new CSSH2Client();
 
+		theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_CONNECTING_TO_HOST, m_strHostName.operator LPCWSTR(), nPort), S_OK);
+
 		const addrinfo* pai = m_pClient->m_socket.TryConnect(nPort, m_strHostName);
 		if (!pai)
 		{
@@ -1124,10 +1165,10 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasyS
 				m_pUser = NULL;
 			}
 
+			CMyStringW str(IDS_UNKNOWN_HOST, lpszHostName);
+			theApp.Log(EasySFTPLogLevel::Error, str, E_FAIL);
 			if (hWnd)
 			{
-				CMyStringW str;
-				str.Format(IDS_UNKNOWN_HOST, lpszHostName);
 				::MyMessageBoxW(hWnd, str, NULL, MB_ICONEXCLAMATION);
 			}
 			return false;
@@ -1143,6 +1184,7 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasyS
 				m_pUser = NULL;
 			}
 
+			theApp.Log(EasySFTPLogLevel::Error, CMyStringW(IDS_FAILED_TO_CONNECT), E_FAIL);
 			if (hWnd)
 				::MyMessageBoxW(hWnd, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
 			return false;
@@ -1160,6 +1202,7 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasyS
 			auto hr = PumpSocketAndMessage();
 			if (FAILED(hr))
 			{
+				theApp.Log(EasySFTPLogLevel::Error, HResultToString(hr), hr);
 				Disconnect();
 				return false;
 			}
@@ -1185,6 +1228,7 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasyS
 		break;
 	}
 
+	theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_CONNECT_DONE, m_strHostName.operator LPCWSTR(), nPort), S_OK);
 	return true;
 }
 
@@ -1292,6 +1336,7 @@ STDMETHODIMP CSFTPFolderSFTP::Disconnect()
 	m_hWndOwner = NULL;
 
 	OnDisconnect();
+	theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_DISCONNECTED), S_OK);
 
 	//m_strHostName.Empty();
 	return S_OK;
@@ -1983,6 +2028,7 @@ bool CSFTPFolderSFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirec
 		::LeaveCriticalSection(&m_csSocket);
 		return false;
 	}
+	theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_LISTING_FILES, lpszDirectory), S_OK);
 	ULONG uMsg = m_pChannel->OpenDirectory(lpszDirectory);
 	if (!uMsg)
 	{
@@ -2008,6 +2054,7 @@ bool CSFTPFolderSFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirec
 			delete pData;
 			pDirectory->Release();
 			::LeaveCriticalSection(&m_csSocket);
+			theApp.Log(EasySFTPLogLevel::Error, HResultToString(hr), S_OK);
 			return false;
 		}
 		if (hr == S_FALSE)
@@ -2025,6 +2072,17 @@ bool CSFTPFolderSFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirec
 	pDirectory->Release();
 	*pbReceived = true;
 	::LeaveCriticalSection(&m_csSocket);
+	if (ret)
+		theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_LISTING_FILES_DONE, lpszDirectory), S_OK);
+	else
+	{
+		if (pData->nStatus != SSH_FX_OK)
+		{
+			CMyStringW str;
+			GetSFTPStatusMessage(pData->nStatus, nullptr, str);
+			theApp.Log(EasySFTPLogLevel::Error, str, E_FAIL);
+		}
+	}
 	return ret;
 }
 
@@ -2368,6 +2426,7 @@ UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 		if (!m_pClient->OnFirstReceive())
 			return IDS_FAILED_TO_CONNECT;
 		m_phase = Phase::Handshake;
+		theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_IN_HANDSHAKE), S_OK);
 	}
 
 	if (m_phase == Phase::Handshake)
@@ -2383,6 +2442,7 @@ UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 			return 0;
 		}
 		m_phase = Phase::Authenticating;
+		theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_IN_AUTHENTICATING), S_OK);
 	}
 
 	if (m_phase == Phase::Authenticating)
@@ -2398,14 +2458,12 @@ UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 		{
 			char* msg;
 			libssh2_session_last_error(m_pClient->GetSession(), &msg, NULL, 0);
-#ifdef _DEBUG
 			{
 				CMyStringW strMsg = msg;
 				CMyStringW str;
-				str.Format(L"[libssh2] error %d: %s\n", libssh2_session_last_errno(m_pClient->GetSession()), strMsg.operator LPCWSTR());
-				OutputDebugString(str);
+				str.Format(L"[libssh2] error %d: %s", libssh2_session_last_errno(m_pClient->GetSession()), strMsg.operator LPCWSTR());
+				theApp.Log(EasySFTPLogLevel::Error, str, E_FAIL);
 			}
-#endif
 			if (m_pClient->CanRetryAuthenticate())
 			{
 				m_bFirstAuthenticate = false;
@@ -2422,7 +2480,7 @@ UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 					m_bNextLoop = true;
 					// need to reconnect to avoid 'change of username or service not allowed' error
 					m_bReconnect = true;
-					OutputDebugStringW(L"[EasySFTP] reconnecting for authentication\n");
+					theApp.Log(EasySFTPLogLevel::Debug, L"reconnecting for authentication", S_OK);
 					return 0;
 				}
 				m_pClient->EndAuthenticate();
@@ -2437,6 +2495,7 @@ UINT CSFTPFolderSFTP::_OnSFTPSocketReceiveThreadUnsafe(bool isSocketReceived)
 
 			m_phase = Phase::Authenticated;
 			m_pChannel = new CSFTPChannel(this);
+			theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_IN_SFTP_CONNECTING), S_OK);
 		}
 	}
 	if (m_phase == Phase::Authenticated)
@@ -2698,6 +2757,8 @@ void CSFTPFolderSFTP::SFTPConfirm(CSFTPChannel* pChannel, CSFTPMessage* pMsg, in
 			if (nStatus == SSH_FX_OK && pData->nStep == CSFTPWaitDirectoryData::stepRetrieveFiles)
 			{
 				pData->nStep = CSFTPWaitDirectoryData::stepFinished;
+				if (pData->hSFTPHandle)
+					pChannel->CloseHandle(pData->hSFTPHandle);
 				pData->hSFTPHandle = NULL;
 				pData->bResult = true;
 			}
@@ -2709,6 +2770,7 @@ void CSFTPFolderSFTP::SFTPConfirm(CSFTPChannel* pChannel, CSFTPMessage* pMsg, in
 				{
 					pData->nStep = CSFTPWaitDirectoryData::stepFinished;
 					pData->bResult = false;
+					pData->nStatus = SSH_FX_FAILURE;
 				}
 				else
 					m_listWaitResponse.Add(pData, uMsgID);
@@ -2720,6 +2782,7 @@ void CSFTPFolderSFTP::SFTPConfirm(CSFTPChannel* pChannel, CSFTPMessage* pMsg, in
 					pChannel->CloseHandle(pData->hSFTPHandle);
 				pData->hSFTPHandle = NULL;
 				pData->bResult = false;
+				pData->nStatus = nStatus;
 			}
 		}
 		break;

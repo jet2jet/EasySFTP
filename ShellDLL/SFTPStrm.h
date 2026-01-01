@@ -150,6 +150,7 @@ public:
 	IUnknown* m_pUnkOuter;
 	HSFTPHANDLE m_hFile;
 	ULARGE_INTEGER m_uliOffset;
+	CMyStringW m_strFileName;
 
 	void* m_pvCurBuffer;
 	ULONG m_uReqSize;

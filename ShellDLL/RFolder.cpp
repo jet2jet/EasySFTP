@@ -1744,6 +1744,22 @@ STDMETHODIMP CEasySFTPFolderRoot::HasCredentials(VARIANT_BOOL* pRet)
 	return S_OK;
 }
 
+STDMETHODIMP CEasySFTPFolderRoot::AddLogger(IEasySFTPLogger* Logger)
+{
+	if (!Logger)
+		return E_POINTER;
+	theApp.AddLogger(Logger);
+	return S_OK;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::RemoveLogger(IEasySFTPLogger* Logger)
+{
+	if (!Logger)
+		return S_OK;
+	theApp.RemoveLogger(Logger);
+	return S_OK;
+}
+
 STDMETHODIMP CEasySFTPFolderRoot::SetEmulateRegMode(bool bEmulate)
 {
 	theApp.m_bEmulateRegMode = bEmulate;

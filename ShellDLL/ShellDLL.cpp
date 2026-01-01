@@ -22,14 +22,28 @@ EXTERN_C BOOL APIENTRY DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpRes
 
 void LogWin32LastError(const WCHAR* pszFuncName)
 {
-#ifdef _DEBUG
 	auto lastError = ::GetLastError();
 	CMyStringW strBuf;
 	MyGetErrorMessageString(lastError, strBuf);
 	CMyStringW strMsg;
-	strMsg.Format(L"[EasySFTP] %s failed with %lu: %s\n", pszFuncName, lastError, strMsg.operator LPCWSTR());
-	OutputDebugString(strMsg);
-#endif
+	strMsg.Format(L"%s failed with %lu: %s", pszFuncName, lastError, strMsg.operator LPCWSTR());
+
+	theApp.Log(EasySFTPLogLevel::Warning, strMsg, HRESULT_FROM_WIN32(lastError));
+}
+
+CMyStringW HResultToString(HRESULT hr)
+{
+	CMyStringW strBuf;
+	MyGetErrorMessageString(hr, strBuf);
+	return strBuf;
+}
+
+void LogLastSSLError(EasySFTPLogLevel Level)
+{
+	auto e = ERR_get_error();
+	auto lib = ERR_lib_error_string(e);
+	auto reason = ERR_reason_error_string(e);
+	theApp.Log(EasySFTPLogLevel::Error, CMyStringW("[%s] %s", lib, reason), E_FAIL);
 }
 
 ITypeInfo* GetTypeInfo(const GUID& guid)
@@ -1194,6 +1208,7 @@ bool CMainDLL::InitInstance()
 	m_bEmulateRegMode = false;
 	m_bEnableRootRefs = false;
 	::InitializeCriticalSection(&m_csHosts);
+	::InitializeCriticalSection(&m_csLoggers);
 	::InitializeCriticalSection(&m_csRootRefs);
 
 	if (FAILED(::OleInitialize(NULL)))
@@ -1217,7 +1232,9 @@ bool CMainDLL::InitInstance()
 
 	// for SSL library
 	SSL_library_init();
+	ERR_load_BIO_strings();
 	ERR_load_CRYPTO_strings();
+	ERR_load_SSL_strings();
 
 	::srand((unsigned int) (time(NULL) * GetTickCount()));
 
@@ -1578,6 +1595,12 @@ int CMainDLL::ExitInstance()
 		m_pObjectOnClipboard = NULL;
 	}
 
+	for (int i = 0; i < m_aLoggers.GetCount(); i++)
+	{
+		m_aLoggers[i]->Release();
+	}
+	m_aLoggers.RemoveAllCompletely();
+
 	CMyPtrArrayT<CFTPDirectoryBase> aDirectories;
 	for (int i = 0; i < m_aHosts.GetCount(); i++)
 	{
@@ -1634,6 +1657,7 @@ int CMainDLL::ExitInstance()
 	::WSACleanup();
 	::OleUninitialize();
 
+	::DeleteCriticalSection(&m_csLoggers);
 	::DeleteCriticalSection(&m_csHosts);
 	::DeleteCriticalSection(&m_csRootRefs);
 
@@ -2424,7 +2448,7 @@ void CMainDLL::SetAttachmentLock(LPCWSTR lpszFileName, LPCWSTR lpszURL)
 {
 	IAttachmentExecute* pExecute;
 	HRESULT hr = ::CoCreateInstance(CLSID_AttachmentServices, NULL, CLSCTX_INPROC_SERVER,
-		IID_IAttachmentExecute, (void**) &pExecute);
+		IID_IAttachmentExecute, (void**)&pExecute);
 	if (SUCCEEDED(hr))
 	{
 		pExecute->SetClientGuid(UUID_EasySFTPLock);
@@ -2437,6 +2461,63 @@ void CMainDLL::SetAttachmentLock(LPCWSTR lpszFileName, LPCWSTR lpszURL)
 		}
 		pExecute->Release();
 	}
+}
+
+static void _CallLog(IEasySFTPLogger* p, EasySFTPLogLevel Level, BSTR bstrMessage, HRESULT hResult)
+{
+	__try
+	{
+		p->Log(Level, bstrMessage, static_cast<long>(hResult));
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		// do nothing for exceptions
+	}
+}
+
+void CMainDLL::Log(EasySFTPLogLevel Level, const CMyStringW& Message, HRESULT hResult)
+{
+	auto bstrMessage = ::MyStringToBSTR(Message);
+	CMyPtrArrayT<IEasySFTPLogger> a;
+	::EnterCriticalSection(&m_csLoggers);
+	for (int i = 0; i < m_aLoggers.GetCount(); ++i)
+	{
+		auto* p = m_aLoggers[i];
+		p->AddRef();
+		a.Add(p);
+	}
+	::LeaveCriticalSection(&m_csLoggers);
+	for (int i = 0; i < a.GetCount(); ++i)
+	{
+		auto* p = a[i];
+		_CallLog(p, Level, bstrMessage, hResult);
+		p->Release();
+	}
+	::SysFreeString(bstrMessage);
+}
+
+void CMainDLL::AddLogger(IEasySFTPLogger* pLogger)
+{
+	::EnterCriticalSection(&m_csLoggers);
+	pLogger->AddRef();
+	m_aLoggers.Add(pLogger);
+	::LeaveCriticalSection(&m_csLoggers);
+}
+
+void CMainDLL::RemoveLogger(IEasySFTPLogger* pLogger)
+{
+	::EnterCriticalSection(&m_csLoggers);
+	for (int i = 0; i < m_aLoggers.GetCount(); ++i)
+	{
+		auto* p = m_aLoggers[i];
+		if (p == pLogger)
+		{
+			m_aLoggers.RemoveItem(i);
+			p->Release();
+			break;
+		}
+	}
+	::LeaveCriticalSection(&m_csLoggers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

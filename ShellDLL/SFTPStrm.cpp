@@ -71,9 +71,7 @@ bool CSFTPSyncMessenger::TryFStat(HSFTPHANDLE hFile)
 
 void CSFTPSyncMessenger::ChannelClosed(CSSHChannel* pChannel)
 {
-#ifdef _DEBUG
-	::OutputDebugString(_T("CSFTPSyncMessenger::ChannelClosed\n"));
-#endif
+	theApp.Log(EasySFTPLogLevel::Debug, "CSFTPSyncMessenger::ChannelClosed", S_OK);
 	m_bFailed = true;
 }
 
@@ -85,16 +83,14 @@ void CSFTPSyncMessenger::SFTPConfirm(CSFTPChannel* pChannel, CSFTPMessage* pMsg,
 			;
 		else
 		{
-#ifdef _DEBUG
-			//CMyStringW str;
-			//if (strMessage.IsEmpty())
-			//	str.Format(L"CSFTPSyncMessenger::SFTPConfirm: msgtype = %d, status = %d\n",
-			//		(int) pMsg->bSentMsg, nStatus);
-			//else
-			//	str.Format(L"CSFTPSyncMessenger::SFTPConfirm: status = %d, message = %s\n",
-			//		(int) pMsg->bSentMsg, nStatus, (LPCWSTR) strMessage);
-			//::OutputDebugString(str);
-#endif
+			CMyStringW str;
+			if (strMessage.IsEmpty())
+				str.Format(L"CSFTPSyncMessenger::SFTPConfirm: msgtype = %d, status = %d",
+					(int) pMsg->bSentMsg, nStatus);
+			else
+				str.Format(L"CSFTPSyncMessenger::SFTPConfirm: status = %d, message = %s",
+					(int) pMsg->bSentMsg, nStatus, (LPCWSTR) strMessage);
+			theApp.Log(EasySFTPLogLevel::Debug, str, E_FAIL);
 			m_bFailed = true;
 		}
 		m_uMsgID = 0;
@@ -171,6 +167,7 @@ bool CSFTPStream::TryOpenFile(CFTPFileItem* pFile)
 	if (str.IsEmpty() || ((LPCWSTR) str)[str.GetLength() - 1] != L'/')
 		str += L'/';
 	str += pFile->strFileName;
+	m_strFileName = str;
 	if (m_pChannel->GetServerVersion() >= 5)
 		m_uMsgID = m_pChannel->OpenFileEx(str, ACE4_READ_DATA, SSH_FXF_OPEN_EXISTING);
 	else
@@ -187,7 +184,10 @@ void CSFTPStream::SFTPConfirm(CSFTPChannel* pChannel, CSFTPMessage* pMsg, int nS
 		if (nStatus == SSH_FX_OK)
 			;
 		else if (nStatus == SSH_FX_EOF)
+		{
 			m_bEOF = true;
+			theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_DOWNLOADED_FILE, m_strFileName.operator LPCWSTR()), S_OK);
+		}
 		else
 			m_bFailed = true;
 		m_uMsgID = 0;
@@ -310,7 +310,10 @@ STDMETHODIMP CSFTPStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 			m_uReqSize = 0;
 		}
 		if (m_bNextEOF)
+		{
 			m_bEOF = true;
+			theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_DOWNLOADED_FILE, m_strFileName.operator LPCWSTR()), S_OK);
+		}
 		else if (m_uReqSize > 0)
 		{
 			m_uMsgID = m_pChannel->ReadFile(m_hFile, m_uliOffset.QuadPart, m_nCacheSize);

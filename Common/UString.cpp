@@ -986,6 +986,50 @@ void WINAPI FreeStringBuffer(LPWSTR lpbuf)
 
 /////////////////////////////////////////////////////////////////////////////
 
+void __stdcall _FormatStringA(LPWSTR& lpszData, LPCSTR lpszFormat, va_list va, UINT uCodePage = CP_ACP)
+{
+	int n, nRet;
+	LPSTR lp;
+
+	n = 255;
+	lp = (LPSTR)malloc(sizeof(CHAR) * 255);
+	nRet = _vsnprintf(lp, n, lpszFormat, va);
+	while (nRet < 0)
+	{
+		n += 255;
+		lp = (LPSTR)realloc(lp, sizeof(CHAR) * n);
+		nRet = _vsnprintf(lp, n, lpszFormat, va);
+	}
+	if (lpszData)
+		lpszData = ReAllocStringLenA(lpszData, lp, nRet, uCodePage);
+	else
+		lpszData = AllocStringLenA(lp, nRet, uCodePage);
+	free(lp);
+}
+
+void __stdcall _FormatStringW(LPWSTR& lpszData, LPCWSTR lpszFormat, va_list va)
+{
+	int n, nRet;
+	LPWSTR lp;
+
+	n = 255;
+	lp = (LPWSTR)malloc(sizeof(WCHAR) * 255);
+	nRet = _vsnwprintf(lp, n, lpszFormat, va);
+	while (nRet < 0)
+	{
+		n += 255;
+		lp = (LPWSTR)realloc(lp, sizeof(WCHAR) * n);
+		nRet = _vsnwprintf(lp, n, lpszFormat, va);
+	}
+	if (lpszData)
+		lpszData = ReAllocStringLen(lpszData, lp, nRet);
+	else
+		lpszData = AllocStringLen(lp, nRet);
+	free(lp);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+
 CMyStringW::CMyStringW()
 	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
 {
@@ -1023,8 +1067,16 @@ CMyStringW::CMyStringW(LPCUWSTR lpszString)
 }
 #endif
 
+#ifndef NO_LOADSTRING
+CMyStringW::CMyStringW(UINT uID)
+	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
+{
+	LoadString(uID);
+}
+#endif
+
 CMyStringW::CMyStringW(LPCSTR lpszString, UINT uCodePage)
-	: m_lpszData(NULL), m_lpszLast(NULL)
+	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(uCodePage)
 {
 #ifndef NO_LOADSTRING
 	if (HIWORD(lpszString))
@@ -1078,6 +1130,48 @@ CMyStringW::CMyStringW(char ch, size_t nCount, UINT uCodePage)
 	else
 		m_lpszData = NULL;
 }
+
+WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCWSTR lpszString, ...)
+	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
+{
+	va_list va;
+	va_start(va, lpszString);
+	_FormatStringW(m_lpszData, lpszString, va);
+	va_end(va);
+}
+
+WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCSTR lpszString, ...)
+	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
+{
+	va_list va;
+	va_start(va, lpszString);
+	_FormatStringA(m_lpszData, lpszString, va);
+	va_end(va);
+}
+
+#ifdef ALIGNMENT_MACHINE
+WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCUWSTR lpszString, ...)
+	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
+{
+	CMyStringW str(lpszString);
+	va_list va;
+	va_start(va, lpszString);
+	_FormatStringW(m_lpszData, str, va);
+	va_end(va);
+}
+#endif
+
+#ifndef NO_LOADSTRING
+WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, UINT uID, ...)
+	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
+{
+	CMyStringW str(MAKEINTRESOURCE(uID));
+	va_list va;
+	va_start(va, uID);
+	_FormatStringW(m_lpszData, str, va);
+	va_end(va);
+}
+#endif
 
 const CMyStringW& CMyStringW::operator = (LPCWSTR lpszString)
 {
@@ -1857,48 +1951,6 @@ bool CMyStringW::DeleteString(size_t uStart, size_t uLength)
 }
 
 /////////////////////////////////////////////////////////////////////////////
-
-void __stdcall _FormatStringA(LPWSTR& lpszData, LPCSTR lpszFormat, va_list va, UINT uCodePage = CP_ACP)
-{
-	int n, nRet;
-	LPSTR lp;
-
-	n = 255;
-	lp = (LPSTR) malloc(sizeof(CHAR) * 255);
-	nRet = _vsnprintf(lp, n, lpszFormat, va);
-	while (nRet < 0)
-	{
-		n += 255;
-		lp = (LPSTR) realloc(lp, sizeof(CHAR) * n);
-		nRet = _vsnprintf(lp, n, lpszFormat, va);
-	}
-	if (lpszData)
-		lpszData = ReAllocStringLenA(lpszData, lp, nRet, uCodePage);
-	else
-		lpszData = AllocStringLenA(lp, nRet, uCodePage);
-	free(lp);
-}
-
-void __stdcall _FormatStringW(LPWSTR& lpszData, LPCWSTR lpszFormat, va_list va)
-{
-	int n, nRet;
-	LPWSTR lp;
-
-	n = 255;
-	lp = (LPWSTR) malloc(sizeof(WCHAR) * 255);
-	nRet = _vsnwprintf(lp, n, lpszFormat, va);
-	while (nRet < 0)
-	{
-		n += 255;
-		lp = (LPWSTR) realloc(lp, sizeof(WCHAR) * n);
-		nRet = _vsnwprintf(lp, n, lpszFormat, va);
-	}
-	if (lpszData)
-		lpszData = ReAllocStringLen(lpszData, lp, nRet);
-	else
-		lpszData = AllocStringLen(lp, nRet);
-	free(lp);
-}
 
 BOOL WINAPIV CMyStringW::Format(LPCSTR lpszString, ...)
 {

@@ -1817,7 +1817,7 @@ void CMainWindow::UpdateFonts()
 		int rgBorders[3];
 		::SendMessage(m_wndStatusBar, SB_GETBORDERS, 0, (LPARAM) &rgBorders);
 
-		register int cy = tm.tmHeight - tm.tmInternalLeading - 1;
+		register int cy = tm.tmHeight;
 		if (cy < 16)
 			cy = 16;
 		m_nStatusHeight = cy +

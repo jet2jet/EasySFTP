@@ -271,6 +271,7 @@ public:
 	//CMySimpleArray<void*> m_aObjectTransferring;
 	//CMyStringKeyListW<UINT> m_mapIcon;
 	IEasySFTPOldRoot* m_pEasySFTPRoot;
+	IEasySFTPLogger* m_pMyLogger;
 	PIDLIST_ABSOLUTE m_pidlEasySFTP;
 	bool m_bEmulatingRegistry;
 	bool m_bIsRegisteredAsUserClass;

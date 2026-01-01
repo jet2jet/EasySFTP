@@ -107,23 +107,19 @@ CFTPSocket::HandshakeResult CFTPSocket::StartHandshake()
 	}
 	SSL_set_fd(m_pSSL, static_cast<int>(operator SOCKET()));
 	auto r = SSL_connect(m_pSSL);
-#ifdef _DEBUG
 	{
 		CMyStringW str;
-		str.Format(L"[EasySFTP] CFTPSocket::StartHandshake() SSL_connect return %d\n", r);
-		OutputDebugString(str);
+		str.Format(L"CFTPSocket::StartHandshake() SSL_connect return %d", r);
+		theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 	}
-#endif
 	if (r < 0)
 	{
 		auto err = SSL_get_error(m_pSSL, r);
-#ifdef _DEBUG
 		{
 			CMyStringW str;
-			str.Format(L"[EasySFTP] CFTPSocket::StartHandshake() SSL_get_error return %d\n", err);
-			OutputDebugString(str);
+			str.Format(L"CFTPSocket::StartHandshake() SSL_get_error return %d", err);
+			theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 		}
-#endif
 		if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE)
 			return HandshakeResult::Waiting;
 		return HandshakeResult::Error;
@@ -140,23 +136,19 @@ CFTPSocket::HandshakeResult CFTPSocket::ContinueHandshake()
 	if(!m_pSSL || !m_pSSLCTX)
 		return HandshakeResult::Error;
 	auto r = SSL_connect(m_pSSL);
-#ifdef _DEBUG
 	{
 		CMyStringW str;
-		str.Format(L"[EasySFTP] CFTPSocket::ContinueHandshake() SSL_connect return %d\n", r);
-		OutputDebugString(str);
+		str.Format(L"[EasySFTP] CFTPSocket::ContinueHandshake() SSL_connect return %d", r);
+		theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 	}
-#endif
 	if (r < 0)
 	{
 		auto err = SSL_get_error(m_pSSL, r);
-#ifdef _DEBUG
 		{
 			CMyStringW str;
-			str.Format(L"[EasySFTP] CFTPSocket::ContinueHandshake() SSL_get_error return %d\n", err);
-			OutputDebugString(str);
+			str.Format(L"[EasySFTP] CFTPSocket::ContinueHandshake() SSL_get_error return %d", err);
+			theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 		}
-#endif
 		if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE)
 			return HandshakeResult::Waiting;
 		return HandshakeResult::Error;

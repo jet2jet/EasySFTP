@@ -413,7 +413,6 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 	pBlob = (p + 4);
 	p += nBlobLen + 4;
 
-#ifdef _DEBUG
 	// get the comment of key
 	{
 		DWORD dwCommentLen = ConvertEndian(*((DWORD*)p));
@@ -421,10 +420,9 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 		str.SetUTF8String((LPCBYTE)(p + 4), static_cast<size_t>(dwCommentLen));
 		p += dwCommentLen + 4;
 		CMyStringW strType(lpszKeyType), strDebug;
-		strDebug.Format(L"[EasySFTP] trying key '%s' (type: %s)\n", str.operator LPCWSTR(), strType.operator LPCWSTR());
-		OutputDebugStringW(strDebug);
+		strDebug.Format(L"trying key '%s' (type: %s)", str.operator LPCWSTR(), strType.operator LPCWSTR());
+		theApp.Log(EasySFTPLogLevel::Debug, strDebug, S_OK);
 	}
-#endif
 
 	void* abstract = pAuthSession;
 	auto ret = libssh2_userauth_publickey(pSession, lpszUser, pBlob, nBlobLen,

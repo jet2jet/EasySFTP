@@ -232,6 +232,7 @@
     <ClCompile Include="ExplrDDE.cpp" />
     <ClCompile Include="Func.cpp" />
     <ClCompile Include="LFileVw.cpp" />
+    <ClCompile Include="Logger.cpp" />
     <ClCompile Include="MainWnd.cpp" />
     <ClCompile Include="MainWnd2.cpp" />
     <ClCompile Include="MWndConn.cpp" />
@@ -255,6 +256,7 @@
     <ClInclude Include="ExplrDDE.h" />
     <ClInclude Include="Func.h" />
     <ClInclude Include="LFileVw.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="MainWnd.h" />
     <ClInclude Include="Option.h" />
     <ClInclude Include="Resource.h" />

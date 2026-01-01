@@ -238,6 +238,8 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySF
 	if (m_pConnection)
 		DisconnectImpl(m_pConnection);
 
+	theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_CONNECTING_TO_HOST, lpszHostName, nPort), S_OK);
+
 	{
 		CMyStringW str(lpszHostName);
 		m_strHostName = str;
@@ -269,6 +271,8 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySF
 		DisconnectImpl(m_pConnection);
 		return false;
 	}
+
+	theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_CONNECT_DONE, m_strHostName.operator LPCWSTR(), nPort), S_OK);
 	return true;
 }
 
@@ -1043,36 +1047,15 @@ STDMETHODIMP CSFTPFolderFTP::CreateFTPItemStream(CFTPDirectoryBase* pDirectory, 
 		strFileName += L'/';
 	strFileName += pItem->strFileName;
 
+	theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_DOWNLOADING_FILE, strFileName.operator LPCWSTR()), S_OK);
+
 	CFTPStream* pStream = new CFTPStream(strFileName, pItem->uliSize, this);
 	if (!pStream)
+	{
+		theApp.Log(EasySFTPLogLevel::Info, HResultToString(E_OUTOFMEMORY), E_OUTOFMEMORY);
 		return E_OUTOFMEMORY;
+	}
 
-	//CFTPFileRecvMessage* pMessage = new CFTPFileRecvMessage(strFileName);
-	//CFTPWaitEstablishPassive* pEstablishWait = StartPassive(pMessage);
-	//pMessage->Release();
-	//if (!pEstablishWait)
-	//	return E_FAIL;
-	//if (!WaitForReceiveEstablishPassive(&pEstablishWait->bWaiting, pEstablishWait) || !pEstablishWait->pRet)
-	//{
-	//	delete pEstablishWait;
-	//	return E_FAIL;
-	//}
-	//CFTPWaitPassive* pPassive = pEstablishWait->pRet;
-	//delete pEstablishWait;
-	//if (!WaitForReceive(&pPassive->bWaiting))
-	//{
-	//	delete pPassive;
-	//	return E_FAIL;
-	//}
-	//CFTPStream* pStream = new CFTPStream(pItem->uliSize, pPassive->pPassive, m_pConnection);
-	//if (!pStream)
-	//{
-	//	m_pConnection->ClosePassiveSocket(pPassive->pPassive);
-	//	delete pPassive;
-	//	return E_OUTOFMEMORY;
-	//}
-	//pPassive->pPassive = NULL;
-	//delete pPassive;
 	*ppStream = pStream;
 
 	return S_OK;
@@ -1261,6 +1244,9 @@ bool CSFTPFolderFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirect
 	{
 		return false;
 	}
+
+	theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_LISTING_FILES, lpszDirectory), S_OK);
+
 	CFTPPassiveMessage* pMessage;
 	if (m_pConnection->IsCommandAvailable(L"MLST"))
 		pMessage = new CFTPFileMListingMessage(pHandler, lpszDirectory);
@@ -1289,6 +1275,7 @@ bool CSFTPFolderFTP::ReceiveDirectory(HWND hWndOwner, CFTPDirectoryBase* pDirect
 
 	delete pPassiveWait;
 	delete pHandler;
+	theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_LISTING_FILES_DONE, lpszDirectory), S_OK);
 	return true;
 }
 
@@ -1631,6 +1618,10 @@ CSFTPFolderFTP::ProcessLoginResult CSFTPFolderFTP::DoProcessForLogin(CFTPConnect
 			result = ProcessLoginResult::Finish;
 		break;
 	case 530:
+		{
+			auto str = CMyStringW(L"%d %s", code, strMsg.operator LPCWSTR());
+			theApp.Log(EasySFTPLogLevel::Error, CMyStringW(IDS_ERROR_WITH_MESSAGE, str.operator LPCWSTR()), E_FAIL);
+		}
 		switch (DoRetryAuthentication(false))
 		{
 		case 1:
@@ -1661,6 +1652,8 @@ CSFTPFolderFTP::ProcessLoginResult CSFTPFolderFTP::DoProcessForLogin(CFTPConnect
 		}
 		else
 		{
+			auto str = CMyStringW(L"%d %s", code, strMsg.operator LPCWSTR());
+			theApp.Log(EasySFTPLogLevel::Error, CMyStringW(IDS_ERROR_WITH_MESSAGE, str.operator LPCWSTR()), E_FAIL);
 			result = ProcessLoginResult::Failure;
 		}
 		break;
@@ -1672,10 +1665,13 @@ CSFTPFolderFTP::ProcessLoginResult CSFTPFolderFTP::DoProcessForLogin(CFTPConnect
 
 bool CSFTPFolderFTP::DisconnectImpl(CFTPConnection* pConnection)
 {
-	pConnection->SendCommand(L"QUIT", NULL);
-	pConnection->Close();
-	//delete pConnection;
-	pConnection->Release();
+	if (pConnection)
+	{
+		pConnection->SendCommand(L"QUIT", NULL);
+		pConnection->Close();
+		//delete pConnection;
+		pConnection->Release();
+	}
 
 	if (pConnection != m_pConnection)
 		return false;
@@ -1694,6 +1690,7 @@ bool CSFTPFolderFTP::DisconnectImpl(CFTPConnection* pConnection)
 	m_hWndOwner = NULL;
 
 	OnDisconnect();
+	theApp.Log(EasySFTPLogLevel::Info, CMyStringW(IDS_DISCONNECTED), S_OK);
 	return true;
 }
 
@@ -2600,6 +2597,7 @@ bool CSFTPFolderFTP::WaitForReceivePassive(bool* pbWaiting, CFTPWaitPassive* pPa
 				}
 				else if (r == CFTPSocket::HandshakeResult::Error)
 				{
+					LogLastSSLError();
 					return false;
 				}
 				else

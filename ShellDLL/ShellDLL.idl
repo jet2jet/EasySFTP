@@ -28,6 +28,7 @@ library EasySFTP
 	interface IEasySFTPRootDirectory;
 	interface IEasySFTPAuthentication;
 	interface IEasySFTPRoot;
+	interface IEasySFTPLogger;
 	dispinterface DEasySFTPFile;
 	dispinterface DEasySFTPFiles;
 	dispinterface DEasySFTPStream;
@@ -131,6 +132,15 @@ library EasySFTP
 		Local = 0,
 		CurrentUser = 1
 	} EasySFTPPassKeyStoreType;
+
+	typedef enum EasySFTPLogLevel
+	{
+		Error = 0,
+		Warning = 1,
+		Info = 2,
+		Verbose = 3,
+		Debug = 4
+	} EasySFTPLogLevel;
 
 	cpp_quote("#undef enum")
 	cpp_quote("#undef _ENUM_CLASS")
@@ -1114,6 +1124,10 @@ library EasySFTP
 		HRESULT ClearAllCredentials();
 		[id(10)]
 		HRESULT HasCredentials([out, retval] VARIANT_BOOL* pRet);
+		[id(11)]
+		HRESULT AddLogger([in] IEasySFTPLogger* Logger);
+		[id(12)]
+		HRESULT RemoveLogger([in] IEasySFTPLogger* Logger);
 	};
 
 	[
@@ -1153,6 +1167,16 @@ library EasySFTP
 			void ClearAllCredentials();
 			[id(10)]
 			VARIANT_BOOL HasCredentials();
+	};
+
+	[
+		uuid(AD29C042-B9E3-4664-9DF6-D7DA5B8D0199),
+		pointer_default(unique),
+		helpstring("User-defined callback interface for logging")
+	]
+	interface IEasySFTPLogger : IUnknown
+	{
+		HRESULT Log([in] EasySFTPLogLevel Level, [in] BSTR Message, [in] long HResult);
 	};
 
 	// IID: AD29C042-B9E3-4658-9DF6-D7DA5B8D0199 is reserved

@@ -7,6 +7,7 @@
 #include "StdAfx.h"
 #include "SFTPChan.h"
 
+#include "ShellDLL.h"
 #include "Array.h"
 #include "Convert.h"
 #include "Func.h"
@@ -450,16 +451,13 @@ CSFTPChannel::~CSFTPChannel()
 
 bool CSFTPChannel::SendSFTPChannelData(const void* pvBuffer, size_t nLen)
 {
-#ifdef _DEBUG
 	{
-		CMyStringW str;
-		str.Format(L"Sending SFTP message... (type = %d, msgid = %lu, size = %lu)\n",
+		auto str = CMyStringW(L"Sending SFTP message... (type = %d, msgid = %lu, size = %lu)",
 			(int) *((const BYTE*) pvBuffer),
 			(nLen >= 5 ? ConvertEndian(*((const ULONG*) (((const BYTE*) pvBuffer) + 1))) : (ULONG) 0),
 			(ULONG) nLen);
-		OutputDebugString(str);
+		theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 	}
-#endif
 	CExBuffer buf;
 
 	buf.AppendToBufferWithLenCE(pvBuffer, nLen);
@@ -795,14 +793,12 @@ ULONG CSFTPChannel::ReadFile(HSFTPHANDLE hSFTP, ULONGLONG uliOffset, size_t nLen
 
 	m_uCurMsgID = GetNextMsgID(SSH_FXP_READ);
 
-#ifdef _DEBUG
 	{
 		CMyStringW str;
-		str.Format(L"CSFTPChannel::ReadFile : handle = 0x%p, uliOffset = %I64u, nLen = %lu\n",
+		str.Format(L"CSFTPChannel::ReadFile : handle = 0x%p, uliOffset = %I64u, nLen = %lu",
 			hSFTP, uliOffset, (ULONG) nLen);
-		OutputDebugString(str);
+		theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 	}
-#endif
 	buf.AppendToBuffer((BYTE) SSH_FXP_READ);
 	buf.AppendToBufferCE((DWORD) m_uCurMsgID);
 	buf.AppendToBufferWithLenCE(pHandle->data(), pHandle->nSize);
@@ -1243,15 +1239,13 @@ bool CSFTPChannel::ProcessQueuedBuffer(CSFTPChannelListener* pListener, CExBuffe
 	ULONG uMsgID;
 	uMsgID = (bMsg == SSH_FXP_VERSION ? (ULONG) 0 : ConvertEndian(*((ULONG*)(void*) buffer)));
 
-#ifdef _DEBUG
 	{
 		CMyStringW str;
-		str.Format(L"Received SFTP message... (type = %d, msgid = %lu)\n",
+		str.Format(L"Received SFTP message... (type = %d, msgid = %lu)",
 			(int) bMsg,
 			uMsgID);
-		OutputDebugString(str);
+		theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 	}
-#endif
 
 	::EnterCriticalSection(&m_csListeners);
 	for (int i = 0; i < m_aListeners.GetCount(); i++)
@@ -1339,14 +1333,12 @@ bool CSFTPChannel::ProcessSFTPVersion(CSFTPChannelListener* pListener, CExBuffer
 		}
 		else
 		{
-#ifdef _DEBUG
 			// unknown property
 			CMyStringW str, strN, strV;
 			strN.SetString(pszName, uNameLen);
 			strV.SetString(pszValue, uValueLen);
-			str.Format(L"Unknown SFTP property: %s = %s\n", (LPCWSTR) strN, (LPCWSTR) strV);
-			OutputDebugString(str);
-#endif
+			str.Format(L"Unknown SFTP property: %s = %s", (LPCWSTR) strN, (LPCWSTR) strV);
+			theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 		}
 	}
 
@@ -1442,7 +1434,7 @@ bool CSFTPChannel::ProcessSFTPName(CSFTPChannelListener* pListener, CExBuffer& b
 		return false;
 	for (u = 0; u < uCount; u++)
 	{
-		new ((void*) &pFiles[u]) CSFTPFileData;
+		CallConstructor(&pFiles[u]);
 		if (!buffer.GetAndSkipCE(uShortLen) ||
 			!(pbShort = (BYTE*) buffer.GetCurrentBufferPermanentAndSkip((size_t) uShortLen)) ||
 			(m_uServerVersion <= 3 &&

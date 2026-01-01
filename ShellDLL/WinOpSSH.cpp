@@ -118,9 +118,7 @@ bool CWinOpenSSHAgent::Query(const void* dataSend, size_t dataSendSize, void** d
 				NULL, OPEN_EXISTING, 0, NULL);
 			if (h && h != INVALID_HANDLE_VALUE)
 			{
-#ifdef _DEBUG
-				OutputDebugStringW(L"[EasySFTP] open OpenSSH Agent pipe\n");
-#endif
+				theApp.Log(EasySFTPLogLevel::Debug, L"open OpenSSH Agent pipe", S_OK);
 				break;
 			}
 			if (::GetLastError() != ERROR_PIPE_BUSY)

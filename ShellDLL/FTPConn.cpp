@@ -47,6 +47,8 @@ bool CFTPConnection::Connect(int nPort, LPCWSTR lpszHostName)
 	if (!pai)
 	{
 		::LeaveCriticalSection(&m_csSocket);
+		CMyStringW str(IDS_UNKNOWN_HOST, lpszHostName);
+		theApp.Log(EasySFTPLogLevel::Error, str, E_FAIL);
 		return false;
 	}
 	//SetStatusText(MAKEINTRESOURCEW(IDS_CONNECTING));
@@ -83,20 +85,17 @@ CFTPWaitResponse* CFTPConnection::SendCommand(LPCWSTR lpszCommand, LPCWSTR lpszP
 		strMsg += L' ';
 		strMsg += lpszParam;
 	}
-	strMsg += L"\r\n";
 
 	::EnterCriticalSection(&m_csSocket);
-	m_socket.SendString(strMsg);
+	m_socket.SendString(strMsg + L"\r\n");
 	m_aWaitResponse.Enqueue(p);
 
-#ifdef _DEBUG
 	{
 		CMyStringW str;
 		str.Format(L"(wait = %p) > ", pWait);
 		strMsg.InsertString(str, 0);
-		OutputDebugString(strMsg);
+		theApp.Log(EasySFTPLogLevel::Debug, strMsg, S_OK);
 	}
-#endif
 	::LeaveCriticalSection(&m_csSocket);
 
 	return p;
@@ -121,15 +120,13 @@ CFTPWaitResponse* CFTPConnection::SecureSendCommand(LPCWSTR lpszCommand,
 	m_aWaitResponse.Enqueue(p);
 	strMsg.Empty();
 
-#ifdef _DEBUG
 	{
 		CMyStringW str2;
 		str2.Format(L"(wait = %p) > ", pWait);
 		str2 += lpszCommand;
-		str2 += L" ****\n";
-		OutputDebugString(str2);
+		str2 += L" ****";
+		theApp.Log(EasySFTPLogLevel::Debug, str2, S_OK);
 	}
-#endif
 	::LeaveCriticalSection(&m_csSocket);
 
 	return p;
@@ -157,19 +154,16 @@ CFTPWaitResponse* CFTPConnection::SendDoubleCommand(LPCWSTR lpszCommand1, LPCWST
 		strMsg += L' ';
 		strMsg += lpszParam1;
 	}
-	strMsg += L"\r\n";
 
-	m_socket.SendString(strMsg);
+	m_socket.SendString(strMsg + L"\r\n");
 	m_aWaitResponse.Enqueue(p);
 
-#ifdef _DEBUG
 	{
 		CMyStringW str;
 		str.Format(L"(wait = %p) > ", pWait1);
 		strMsg.InsertString(str, 0);
-		OutputDebugString(strMsg);
+		theApp.Log(EasySFTPLogLevel::Debug, strMsg, S_OK);
 	}
-#endif
 
 	p = new CFTPWaitResponse();
 	p->strCommand = lpszCommand2;
@@ -182,19 +176,16 @@ CFTPWaitResponse* CFTPConnection::SendDoubleCommand(LPCWSTR lpszCommand1, LPCWST
 		strMsg += L' ';
 		strMsg += lpszParam2;
 	}
-	strMsg += L"\r\n";
 
-	m_socket.SendString(strMsg);
+	m_socket.SendString(strMsg + L"\r\n");
 	m_aWaitResponse.Enqueue(p);
 
-#ifdef _DEBUG
 	{
 		CMyStringW str;
 		str.Format(L"(wait = %p) > ", pWait2);
 		strMsg.InsertString(str, 0);
-		OutputDebugString(strMsg);
+		theApp.Log(EasySFTPLogLevel::Debug, strMsg, S_OK);
 	}
-#endif
 
 	::LeaveCriticalSection(&m_csSocket);
 
@@ -218,19 +209,16 @@ CFTPWaitResponse* CFTPConnection::SendTripleCommand(LPCWSTR lpszCommand1, LPCWST
 		strMsg += L' ';
 		strMsg += lpszParam1;
 	}
-	strMsg += L"\r\n";
 
-	m_socket.SendString(strMsg);
+	m_socket.SendString(strMsg + L"\r\n");
 	m_aWaitResponse.Enqueue(p);
 
-#ifdef _DEBUG
 	{
 		CMyStringW str;
 		str.Format(L"(wait = %p) > ", pWait1);
 		strMsg.InsertString(str, 0);
-		OutputDebugString(strMsg);
+		theApp.Log(EasySFTPLogLevel::Debug, strMsg, S_OK);
 	}
-#endif
 
 	p = new CFTPWaitResponse();
 	p->strCommand = lpszCommand2;
@@ -243,19 +231,16 @@ CFTPWaitResponse* CFTPConnection::SendTripleCommand(LPCWSTR lpszCommand1, LPCWST
 		strMsg += L' ';
 		strMsg += lpszParam2;
 	}
-	strMsg += L"\r\n";
 
-	m_socket.SendString(strMsg);
+	m_socket.SendString(strMsg + L"\r\n");
 	m_aWaitResponse.Enqueue(p);
 
-#ifdef _DEBUG
 	{
 		CMyStringW str;
 		str.Format(L"(wait = %p) > ", pWait2);
 		strMsg.InsertString(str, 0);
-		OutputDebugString(strMsg);
+		theApp.Log(EasySFTPLogLevel::Debug, strMsg, S_OK);
 	}
-#endif
 
 	p = new CFTPWaitResponse();
 	p->strCommand = lpszCommand3;
@@ -268,19 +253,16 @@ CFTPWaitResponse* CFTPConnection::SendTripleCommand(LPCWSTR lpszCommand1, LPCWST
 		strMsg += L' ';
 		strMsg += lpszParam3;
 	}
-	strMsg += L"\r\n";
 
-	m_socket.SendString(strMsg);
+	m_socket.SendString(strMsg + L"\r\n");
 	m_aWaitResponse.Enqueue(p);
 
-#ifdef _DEBUG
 	{
 		CMyStringW str;
 		str.Format(L"(wait = %p) > ", pWait2);
 		strMsg.InsertString(str, 0);
-		OutputDebugString(strMsg);
+		theApp.Log(EasySFTPLogLevel::Debug, strMsg, S_OK);
 	}
-#endif
 
 	::LeaveCriticalSection(&m_csSocket);
 
@@ -413,13 +395,11 @@ bool CFTPConnection::ReceiveMessage(int& nCode, CMyStringW& rstrMessage, CWaitRe
 		}
 	}
 
-#ifdef _DEBUG
 	{
 		CMyStringW str;
-		str.Format(L"FTP: %d %s (wait = %p)\n", nCode, (LPCWSTR) rstrMessage, b ? p->pWait : (void*) NULL);
-		::OutputDebugString(str);
+		str.Format(L"FTP: %d %s (wait = %p)", nCode, (LPCWSTR) rstrMessage, b ? p->pWait : (void*) NULL);
+		theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 	}
-#endif
 	::LeaveCriticalSection(&m_csSocket);
 
 	if (b)
@@ -473,13 +453,11 @@ void CFTPConnection::WaitFinishPassive(CFTPWaitPassive* pPassive)
 	CFTPWaitResponse* p = new CFTPWaitResponse();
 	p->pWait = pPassive;
 	m_aWaitResponse.Enqueue(p);
-#ifdef _DEBUG
 	{
 		CMyStringW str;
-		str.Format(L"(wait = %p) : wait for 226 msg\n", pPassive);
-		OutputDebugString(str);
+		str.Format(L"(wait = %p) : wait for 226 msg", pPassive);
+		theApp.Log(EasySFTPLogLevel::Debug, str, S_OK);
 	}
-#endif
 	::LeaveCriticalSection(&m_csSocket);
 }
 
@@ -590,6 +568,7 @@ CFTPConnection::FTPSHandshakeResult CFTPConnection::OnFirstFTPSHandshake(int cod
 				}
 				else if (r == CFTPSocket::HandshakeResult::Error)
 				{
+					LogLastSSLError();
 					return FTPSHandshakeResult::Failure;
 				}
 				else

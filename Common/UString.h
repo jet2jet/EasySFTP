@@ -108,11 +108,55 @@ private:
 public:
 	CMyStringW(wchar_t wch, size_t nCount);
 	CMyStringW(char ch, size_t nCount, UINT uCodePage = CP_ACP);
+	inline CMyStringW(wchar_t wch, int nCount) : CMyStringW(wch, static_cast<size_t>(nCount)) {}
+	inline CMyStringW(char ch, int nCount, UINT uCodePage = CP_ACP) : CMyStringW(ch, static_cast<size_t>(nCount), uCodePage) {}
 	CMyStringW(const CMyStringW& _string);
 	CMyStringW(LPCSTR lpszString, UINT uCodePage = CP_ACP);
 	CMyStringW(LPCWSTR lpszString);
 #ifdef ALIGNMENT_MACHINE
 	CMyStringW(LPCUWSTR lpszString);
+#endif
+#ifndef NO_LOADSTRING
+	explicit CMyStringW(UINT uID);
+#endif
+private:
+	struct _ConstructorWithVarArg {
+		inline explicit _ConstructorWithVarArg()
+		{
+		}
+	};
+	WINAPIV CMyStringW(_ConstructorWithVarArg, LPCWSTR lpszString, ...);
+	WINAPIV CMyStringW(_ConstructorWithVarArg, LPCSTR lpszString, ...);
+#ifdef ALIGNMENT_MACHINE
+	WINAPIV CMyStringW(_ConstructorWithVarArg, LPCUWSTR lpszString, ...);
+#endif
+#ifndef NO_LOADSTRING
+	WINAPIV CMyStringW(_ConstructorWithVarArg, UINT uID, ...);
+#endif
+public:
+	template <typename ...T>
+	explicit inline WINAPIV CMyStringW(LPCWSTR lpszString, T... args)
+		: CMyStringW(_ConstructorWithVarArg{}, lpszString, args...)
+	{
+	}
+	template <typename ...T>
+	explicit inline WINAPIV CMyStringW(LPCSTR lpszString, T... args)
+		: CMyStringW(_ConstructorWithVarArg{}, lpszString, args...)
+	{
+	}
+#ifdef ALIGNMENT_MACHINE
+	template <typename ...T>
+	explicit inline WINAPIV CMyStringW(LPCUWSTR lpszString, T... args)
+		: CMyStringW(_ConstructorWithVarArg{}, lpszString, args...)
+	{
+	}
+#endif
+#ifndef NO_LOADSTRING
+	template <typename ...T>
+	explicit inline WINAPIV CMyStringW(UINT uID, T... args)
+		: CMyStringW(_ConstructorWithVarArg{}, uID, args...)
+	{
+	}
 #endif
 	CMyStringW();
 	~CMyStringW();

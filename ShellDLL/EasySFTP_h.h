@@ -97,6 +97,13 @@ typedef interface IEasySFTPRoot IEasySFTPRoot;
 #endif 	/* __IEasySFTPRoot_FWD_DEFINED__ */
 
 
+#ifndef __IEasySFTPLogger_FWD_DEFINED__
+#define __IEasySFTPLogger_FWD_DEFINED__
+typedef interface IEasySFTPLogger IEasySFTPLogger;
+
+#endif 	/* __IEasySFTPLogger_FWD_DEFINED__ */
+
+
 #ifndef __DEasySFTPFile_FWD_DEFINED__
 #define __DEasySFTPFile_FWD_DEFINED__
 typedef interface DEasySFTPFile DEasySFTPFile;
@@ -422,6 +429,7 @@ extern "C"{
 
 
 
+
 #ifdef __cplusplus
 #include "BitFlags.h"
 #endif
@@ -516,6 +524,16 @@ enum EasySFTPPassKeyStoreType
         Local	= 0,
         CurrentUser	= 1
     } 	EasySFTPPassKeyStoreType;
+
+typedef 
+enum EasySFTPLogLevel
+    {
+        Error	= 0,
+        Warning	= 1,
+        Info	= 2,
+        Verbose	= 3,
+        Debug	= 4
+    } 	EasySFTPLogLevel;
 
 #undef enum
 #undef _ENUM_CLASS
@@ -2581,6 +2599,94 @@ EXTERN_C const IID IID_IEasySFTPRoot;
 
 
 #endif 	/* __IEasySFTPRoot_INTERFACE_DEFINED__ */
+
+
+#ifndef __IEasySFTPLogger_INTERFACE_DEFINED__
+#define __IEasySFTPLogger_INTERFACE_DEFINED__
+
+/* interface IEasySFTPLogger */
+/* [object][helpstring][unique][uuid] */ 
+
+
+EXTERN_C const IID IID_IEasySFTPLogger;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("AD29C042-B9E3-4664-9DF6-D7DA5B8D0199")
+    IEasySFTPLogger : public IUnknown
+    {
+    public:
+        virtual HRESULT STDMETHODCALLTYPE Log( 
+            /* [in] */ EasySFTPLogLevel Level,
+            /* [in] */ BSTR Message,
+            /* [in] */ long HResult) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IEasySFTPLoggerVtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IEasySFTPLogger * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IEasySFTPLogger * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IEasySFTPLogger * This);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPLogger, Log)
+        HRESULT ( STDMETHODCALLTYPE *Log )( 
+            IEasySFTPLogger * This,
+            /* [in] */ EasySFTPLogLevel Level,
+            /* [in] */ BSTR Message,
+            /* [in] */ long HResult);
+        
+        END_INTERFACE
+    } IEasySFTPLoggerVtbl;
+
+    interface IEasySFTPLogger
+    {
+        CONST_VTBL struct IEasySFTPLoggerVtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IEasySFTPLogger_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IEasySFTPLogger_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IEasySFTPLogger_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IEasySFTPLogger_Log(This,Level,Message,HResult)	\
+    ( (This)->lpVtbl -> Log(This,Level,Message,HResult) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IEasySFTPLogger_INTERFACE_DEFINED__ */
 
 
 #ifndef __DEasySFTPFile_DISPINTERFACE_DEFINED__
@@ -5916,6 +6022,12 @@ EXTERN_C const IID IID_IEasySFTPRoot2;
         virtual /* [id] */ HRESULT STDMETHODCALLTYPE HasCredentials( 
             /* [retval][out] */ VARIANT_BOOL *pRet) = 0;
         
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE AddLogger( 
+            /* [in] */ IEasySFTPLogger *Logger) = 0;
+        
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE RemoveLogger( 
+            /* [in] */ IEasySFTPLogger *Logger) = 0;
+        
     };
     
     
@@ -6052,6 +6164,16 @@ EXTERN_C const IID IID_IEasySFTPRoot2;
             IEasySFTPRoot2 * This,
             /* [retval][out] */ VARIANT_BOOL *pRet);
         
+        DECLSPEC_XFGVIRT(IEasySFTPRoot2, AddLogger)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *AddLogger )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ IEasySFTPLogger *Logger);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot2, RemoveLogger)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *RemoveLogger )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ IEasySFTPLogger *Logger);
+        
         END_INTERFACE
     } IEasySFTPRoot2Vtbl;
 
@@ -6121,6 +6243,12 @@ EXTERN_C const IID IID_IEasySFTPRoot2;
 
 #define IEasySFTPRoot2_HasCredentials(This,pRet)	\
     ( (This)->lpVtbl -> HasCredentials(This,pRet) ) 
+
+#define IEasySFTPRoot2_AddLogger(This,Logger)	\
+    ( (This)->lpVtbl -> AddLogger(This,Logger) ) 
+
+#define IEasySFTPRoot2_RemoveLogger(This,Logger)	\
+    ( (This)->lpVtbl -> RemoveLogger(This,Logger) ) 
 
 #endif /* COBJMACROS */
 

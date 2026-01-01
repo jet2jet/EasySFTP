@@ -30,15 +30,6 @@ extern "C" int strcmplen(const char* string1, size_t str1len, const char* string
 
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifdef _DEBUG
-extern "C" void __stdcall OutputDebugFTPMessage(int code, LPCWSTR msg)
-{
-	CMyStringW str;
-	str.Format(L"FTP: %d %s\n", code, msg);
-	::OutputDebugString(str);
-}
-#endif
-
 void __stdcall _StartHook(CMyWindow* pWnd);
 bool __stdcall _EndHook();
 

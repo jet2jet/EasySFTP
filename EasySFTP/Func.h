@@ -17,9 +17,3 @@ extern "C" inline int strcmplen2(const char* string1, const char* string2, size_
 extern "C" int __stdcall MyMessageBoxW(HWND hWnd, LPCWSTR lpszText, LPCWSTR lpszCaption, UINT uType);
 
 extern "C" bool __stdcall MyShellOpenW(HWND hWnd, LPCWSTR lpszFileName);
-
-#ifdef _DEBUG
-extern "C" void __stdcall OutputDebugFTPMessage(int code, LPCWSTR msg);
-#else
-extern "C" inline void __stdcall OutputDebugFTPMessage(int code, LPCWSTR msg) { }
-#endif
