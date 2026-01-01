@@ -91,7 +91,7 @@ int CSSH2Client::OnHandshake(CSSH2FingerPrintHandler* pHandler)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-AuthReturnType CSSH2Client::Authenticate(IEasySFTPAuthentication* pAuth)
+AuthReturnType CSSH2Client::Authenticate(IEasySFTPAuthentication2* pAuth)
 {
 	if (m_pAuth)
 		m_pAuth->Release();

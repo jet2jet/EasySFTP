@@ -11,10 +11,11 @@
 #include "Array.h"
 
 class CEasySFTPFolderRoot;
+class CAuthentication;
 
  ///////////////////////////////////////////////////////////////////////////////
 
-class CEasySFTPHostSetting : public CDispatchImplT<IEasySFTPHostSetting>
+class CEasySFTPHostSetting : public CDispatchImplT<IEasySFTPHostSetting2>
 {
 public:
 	EasySFTPConnectionMode ConnectionMode;
@@ -35,27 +36,14 @@ public:
 	CMyStringW strChmodCommand;
 	//CMyStringW strTouchCommand;
 
+	bool bAutoLogin;
+	CMyStringW strUserName;
+	EasySFTPAuthenticationMode AuthMode;
+	EasySFTPPassKeyStoreType PassKeyStoreType;
+
 	CEasySFTPHostSetting();
 	CEasySFTPHostSetting(const CEasySFTPHostSetting* pSettings);
-	void Copy(const CEasySFTPHostSetting* pSettings)
-	{
-		ConnectionMode = pSettings->ConnectionMode;
-		strDisplayName = pSettings->strDisplayName;
-		strHostName = pSettings->strHostName;
-		nPort = pSettings->nPort;
-		//strUserName = pSettings->strUserName;
-		strInitLocalPath = pSettings->strInitLocalPath;
-		strInitServerPath = pSettings->strInitServerPath;
-		bTextMode = pSettings->bTextMode;
-		nServerCharset = pSettings->nServerCharset;
-		nTransferMode = pSettings->nTransferMode;
-		arrTextFileType.CopyArray(pSettings->arrTextFileType);
-		bUseSystemTextFileType = pSettings->bUseSystemTextFileType;
-		bAdjustRecvModifyTime = pSettings->bAdjustRecvModifyTime;
-		bAdjustSendModifyTime = pSettings->bAdjustSendModifyTime;
-		strChmodCommand = pSettings->strChmodCommand;
-		//strTouchCommand = pSettings->strTouchCommand;
-	}
+	void Copy(const CEasySFTPHostSetting* pSettings);
 
 	STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override;
 
@@ -89,6 +77,29 @@ public:
 	STDMETHOD(get_ChmodCommand)(BSTR* pRet) override;
 	STDMETHOD(put_ChmodCommand)(BSTR Value) override;
 	STDMETHOD(CopyFrom)(IEasySFTPHostSetting* pSetting) override;
+
+	STDMETHOD(get_AutoLogin)(VARIANT_BOOL* pRet) override;
+	STDMETHOD(put_AutoLogin)(VARIANT_BOOL Value) override;
+	STDMETHOD(get_UserName)(BSTR* pRet) override;
+	STDMETHOD(put_UserName)(BSTR Value) override;
+	STDMETHOD(ClearCredentials)() override;
+	STDMETHOD(get_HasPassword)(VARIANT_BOOL* pRet) override;
+	STDMETHOD(SetPassword)(BSTR Password) override;
+	STDMETHOD(get_AuthenticationMode)(EasySFTPAuthenticationMode* pRet) override;
+	STDMETHOD(put_AuthenticationMode)(EasySFTPAuthenticationMode Value) override;
+	STDMETHOD(get_HasPrivateKey)(VARIANT_BOOL* pRet) override;
+	STDMETHOD(StorePrivateKeyFromFile)(BSTR FileName, BSTR Password) override;
+	STDMETHOD(StorePrivateKeyFromBinary)(const void* buffer, long length, BSTR Password) override;
+	STDMETHOD(get_PassKeyStoreType)(EasySFTPPassKeyStoreType* pRet) override;
+	STDMETHOD(put_PassKeyStoreType)(EasySFTPPassKeyStoreType Value) override;
+
+	void SetHostName(const CMyStringW& strHostName);
+	void SetUserName(const CMyStringW& strUserName);
+
+	CAuthentication* CreateAuthentication() const;
+
+	static bool HasCredentials();
+	static void ClearAllCredentials();
 };
 
 ///////////////////////////////////////////////////////////////////////////////

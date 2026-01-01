@@ -246,7 +246,7 @@ public:
 	virtual HRESULT PumpSocketAndMessage(DWORD dwWaitTime = 0xFFFFFFFF);
 
 public:
-	virtual bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser);
+	virtual bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication2* pUser);
 	//void Disconnect();
 
 public:
@@ -265,7 +265,7 @@ public:
 	char m_nServerCharset;
 
 	bool m_bMyUserInfo;
-	IEasySFTPAuthentication* m_pUser;
+	IEasySFTPAuthentication2* m_pUser;
 	CSSH2Client* m_pClient;
 	Phase m_phase;
 	bool m_bFirstAuthenticate;

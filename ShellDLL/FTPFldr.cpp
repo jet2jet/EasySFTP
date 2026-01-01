@@ -208,7 +208,7 @@ CSFTPFolderFTP::~CSFTPFolderFTP()
 	::DeleteCriticalSection(&m_csSocket);
 }
 
-bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser)
+bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication2* pUser)
 {
 	CMyScopedCSLock lock(m_csSocket);
 	m_hWndOwner = hWnd;

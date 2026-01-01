@@ -153,6 +153,20 @@ typedef interface IEasySFTPDirectorySynchronization IEasySFTPDirectorySynchroniz
 #endif 	/* __IEasySFTPDirectorySynchronization_FWD_DEFINED__ */
 
 
+#ifndef __IEasySFTPAuthentication2_FWD_DEFINED__
+#define __IEasySFTPAuthentication2_FWD_DEFINED__
+typedef interface IEasySFTPAuthentication2 IEasySFTPAuthentication2;
+
+#endif 	/* __IEasySFTPAuthentication2_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPAuthentication2_FWD_DEFINED__
+#define __DEasySFTPAuthentication2_FWD_DEFINED__
+typedef interface DEasySFTPAuthentication2 DEasySFTPAuthentication2;
+
+#endif 	/* __DEasySFTPAuthentication2_FWD_DEFINED__ */
+
+
 #ifndef __IEasySFTPStringList_FWD_DEFINED__
 #define __IEasySFTPStringList_FWD_DEFINED__
 typedef interface IEasySFTPStringList IEasySFTPStringList;
@@ -181,6 +195,20 @@ typedef interface DEasySFTPHostSetting DEasySFTPHostSetting;
 #endif 	/* __DEasySFTPHostSetting_FWD_DEFINED__ */
 
 
+#ifndef __IEasySFTPHostSetting2_FWD_DEFINED__
+#define __IEasySFTPHostSetting2_FWD_DEFINED__
+typedef interface IEasySFTPHostSetting2 IEasySFTPHostSetting2;
+
+#endif 	/* __IEasySFTPHostSetting2_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPHostSetting2_FWD_DEFINED__
+#define __DEasySFTPHostSetting2_FWD_DEFINED__
+typedef interface DEasySFTPHostSetting2 DEasySFTPHostSetting2;
+
+#endif 	/* __DEasySFTPHostSetting2_FWD_DEFINED__ */
+
+
 #ifndef __IEasySFTPHostSettingList_FWD_DEFINED__
 #define __IEasySFTPHostSettingList_FWD_DEFINED__
 typedef interface IEasySFTPHostSettingList IEasySFTPHostSettingList;
@@ -193,6 +221,20 @@ typedef interface IEasySFTPHostSettingList IEasySFTPHostSettingList;
 typedef interface DEasySFTPHostSettingList DEasySFTPHostSettingList;
 
 #endif 	/* __DEasySFTPHostSettingList_FWD_DEFINED__ */
+
+
+#ifndef __IEasySFTPRoot2_FWD_DEFINED__
+#define __IEasySFTPRoot2_FWD_DEFINED__
+typedef interface IEasySFTPRoot2 IEasySFTPRoot2;
+
+#endif 	/* __IEasySFTPRoot2_FWD_DEFINED__ */
+
+
+#ifndef __DEasySFTPRoot2_FWD_DEFINED__
+#define __DEasySFTPRoot2_FWD_DEFINED__
+typedef interface DEasySFTPRoot2 DEasySFTPRoot2;
+
+#endif 	/* __DEasySFTPRoot2_FWD_DEFINED__ */
 
 
 #ifndef __EasySFTPRoot_FWD_DEFINED__
@@ -315,6 +357,42 @@ typedef struct EasySFTPHostSettingList EasySFTPHostSettingList;
 #endif 	/* __EasySFTPHostSettingList_FWD_DEFINED__ */
 
 
+#ifndef __EasySFTPHostSetting2_FWD_DEFINED__
+#define __EasySFTPHostSetting2_FWD_DEFINED__
+
+#ifdef __cplusplus
+typedef class EasySFTPHostSetting2 EasySFTPHostSetting2;
+#else
+typedef struct EasySFTPHostSetting2 EasySFTPHostSetting2;
+#endif /* __cplusplus */
+
+#endif 	/* __EasySFTPHostSetting2_FWD_DEFINED__ */
+
+
+#ifndef __EasySFTPAuthentication2_FWD_DEFINED__
+#define __EasySFTPAuthentication2_FWD_DEFINED__
+
+#ifdef __cplusplus
+typedef class EasySFTPAuthentication2 EasySFTPAuthentication2;
+#else
+typedef struct EasySFTPAuthentication2 EasySFTPAuthentication2;
+#endif /* __cplusplus */
+
+#endif 	/* __EasySFTPAuthentication2_FWD_DEFINED__ */
+
+
+#ifndef __EasySFTPRoot2_FWD_DEFINED__
+#define __EasySFTPRoot2_FWD_DEFINED__
+
+#ifdef __cplusplus
+typedef class EasySFTPRoot2 EasySFTPRoot2;
+#else
+typedef struct EasySFTPRoot2 EasySFTPRoot2;
+#endif /* __cplusplus */
+
+#endif 	/* __EasySFTPRoot2_FWD_DEFINED__ */
+
+
 /* header files for imported files */
 #include "oaidl.h"
 
@@ -403,7 +481,7 @@ enum EasySFTPAuthenticationMode
     {
         None	= 0,
         Password	= 1,
-        PublicKey	= 2,
+        PrivateKey	= 2,
         Pageant	= 3,
         WinOpenSSH	= 4
     } 	EasySFTPAuthenticationMode;
@@ -432,6 +510,13 @@ enum EasySFTPSynchronizeMode
 using EasySFTPSynchronizeModeFlags = BitFlags<EasySFTPSynchronizeMode>;
 #endif
 #define enum _ENUM_CLASS
+typedef 
+enum EasySFTPPassKeyStoreType
+    {
+        Local	= 0,
+        CurrentUser	= 1
+    } 	EasySFTPPassKeyStoreType;
+
 #undef enum
 #undef _ENUM_CLASS
 #define NoConversion EasySFTPTextMode::NoConversion
@@ -2026,10 +2111,10 @@ EXTERN_C const IID IID_IEasySFTPAuthentication;
         virtual /* [propput][id] */ HRESULT STDMETHODCALLTYPE put_Password( 
             /* [in] */ BSTR Password) = 0;
         
-        virtual /* [propget][id] */ HRESULT STDMETHODCALLTYPE get_PublicKeyFileName( 
+        virtual /* [propget][id] */ HRESULT STDMETHODCALLTYPE get_PrivateKeyFileName( 
             /* [retval][out] */ BSTR *pRet) = 0;
         
-        virtual /* [propput][id] */ HRESULT STDMETHODCALLTYPE put_PublicKeyFileName( 
+        virtual /* [propput][id] */ HRESULT STDMETHODCALLTYPE put_PrivateKeyFileName( 
             /* [in] */ BSTR FileName) = 0;
         
         virtual /* [propget][id] */ HRESULT STDMETHODCALLTYPE get_Type( 
@@ -2129,13 +2214,13 @@ EXTERN_C const IID IID_IEasySFTPAuthentication;
             IEasySFTPAuthentication * This,
             /* [in] */ BSTR Password);
         
-        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, get_PublicKeyFileName)
-        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_PublicKeyFileName )( 
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, get_PrivateKeyFileName)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_PrivateKeyFileName )( 
             IEasySFTPAuthentication * This,
             /* [retval][out] */ BSTR *pRet);
         
-        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, put_PublicKeyFileName)
-        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_PublicKeyFileName )( 
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, put_PrivateKeyFileName)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_PrivateKeyFileName )( 
             IEasySFTPAuthentication * This,
             /* [in] */ BSTR FileName);
         
@@ -2207,11 +2292,11 @@ EXTERN_C const IID IID_IEasySFTPAuthentication;
 #define IEasySFTPAuthentication_put_Password(This,Password)	\
     ( (This)->lpVtbl -> put_Password(This,Password) ) 
 
-#define IEasySFTPAuthentication_get_PublicKeyFileName(This,pRet)	\
-    ( (This)->lpVtbl -> get_PublicKeyFileName(This,pRet) ) 
+#define IEasySFTPAuthentication_get_PrivateKeyFileName(This,pRet)	\
+    ( (This)->lpVtbl -> get_PrivateKeyFileName(This,pRet) ) 
 
-#define IEasySFTPAuthentication_put_PublicKeyFileName(This,FileName)	\
-    ( (This)->lpVtbl -> put_PublicKeyFileName(This,FileName) ) 
+#define IEasySFTPAuthentication_put_PrivateKeyFileName(This,FileName)	\
+    ( (This)->lpVtbl -> put_PrivateKeyFileName(This,FileName) ) 
 
 #define IEasySFTPAuthentication_get_Type(This,pMode)	\
     ( (This)->lpVtbl -> get_Type(This,pMode) ) 
@@ -3569,6 +3654,362 @@ EXTERN_C const IID IID_IEasySFTPDirectorySynchronization;
 #endif 	/* __IEasySFTPDirectorySynchronization_INTERFACE_DEFINED__ */
 
 
+#ifndef __IEasySFTPAuthentication2_INTERFACE_DEFINED__
+#define __IEasySFTPAuthentication2_INTERFACE_DEFINED__
+
+/* interface IEasySFTPAuthentication2 */
+/* [object][hidden][unique][uuid] */ 
+
+
+EXTERN_C const IID IID_IEasySFTPAuthentication2;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("AD29C042-B9E3-4660-9DF6-D7DA5B8D0199")
+    IEasySFTPAuthentication2 : public IEasySFTPAuthentication
+    {
+    public:
+        virtual /* [hidden][id] */ HRESULT STDMETHODCALLTYPE SetPrivateKeyBinary( 
+            /* [in] */ const void *buffer,
+            /* [in] */ long length) = 0;
+        
+        virtual /* [hidden][id] */ HRESULT STDMETHODCALLTYPE GetPrivateKeyBinary( 
+            /* [out] */ const void **buffer,
+            /* [out] */ long *pLength) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IEasySFTPAuthentication2Vtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IEasySFTPAuthentication2 * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IEasySFTPAuthentication2 * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IEasySFTPAuthentication2 * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            IEasySFTPAuthentication2 * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            IEasySFTPAuthentication2 * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            IEasySFTPAuthentication2 * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            IEasySFTPAuthentication2 * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, get_UserName)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_UserName )( 
+            IEasySFTPAuthentication2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, put_UserName)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_UserName )( 
+            IEasySFTPAuthentication2 * This,
+            /* [in] */ BSTR Name);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, get_Password)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_Password )( 
+            IEasySFTPAuthentication2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, put_Password)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_Password )( 
+            IEasySFTPAuthentication2 * This,
+            /* [in] */ BSTR Password);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, get_PrivateKeyFileName)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_PrivateKeyFileName )( 
+            IEasySFTPAuthentication2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, put_PrivateKeyFileName)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_PrivateKeyFileName )( 
+            IEasySFTPAuthentication2 * This,
+            /* [in] */ BSTR FileName);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, get_Type)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_Type )( 
+            IEasySFTPAuthentication2 * This,
+            /* [retval][out] */ EasySFTPAuthenticationMode *pMode);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, put_Type)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_Type )( 
+            IEasySFTPAuthentication2 * This,
+            /* [in] */ EasySFTPAuthenticationMode mode);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, get_AuthSession)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_AuthSession )( 
+            IEasySFTPAuthentication2 * This,
+            /* [retval][out] */ LONG_PTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication, put_AuthSession)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_AuthSession )( 
+            IEasySFTPAuthentication2 * This,
+            /* [in] */ LONG_PTR session);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication2, SetPrivateKeyBinary)
+        /* [hidden][id] */ HRESULT ( STDMETHODCALLTYPE *SetPrivateKeyBinary )( 
+            IEasySFTPAuthentication2 * This,
+            /* [in] */ const void *buffer,
+            /* [in] */ long length);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPAuthentication2, GetPrivateKeyBinary)
+        /* [hidden][id] */ HRESULT ( STDMETHODCALLTYPE *GetPrivateKeyBinary )( 
+            IEasySFTPAuthentication2 * This,
+            /* [out] */ const void **buffer,
+            /* [out] */ long *pLength);
+        
+        END_INTERFACE
+    } IEasySFTPAuthentication2Vtbl;
+
+    interface IEasySFTPAuthentication2
+    {
+        CONST_VTBL struct IEasySFTPAuthentication2Vtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IEasySFTPAuthentication2_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IEasySFTPAuthentication2_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IEasySFTPAuthentication2_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IEasySFTPAuthentication2_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define IEasySFTPAuthentication2_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define IEasySFTPAuthentication2_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define IEasySFTPAuthentication2_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+
+#define IEasySFTPAuthentication2_get_UserName(This,pRet)	\
+    ( (This)->lpVtbl -> get_UserName(This,pRet) ) 
+
+#define IEasySFTPAuthentication2_put_UserName(This,Name)	\
+    ( (This)->lpVtbl -> put_UserName(This,Name) ) 
+
+#define IEasySFTPAuthentication2_get_Password(This,pRet)	\
+    ( (This)->lpVtbl -> get_Password(This,pRet) ) 
+
+#define IEasySFTPAuthentication2_put_Password(This,Password)	\
+    ( (This)->lpVtbl -> put_Password(This,Password) ) 
+
+#define IEasySFTPAuthentication2_get_PrivateKeyFileName(This,pRet)	\
+    ( (This)->lpVtbl -> get_PrivateKeyFileName(This,pRet) ) 
+
+#define IEasySFTPAuthentication2_put_PrivateKeyFileName(This,FileName)	\
+    ( (This)->lpVtbl -> put_PrivateKeyFileName(This,FileName) ) 
+
+#define IEasySFTPAuthentication2_get_Type(This,pMode)	\
+    ( (This)->lpVtbl -> get_Type(This,pMode) ) 
+
+#define IEasySFTPAuthentication2_put_Type(This,mode)	\
+    ( (This)->lpVtbl -> put_Type(This,mode) ) 
+
+#define IEasySFTPAuthentication2_get_AuthSession(This,pRet)	\
+    ( (This)->lpVtbl -> get_AuthSession(This,pRet) ) 
+
+#define IEasySFTPAuthentication2_put_AuthSession(This,session)	\
+    ( (This)->lpVtbl -> put_AuthSession(This,session) ) 
+
+
+#define IEasySFTPAuthentication2_SetPrivateKeyBinary(This,buffer,length)	\
+    ( (This)->lpVtbl -> SetPrivateKeyBinary(This,buffer,length) ) 
+
+#define IEasySFTPAuthentication2_GetPrivateKeyBinary(This,buffer,pLength)	\
+    ( (This)->lpVtbl -> GetPrivateKeyBinary(This,buffer,pLength) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IEasySFTPAuthentication2_INTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPAuthentication2_DISPINTERFACE_DEFINED__
+#define __DEasySFTPAuthentication2_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPAuthentication2 */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPAuthentication2;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-4860-9DF6-D7DA5B8D0199")
+    DEasySFTPAuthentication2 : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPAuthentication2Vtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPAuthentication2 * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPAuthentication2 * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPAuthentication2 * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPAuthentication2 * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPAuthentication2 * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPAuthentication2 * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPAuthentication2 * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPAuthentication2Vtbl;
+
+    interface DEasySFTPAuthentication2
+    {
+        CONST_VTBL struct DEasySFTPAuthentication2Vtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPAuthentication2_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPAuthentication2_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPAuthentication2_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPAuthentication2_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPAuthentication2_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPAuthentication2_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPAuthentication2_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPAuthentication2_DISPINTERFACE_DEFINED__ */
+
+
 #ifndef __IEasySFTPStringList_INTERFACE_DEFINED__
 #define __IEasySFTPStringList_INTERFACE_DEFINED__
 
@@ -4482,6 +4923,654 @@ EXTERN_C const IID DIID_DEasySFTPHostSetting;
 #endif 	/* __DEasySFTPHostSetting_DISPINTERFACE_DEFINED__ */
 
 
+#ifndef __IEasySFTPHostSetting2_INTERFACE_DEFINED__
+#define __IEasySFTPHostSetting2_INTERFACE_DEFINED__
+
+/* interface IEasySFTPHostSetting2 */
+/* [object][hidden][unique][uuid] */ 
+
+
+EXTERN_C const IID IID_IEasySFTPHostSetting2;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("AD29C042-B9E3-465e-9DF6-D7DA5B8D0199")
+    IEasySFTPHostSetting2 : public IEasySFTPHostSetting
+    {
+    public:
+        virtual /* [propget][id] */ HRESULT STDMETHODCALLTYPE get_AutoLogin( 
+            /* [retval][out] */ VARIANT_BOOL *pRet) = 0;
+        
+        virtual /* [propput][id] */ HRESULT STDMETHODCALLTYPE put_AutoLogin( 
+            /* [in] */ VARIANT_BOOL Value) = 0;
+        
+        virtual /* [propget][id] */ HRESULT STDMETHODCALLTYPE get_UserName( 
+            /* [retval][out] */ BSTR *pRet) = 0;
+        
+        virtual /* [propput][id] */ HRESULT STDMETHODCALLTYPE put_UserName( 
+            /* [in] */ BSTR Value) = 0;
+        
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE ClearCredentials( void) = 0;
+        
+        virtual /* [propget][id] */ HRESULT STDMETHODCALLTYPE get_HasPassword( 
+            /* [retval][out] */ VARIANT_BOOL *pRet) = 0;
+        
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE SetPassword( 
+            /* [in] */ BSTR Password) = 0;
+        
+        virtual /* [propget][id] */ HRESULT STDMETHODCALLTYPE get_AuthenticationMode( 
+            /* [retval][out] */ EasySFTPAuthenticationMode *pRet) = 0;
+        
+        virtual /* [propput][id] */ HRESULT STDMETHODCALLTYPE put_AuthenticationMode( 
+            /* [in] */ EasySFTPAuthenticationMode Value) = 0;
+        
+        virtual /* [propget][id] */ HRESULT STDMETHODCALLTYPE get_HasPrivateKey( 
+            /* [retval][out] */ VARIANT_BOOL *pRet) = 0;
+        
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE StorePrivateKeyFromFile( 
+            /* [in] */ BSTR FileName,
+            /* [in] */ BSTR Password) = 0;
+        
+        virtual /* [hidden][id] */ HRESULT STDMETHODCALLTYPE StorePrivateKeyFromBinary( 
+            /* [in] */ const void *buffer,
+            /* [in] */ long length,
+            /* [in] */ BSTR Password) = 0;
+        
+        virtual /* [propget][id] */ HRESULT STDMETHODCALLTYPE get_PassKeyStoreType( 
+            /* [retval][out] */ EasySFTPPassKeyStoreType *pRet) = 0;
+        
+        virtual /* [propput][id] */ HRESULT STDMETHODCALLTYPE put_PassKeyStoreType( 
+            /* [in] */ EasySFTPPassKeyStoreType Value) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IEasySFTPHostSetting2Vtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IEasySFTPHostSetting2 * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IEasySFTPHostSetting2 * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            IEasySFTPHostSetting2 * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            IEasySFTPHostSetting2 * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_Name)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_Name )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_Name)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_Name )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ BSTR Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_HostName)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_HostName )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_HostName)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_HostName )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ BSTR Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_ConnectionMode)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_ConnectionMode )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ EasySFTPConnectionMode *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_ConnectionMode)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_ConnectionMode )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ EasySFTPConnectionMode Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_Port)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_Port )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ long *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_Port)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_Port )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ long Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_InitLocalPath)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_InitLocalPath )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_InitLocalPath)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_InitLocalPath )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ BSTR Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_InitServerPath)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_InitServerPath )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_InitServerPath)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_InitServerPath )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ BSTR Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_TextMode)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_TextMode )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ EasySFTPTextMode *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_TextMode)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_TextMode )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ EasySFTPTextMode Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_ServerCharset)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_ServerCharset )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ EasySFTPServerCharset *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_ServerCharset)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_ServerCharset )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ EasySFTPServerCharset Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_TransferMode)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_TransferMode )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ EasySFTPTransferMode *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_TransferMode)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_TransferMode )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ EasySFTPTransferMode Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_TextFileType)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_TextFileType )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ IEasySFTPStringList **ppList);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_UseSystemTextFileType)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_UseSystemTextFileType )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ VARIANT_BOOL *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_UseSystemTextFileType)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_UseSystemTextFileType )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ VARIANT_BOOL Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_AdjustRecvModifyTime)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_AdjustRecvModifyTime )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ VARIANT_BOOL *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_AdjustRecvModifyTime)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_AdjustRecvModifyTime )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ VARIANT_BOOL Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_AdjustSendModifyTime)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_AdjustSendModifyTime )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ VARIANT_BOOL *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_AdjustSendModifyTime)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_AdjustSendModifyTime )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ VARIANT_BOOL Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_UseThumbnailPreview)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_UseThumbnailPreview )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ VARIANT_BOOL *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_UseThumbnailPreview)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_UseThumbnailPreview )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ VARIANT_BOOL Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, get_ChmodCommand)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_ChmodCommand )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, put_ChmodCommand)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_ChmodCommand )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ BSTR Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting, CopyFrom)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *CopyFrom )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ IEasySFTPHostSetting *pSetting);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, get_AutoLogin)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_AutoLogin )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ VARIANT_BOOL *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, put_AutoLogin)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_AutoLogin )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ VARIANT_BOOL Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, get_UserName)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_UserName )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, put_UserName)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_UserName )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ BSTR Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, ClearCredentials)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *ClearCredentials )( 
+            IEasySFTPHostSetting2 * This);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, get_HasPassword)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_HasPassword )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ VARIANT_BOOL *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, SetPassword)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *SetPassword )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ BSTR Password);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, get_AuthenticationMode)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_AuthenticationMode )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ EasySFTPAuthenticationMode *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, put_AuthenticationMode)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_AuthenticationMode )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ EasySFTPAuthenticationMode Value);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, get_HasPrivateKey)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_HasPrivateKey )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ VARIANT_BOOL *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, StorePrivateKeyFromFile)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *StorePrivateKeyFromFile )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ BSTR FileName,
+            /* [in] */ BSTR Password);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, StorePrivateKeyFromBinary)
+        /* [hidden][id] */ HRESULT ( STDMETHODCALLTYPE *StorePrivateKeyFromBinary )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ const void *buffer,
+            /* [in] */ long length,
+            /* [in] */ BSTR Password);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, get_PassKeyStoreType)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_PassKeyStoreType )( 
+            IEasySFTPHostSetting2 * This,
+            /* [retval][out] */ EasySFTPPassKeyStoreType *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPHostSetting2, put_PassKeyStoreType)
+        /* [propput][id] */ HRESULT ( STDMETHODCALLTYPE *put_PassKeyStoreType )( 
+            IEasySFTPHostSetting2 * This,
+            /* [in] */ EasySFTPPassKeyStoreType Value);
+        
+        END_INTERFACE
+    } IEasySFTPHostSetting2Vtbl;
+
+    interface IEasySFTPHostSetting2
+    {
+        CONST_VTBL struct IEasySFTPHostSetting2Vtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IEasySFTPHostSetting2_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IEasySFTPHostSetting2_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IEasySFTPHostSetting2_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IEasySFTPHostSetting2_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define IEasySFTPHostSetting2_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define IEasySFTPHostSetting2_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define IEasySFTPHostSetting2_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+
+#define IEasySFTPHostSetting2_get_Name(This,pRet)	\
+    ( (This)->lpVtbl -> get_Name(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_Name(This,Value)	\
+    ( (This)->lpVtbl -> put_Name(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_HostName(This,pRet)	\
+    ( (This)->lpVtbl -> get_HostName(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_HostName(This,Value)	\
+    ( (This)->lpVtbl -> put_HostName(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_ConnectionMode(This,pRet)	\
+    ( (This)->lpVtbl -> get_ConnectionMode(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_ConnectionMode(This,Value)	\
+    ( (This)->lpVtbl -> put_ConnectionMode(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_Port(This,pRet)	\
+    ( (This)->lpVtbl -> get_Port(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_Port(This,Value)	\
+    ( (This)->lpVtbl -> put_Port(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_InitLocalPath(This,pRet)	\
+    ( (This)->lpVtbl -> get_InitLocalPath(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_InitLocalPath(This,Value)	\
+    ( (This)->lpVtbl -> put_InitLocalPath(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_InitServerPath(This,pRet)	\
+    ( (This)->lpVtbl -> get_InitServerPath(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_InitServerPath(This,Value)	\
+    ( (This)->lpVtbl -> put_InitServerPath(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_TextMode(This,pRet)	\
+    ( (This)->lpVtbl -> get_TextMode(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_TextMode(This,Value)	\
+    ( (This)->lpVtbl -> put_TextMode(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_ServerCharset(This,pRet)	\
+    ( (This)->lpVtbl -> get_ServerCharset(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_ServerCharset(This,Value)	\
+    ( (This)->lpVtbl -> put_ServerCharset(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_TransferMode(This,pRet)	\
+    ( (This)->lpVtbl -> get_TransferMode(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_TransferMode(This,Value)	\
+    ( (This)->lpVtbl -> put_TransferMode(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_TextFileType(This,ppList)	\
+    ( (This)->lpVtbl -> get_TextFileType(This,ppList) ) 
+
+#define IEasySFTPHostSetting2_get_UseSystemTextFileType(This,pRet)	\
+    ( (This)->lpVtbl -> get_UseSystemTextFileType(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_UseSystemTextFileType(This,Value)	\
+    ( (This)->lpVtbl -> put_UseSystemTextFileType(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_AdjustRecvModifyTime(This,pRet)	\
+    ( (This)->lpVtbl -> get_AdjustRecvModifyTime(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_AdjustRecvModifyTime(This,Value)	\
+    ( (This)->lpVtbl -> put_AdjustRecvModifyTime(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_AdjustSendModifyTime(This,pRet)	\
+    ( (This)->lpVtbl -> get_AdjustSendModifyTime(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_AdjustSendModifyTime(This,Value)	\
+    ( (This)->lpVtbl -> put_AdjustSendModifyTime(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_UseThumbnailPreview(This,pRet)	\
+    ( (This)->lpVtbl -> get_UseThumbnailPreview(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_UseThumbnailPreview(This,Value)	\
+    ( (This)->lpVtbl -> put_UseThumbnailPreview(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_ChmodCommand(This,pRet)	\
+    ( (This)->lpVtbl -> get_ChmodCommand(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_ChmodCommand(This,Value)	\
+    ( (This)->lpVtbl -> put_ChmodCommand(This,Value) ) 
+
+#define IEasySFTPHostSetting2_CopyFrom(This,pSetting)	\
+    ( (This)->lpVtbl -> CopyFrom(This,pSetting) ) 
+
+
+#define IEasySFTPHostSetting2_get_AutoLogin(This,pRet)	\
+    ( (This)->lpVtbl -> get_AutoLogin(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_AutoLogin(This,Value)	\
+    ( (This)->lpVtbl -> put_AutoLogin(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_UserName(This,pRet)	\
+    ( (This)->lpVtbl -> get_UserName(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_UserName(This,Value)	\
+    ( (This)->lpVtbl -> put_UserName(This,Value) ) 
+
+#define IEasySFTPHostSetting2_ClearCredentials(This)	\
+    ( (This)->lpVtbl -> ClearCredentials(This) ) 
+
+#define IEasySFTPHostSetting2_get_HasPassword(This,pRet)	\
+    ( (This)->lpVtbl -> get_HasPassword(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_SetPassword(This,Password)	\
+    ( (This)->lpVtbl -> SetPassword(This,Password) ) 
+
+#define IEasySFTPHostSetting2_get_AuthenticationMode(This,pRet)	\
+    ( (This)->lpVtbl -> get_AuthenticationMode(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_AuthenticationMode(This,Value)	\
+    ( (This)->lpVtbl -> put_AuthenticationMode(This,Value) ) 
+
+#define IEasySFTPHostSetting2_get_HasPrivateKey(This,pRet)	\
+    ( (This)->lpVtbl -> get_HasPrivateKey(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_StorePrivateKeyFromFile(This,FileName,Password)	\
+    ( (This)->lpVtbl -> StorePrivateKeyFromFile(This,FileName,Password) ) 
+
+#define IEasySFTPHostSetting2_StorePrivateKeyFromBinary(This,buffer,length,Password)	\
+    ( (This)->lpVtbl -> StorePrivateKeyFromBinary(This,buffer,length,Password) ) 
+
+#define IEasySFTPHostSetting2_get_PassKeyStoreType(This,pRet)	\
+    ( (This)->lpVtbl -> get_PassKeyStoreType(This,pRet) ) 
+
+#define IEasySFTPHostSetting2_put_PassKeyStoreType(This,Value)	\
+    ( (This)->lpVtbl -> put_PassKeyStoreType(This,Value) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IEasySFTPHostSetting2_INTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPHostSetting2_DISPINTERFACE_DEFINED__
+#define __DEasySFTPHostSetting2_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPHostSetting2 */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPHostSetting2;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-485e-9DF6-D7DA5B8D0199")
+    DEasySFTPHostSetting2 : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPHostSetting2Vtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPHostSetting2 * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPHostSetting2 * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPHostSetting2 * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPHostSetting2 * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPHostSetting2 * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPHostSetting2 * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPHostSetting2 * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPHostSetting2Vtbl;
+
+    interface DEasySFTPHostSetting2
+    {
+        CONST_VTBL struct DEasySFTPHostSetting2Vtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPHostSetting2_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPHostSetting2_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPHostSetting2_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPHostSetting2_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPHostSetting2_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPHostSetting2_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPHostSetting2_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPHostSetting2_DISPINTERFACE_DEFINED__ */
+
+
 #ifndef __IEasySFTPHostSettingList_INTERFACE_DEFINED__
 #define __IEasySFTPHostSettingList_INTERFACE_DEFINED__
 
@@ -4807,6 +5896,365 @@ EXTERN_C const IID DIID_DEasySFTPHostSettingList;
 #endif 	/* __DEasySFTPHostSettingList_DISPINTERFACE_DEFINED__ */
 
 
+#ifndef __IEasySFTPRoot2_INTERFACE_DEFINED__
+#define __IEasySFTPRoot2_INTERFACE_DEFINED__
+
+/* interface IEasySFTPRoot2 */
+/* [object][hidden][unique][uuid] */ 
+
+
+EXTERN_C const IID IID_IEasySFTPRoot2;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+    
+    MIDL_INTERFACE("AD29C042-B9E3-4662-9DF6-D7DA5B8D0199")
+    IEasySFTPRoot2 : public IEasySFTPRoot
+    {
+    public:
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE ClearAllCredentials( void) = 0;
+        
+        virtual /* [id] */ HRESULT STDMETHODCALLTYPE HasCredentials( 
+            /* [retval][out] */ VARIANT_BOOL *pRet) = 0;
+        
+    };
+    
+    
+#else 	/* C style interface */
+
+    typedef struct IEasySFTPRoot2Vtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            IEasySFTPRoot2 * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            IEasySFTPRoot2 * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            IEasySFTPRoot2 * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            IEasySFTPRoot2 * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot, get_Version)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_Version )( 
+            IEasySFTPRoot2 * This,
+            /* [retval][out] */ BSTR *pRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot, _Connect)
+        /* [hidden][id] */ HRESULT ( STDMETHODCALLTYPE *_Connect )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ VARIANT_BOOL bSFTP,
+            /* [in] */ LONG_PTR hWnd,
+            /* [in] */ LONG_PTR pvReserved,
+            /* [in] */ BSTR lpszHostName,
+            /* [in] */ long nPort,
+            /* [retval][out] */ IEasySFTPRootDirectory **ppFolder);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot, QuickConnectDialog)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *QuickConnectDialog )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ LONG_PTR hWnd,
+            /* [retval][out] */ IEasySFTPRootDirectory **ppFolder);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot, GetDependencyLibraryInfo)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *GetDependencyLibraryInfo )( 
+            IEasySFTPRoot2 * This,
+            /* [retval][out] */ BSTR *poutLibraryInfo);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot, Connect)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *Connect )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ EasySFTPConnectionMode ConnectionMode,
+            /* [in] */ LONG_PTR hWnd,
+            /* [in] */ IEasySFTPAuthentication *pAuth,
+            /* [in] */ BSTR lpszHostName,
+            /* [defaultvalue][in] */ long nPort,
+            /* [defaultvalue][in] */ VARIANT_BOOL bIgnoreFingerprint,
+            /* [retval][out] */ IEasySFTPRootDirectory **ppFolder);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot, CreateAuthentication)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *CreateAuthentication )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ EasySFTPAuthenticationMode mode,
+            /* [in] */ BSTR bstrUserName,
+            /* [retval][out] */ IEasySFTPAuthentication **ppAuth);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot, get_HostSettings)
+        /* [propget][id] */ HRESULT ( STDMETHODCALLTYPE *get_HostSettings )( 
+            IEasySFTPRoot2 * This,
+            /* [retval][out] */ IEasySFTPHostSettingList **ppList);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot, CreateHostSetting)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *CreateHostSetting )( 
+            IEasySFTPRoot2 * This,
+            /* [retval][out] */ IEasySFTPHostSetting **ppRet);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot, ConnectFromSetting)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *ConnectFromSetting )( 
+            IEasySFTPRoot2 * This,
+            /* [in] */ LONG_PTR hWnd,
+            /* [in] */ IEasySFTPHostSetting *pSetting,
+            /* [defaultvalue][in] */ VARIANT_BOOL bIgnoreFingerprint,
+            /* [retval][out] */ IEasySFTPDirectory **ppFolder);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot2, ClearAllCredentials)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *ClearAllCredentials )( 
+            IEasySFTPRoot2 * This);
+        
+        DECLSPEC_XFGVIRT(IEasySFTPRoot2, HasCredentials)
+        /* [id] */ HRESULT ( STDMETHODCALLTYPE *HasCredentials )( 
+            IEasySFTPRoot2 * This,
+            /* [retval][out] */ VARIANT_BOOL *pRet);
+        
+        END_INTERFACE
+    } IEasySFTPRoot2Vtbl;
+
+    interface IEasySFTPRoot2
+    {
+        CONST_VTBL struct IEasySFTPRoot2Vtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define IEasySFTPRoot2_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define IEasySFTPRoot2_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define IEasySFTPRoot2_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define IEasySFTPRoot2_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define IEasySFTPRoot2_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define IEasySFTPRoot2_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define IEasySFTPRoot2_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+
+#define IEasySFTPRoot2_get_Version(This,pRet)	\
+    ( (This)->lpVtbl -> get_Version(This,pRet) ) 
+
+#define IEasySFTPRoot2__Connect(This,bSFTP,hWnd,pvReserved,lpszHostName,nPort,ppFolder)	\
+    ( (This)->lpVtbl -> _Connect(This,bSFTP,hWnd,pvReserved,lpszHostName,nPort,ppFolder) ) 
+
+#define IEasySFTPRoot2_QuickConnectDialog(This,hWnd,ppFolder)	\
+    ( (This)->lpVtbl -> QuickConnectDialog(This,hWnd,ppFolder) ) 
+
+#define IEasySFTPRoot2_GetDependencyLibraryInfo(This,poutLibraryInfo)	\
+    ( (This)->lpVtbl -> GetDependencyLibraryInfo(This,poutLibraryInfo) ) 
+
+#define IEasySFTPRoot2_Connect(This,ConnectionMode,hWnd,pAuth,lpszHostName,nPort,bIgnoreFingerprint,ppFolder)	\
+    ( (This)->lpVtbl -> Connect(This,ConnectionMode,hWnd,pAuth,lpszHostName,nPort,bIgnoreFingerprint,ppFolder) ) 
+
+#define IEasySFTPRoot2_CreateAuthentication(This,mode,bstrUserName,ppAuth)	\
+    ( (This)->lpVtbl -> CreateAuthentication(This,mode,bstrUserName,ppAuth) ) 
+
+#define IEasySFTPRoot2_get_HostSettings(This,ppList)	\
+    ( (This)->lpVtbl -> get_HostSettings(This,ppList) ) 
+
+#define IEasySFTPRoot2_CreateHostSetting(This,ppRet)	\
+    ( (This)->lpVtbl -> CreateHostSetting(This,ppRet) ) 
+
+#define IEasySFTPRoot2_ConnectFromSetting(This,hWnd,pSetting,bIgnoreFingerprint,ppFolder)	\
+    ( (This)->lpVtbl -> ConnectFromSetting(This,hWnd,pSetting,bIgnoreFingerprint,ppFolder) ) 
+
+
+#define IEasySFTPRoot2_ClearAllCredentials(This)	\
+    ( (This)->lpVtbl -> ClearAllCredentials(This) ) 
+
+#define IEasySFTPRoot2_HasCredentials(This,pRet)	\
+    ( (This)->lpVtbl -> HasCredentials(This,pRet) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+
+
+#endif 	/* __IEasySFTPRoot2_INTERFACE_DEFINED__ */
+
+
+#ifndef __DEasySFTPRoot2_DISPINTERFACE_DEFINED__
+#define __DEasySFTPRoot2_DISPINTERFACE_DEFINED__
+
+/* dispinterface DEasySFTPRoot2 */
+/* [uuid] */ 
+
+
+EXTERN_C const IID DIID_DEasySFTPRoot2;
+
+#if defined(__cplusplus) && !defined(CINTERFACE)
+
+    MIDL_INTERFACE("AD29C042-B9E3-4862-9DF6-D7DA5B8D0199")
+    DEasySFTPRoot2 : public IDispatch
+    {
+    };
+    
+#else 	/* C style interface */
+
+    typedef struct DEasySFTPRoot2Vtbl
+    {
+        BEGIN_INTERFACE
+        
+        DECLSPEC_XFGVIRT(IUnknown, QueryInterface)
+        HRESULT ( STDMETHODCALLTYPE *QueryInterface )( 
+            DEasySFTPRoot2 * This,
+            /* [in] */ REFIID riid,
+            /* [annotation][iid_is][out] */ 
+            _COM_Outptr_  void **ppvObject);
+        
+        DECLSPEC_XFGVIRT(IUnknown, AddRef)
+        ULONG ( STDMETHODCALLTYPE *AddRef )( 
+            DEasySFTPRoot2 * This);
+        
+        DECLSPEC_XFGVIRT(IUnknown, Release)
+        ULONG ( STDMETHODCALLTYPE *Release )( 
+            DEasySFTPRoot2 * This);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfoCount)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfoCount )( 
+            DEasySFTPRoot2 * This,
+            /* [out] */ UINT *pctinfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetTypeInfo)
+        HRESULT ( STDMETHODCALLTYPE *GetTypeInfo )( 
+            DEasySFTPRoot2 * This,
+            /* [in] */ UINT iTInfo,
+            /* [in] */ LCID lcid,
+            /* [out] */ ITypeInfo **ppTInfo);
+        
+        DECLSPEC_XFGVIRT(IDispatch, GetIDsOfNames)
+        HRESULT ( STDMETHODCALLTYPE *GetIDsOfNames )( 
+            DEasySFTPRoot2 * This,
+            /* [in] */ REFIID riid,
+            /* [size_is][in] */ LPOLESTR *rgszNames,
+            /* [range][in] */ UINT cNames,
+            /* [in] */ LCID lcid,
+            /* [size_is][out] */ DISPID *rgDispId);
+        
+        DECLSPEC_XFGVIRT(IDispatch, Invoke)
+        /* [local] */ HRESULT ( STDMETHODCALLTYPE *Invoke )( 
+            DEasySFTPRoot2 * This,
+            /* [annotation][in] */ 
+            _In_  DISPID dispIdMember,
+            /* [annotation][in] */ 
+            _In_  REFIID riid,
+            /* [annotation][in] */ 
+            _In_  LCID lcid,
+            /* [annotation][in] */ 
+            _In_  WORD wFlags,
+            /* [annotation][out][in] */ 
+            _In_  DISPPARAMS *pDispParams,
+            /* [annotation][out] */ 
+            _Out_opt_  VARIANT *pVarResult,
+            /* [annotation][out] */ 
+            _Out_opt_  EXCEPINFO *pExcepInfo,
+            /* [annotation][out] */ 
+            _Out_opt_  UINT *puArgErr);
+        
+        END_INTERFACE
+    } DEasySFTPRoot2Vtbl;
+
+    interface DEasySFTPRoot2
+    {
+        CONST_VTBL struct DEasySFTPRoot2Vtbl *lpVtbl;
+    };
+
+    
+
+#ifdef COBJMACROS
+
+
+#define DEasySFTPRoot2_QueryInterface(This,riid,ppvObject)	\
+    ( (This)->lpVtbl -> QueryInterface(This,riid,ppvObject) ) 
+
+#define DEasySFTPRoot2_AddRef(This)	\
+    ( (This)->lpVtbl -> AddRef(This) ) 
+
+#define DEasySFTPRoot2_Release(This)	\
+    ( (This)->lpVtbl -> Release(This) ) 
+
+
+#define DEasySFTPRoot2_GetTypeInfoCount(This,pctinfo)	\
+    ( (This)->lpVtbl -> GetTypeInfoCount(This,pctinfo) ) 
+
+#define DEasySFTPRoot2_GetTypeInfo(This,iTInfo,lcid,ppTInfo)	\
+    ( (This)->lpVtbl -> GetTypeInfo(This,iTInfo,lcid,ppTInfo) ) 
+
+#define DEasySFTPRoot2_GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId)	\
+    ( (This)->lpVtbl -> GetIDsOfNames(This,riid,rgszNames,cNames,lcid,rgDispId) ) 
+
+#define DEasySFTPRoot2_Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr)	\
+    ( (This)->lpVtbl -> Invoke(This,dispIdMember,riid,lcid,wFlags,pDispParams,pVarResult,pExcepInfo,puArgErr) ) 
+
+#endif /* COBJMACROS */
+
+
+#endif 	/* C style interface */
+
+
+#endif 	/* __DEasySFTPRoot2_DISPINTERFACE_DEFINED__ */
+
+
 EXTERN_C const CLSID CLSID_EasySFTPRoot;
 
 #ifdef __cplusplus
@@ -4885,6 +6333,30 @@ EXTERN_C const CLSID CLSID_EasySFTPHostSettingList;
 
 class DECLSPEC_UUID("AD29C042-B9E3-4752-9DF6-D7DA5B8D0199")
 EasySFTPHostSettingList;
+#endif
+
+EXTERN_C const CLSID CLSID_EasySFTPHostSetting2;
+
+#ifdef __cplusplus
+
+class DECLSPEC_UUID("AD29C042-B9E3-4754-9DF6-D7DA5B8D0199")
+EasySFTPHostSetting2;
+#endif
+
+EXTERN_C const CLSID CLSID_EasySFTPAuthentication2;
+
+#ifdef __cplusplus
+
+class DECLSPEC_UUID("AD29C042-B9E3-4756-9DF6-D7DA5B8D0199")
+EasySFTPAuthentication2;
+#endif
+
+EXTERN_C const CLSID CLSID_EasySFTPRoot2;
+
+#ifdef __cplusplus
+
+class DECLSPEC_UUID("AD29C042-B9E3-4758-9DF6-D7DA5B8D0199")
+EasySFTPRoot2;
 #endif
 #endif /* __EasySFTP_LIBRARY_DEFINED__ */
 

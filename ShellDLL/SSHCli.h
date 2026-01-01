@@ -35,7 +35,7 @@ public:
 	bool OnFirstReceive();
 	// <0 : error, =0 : wait for first kex, >0 : succeeded
 	int OnHandshake(CSSH2FingerPrintHandler* pHandler);
-	AuthReturnType Authenticate(IEasySFTPAuthentication* pAuth);
+	AuthReturnType Authenticate(IEasySFTPAuthentication2* pAuth);
 	bool CanRetryAuthenticate();
 	void EndAuthenticate();
 	LPSTR AvailableAuthTypes();

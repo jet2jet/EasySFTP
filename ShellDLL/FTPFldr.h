@@ -102,7 +102,7 @@ public:
 //	virtual bool ReceiveMessage(CMyStringW& rstrMessage, int* pnCode);
 
 public:
-	bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser);
+	bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication2* pUser);
 
 protected:
 

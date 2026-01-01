@@ -102,3 +102,34 @@ extern "C" bool __stdcall MyShellExecuteWithParameterW(HWND hWnd, LPCWSTR lpszEx
 	}
 	return PtrToInt(hInst) > 32;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+
+extern "C++" void MakeRandomString(CMyStringW& rstrOutput)
+{
+	constexpr auto binSize = 12;
+	BYTE bin[binSize];
+	RAND_bytes(bin, binSize);
+
+	// using base64
+	constexpr auto textSize = 4 * (binSize + 2) / 3;
+	auto* b64 = BIO_new(BIO_f_base64());
+	auto* bmem = BIO_new(BIO_s_mem());
+	b64 = BIO_push(b64, bmem);
+	BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
+	BIO_write(b64, bin, binSize);
+	BIO_flush(b64);
+
+	BUF_MEM* bptr = nullptr;
+	BIO_get_mem_ptr(bmem, &bptr);
+	if (bptr == nullptr)
+	{
+		rstrOutput.Empty();
+	}
+	else
+	{
+		rstrOutput.SetUTF8String(reinterpret_cast<BYTE*>(bptr->data), bptr->length);
+	}
+	BIO_free(bmem);
+	BIO_free(b64);
+}

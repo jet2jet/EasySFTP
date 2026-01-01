@@ -20,3 +20,5 @@ extern "C" int __stdcall MyMessageBoxW(HWND hWnd, LPCWSTR lpszText, LPCWSTR lpsz
 
 extern "C" bool __stdcall MyShellOpenW(HWND hWnd, LPCWSTR lpszFileName);
 extern "C" bool __stdcall MyShellExecuteWithParameterW(HWND hWnd, LPCWSTR lpszExecuteName, LPCWSTR lpszParameters);
+
+extern "C++" void MakeRandomString(CMyStringW& rstrOutput);

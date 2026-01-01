@@ -152,7 +152,7 @@ public:
 		m_bIsTransferCanceled = true;
 	}
 
-	virtual bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser) = 0;
+	virtual bool Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication2* pUser) = 0;
 	virtual EasySFTPConnectionMode GetProtocol(int* pnDefPort = NULL) const = 0;
 	virtual LPCWSTR GetProtocolName() const = 0;
 	virtual bool IsLockSupported() const = 0;

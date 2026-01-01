@@ -295,6 +295,7 @@ exit /b 0
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Auth.cpp" />
+    <ClCompile Include="AuthPage.cpp" />
     <ClCompile Include="CFactory.cpp" />
     <ClCompile Include="Connect.cpp" />
     <ClCompile Include="CsetPage.cpp" />
@@ -369,8 +370,10 @@ exit /b 0
   <ItemGroup>
     <ClInclude Include="..\version-hash.h" />
     <ClInclude Include="Auth.h" />
+    <ClInclude Include="AuthPage.h" />
     <ClInclude Include="CFactory.h" />
     <ClInclude Include="Connect.h" />
+    <ClInclude Include="CsetPage.h" />
     <ClInclude Include="DIMalloc.h" />
     <ClInclude Include="DragData.h" />
     <ClInclude Include="EasySFTP_h.h" />
@@ -416,6 +419,7 @@ exit /b 0
     <ClInclude Include="Sync.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextStrm.h" />
+    <ClInclude Include="TferPage.h" />
     <ClInclude Include="TferStat.h" />
     <ClInclude Include="Transfer.h" />
     <ClInclude Include="version.h" />

@@ -491,7 +491,7 @@ STDAPI DllGetClassObject(_In_ REFCLSID rclsid, _In_ REFIID riid, _Outptr_ LPVOID
 		return E_POINTER;
 
 	*ppv = NULL;
-	if (IsEqualCLSID(rclsid, CLSID_EasySFTPOld) || IsEqualCLSID(rclsid, CLSID_EasySFTPRoot))
+	if (IsEqualCLSID(rclsid, CLSID_EasySFTPOld) || IsEqualCLSID(rclsid, CLSID_EasySFTPRoot) || IsEqualCLSID(rclsid, CLSID_EasySFTPRoot2))
 	{
 		HRESULT hr = E_OUTOFMEMORY;
 
@@ -1853,6 +1853,24 @@ void CMainDLL::LoadINISettings(
 					//}
 					//else
 					//	pHost->strTouchCommand = DEFAULT_TOUCH_COMMAND;
+					pHost->bAutoLogin = ::MyGetProfileBooleanW(pvSection, L"AutoLogin", false);
+					lpw = ::MyGetProfileStringW(pvSection, L"UserName");
+					if (lpw)
+						pHost->strUserName = lpw;
+					auto authMode_ = ::MyGetProfileIntW(pvSection, L"AuthMode", -1);
+					EasySFTPAuthenticationMode authMode;
+					if (authMode_ < static_cast<int>(EasySFTPAuthenticationMode::Password) || authMode_ > static_cast<int>(EasySFTPAuthenticationMode::WinOpenSSH))
+						authMode = EasySFTPAuthenticationMode::Password;
+					else
+						authMode = static_cast<EasySFTPAuthenticationMode>(authMode_);
+					pHost->AuthMode = authMode;
+					auto passKeyStoreType_ = ::MyGetProfileIntW(pvSection, L"PassKeyStoreType", -1);
+					EasySFTPPassKeyStoreType passKeyStoreType;
+					if (passKeyStoreType_ < static_cast<int>(EasySFTPPassKeyStoreType::Local) || passKeyStoreType_ > static_cast<int>(EasySFTPPassKeyStoreType::CurrentUser))
+						passKeyStoreType = EasySFTPPassKeyStoreType::Local;
+					else
+						passKeyStoreType = static_cast<EasySFTPPassKeyStoreType>(passKeyStoreType_);
+					pHost->PassKeyStoreType = passKeyStoreType;
 					paHostSettings->Add(pHost);
 				}
 				else
@@ -1997,6 +2015,10 @@ void CMainDLL::SaveINISettings(
 		::MyWriteINIValueW(hFile, L"AdjustRecvModifyTime", pHost->bAdjustRecvModifyTime ? 1 : 0);
 		::MyWriteINIValueW(hFile, L"AdjustSendModifyTime", pHost->bAdjustSendModifyTime ? 1 : 0);
 		::MyWriteINIValueW(hFile, L"ChmodCommand", pHost->strChmodCommand);
+		::MyWriteINIValueW(hFile, L"AutoLogin", pHost->bAutoLogin ? 1 : 0);
+		::MyWriteINIValueW(hFile, L"UserName", pHost->strUserName);
+		::MyWriteINIValueW(hFile, L"AuthMode", static_cast<int>(pHost->AuthMode));
+		::MyWriteINIValueW(hFile, L"PassKeyStoreType", static_cast<int>(pHost->PassKeyStoreType));
 		//::MyWriteINIValueW(hFile, L"TouchCommand", pHost->strTouchCommand);
 	}
 	::CloseHandle(hFile);

@@ -28,7 +28,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <wspiapi.h>
-
+#include <wincred.h>
 
 #ifdef __IDataObjectAsyncCapability_INTERFACE_DEFINED__
 typedef IDataObjectAsyncCapability IAsyncOperation;
@@ -66,10 +66,12 @@ typedef IDataObjectAsyncCapability IAsyncOperation;
 
 // OpenSSL
 #include <openssl/opensslv.h>
+#include <openssl/bio.h>
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
+#include <openssl/rand.h>
 
 // libssh2
 #include <libssh2.h>

@@ -1085,9 +1085,9 @@ STDMETHODIMP CSFTPFolderSFTP::CreateInstance(CFTPDirectoryItem* pItemMe, CFTPDir
 	return S_OK;
 }
 
-bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication* pUser)
+bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySFTPAuthentication2* pUser)
 {
-	IEasySFTPAuthentication* pMyUser;
+	IEasySFTPAuthentication2* pMyUser;
 	if (pUser)
 	{
 		m_pUser = pMyUser = pUser;

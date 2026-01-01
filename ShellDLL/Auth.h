@@ -41,7 +41,7 @@ struct CAuthSession
 	~CAuthSession();
 };
 
-class CAuthentication : public CDispatchImplT<IEasySFTPAuthentication>
+class CAuthentication : public CDispatchImplT<IEasySFTPAuthentication2>
 {
 public:
 	CAuthentication();
@@ -55,14 +55,17 @@ public:
 	STDMETHOD(put_UserName)(BSTR Name) override;
 	STDMETHOD(get_Password)(BSTR* pRet) override;
 	STDMETHOD(put_Password)(BSTR Password) override;
-	STDMETHOD(get_PublicKeyFileName)(BSTR* pRet) override;
-	STDMETHOD(put_PublicKeyFileName)(BSTR FileName) override;
+	STDMETHOD(get_PrivateKeyFileName)(BSTR* pRet) override;
+	STDMETHOD(put_PrivateKeyFileName)(BSTR FileName) override;
 	STDMETHOD(get_Type)(EasySFTPAuthenticationMode* pMode) override;
 	STDMETHOD(put_Type)(EasySFTPAuthenticationMode mode) override;
 	STDMETHOD(get_AuthSession)(LONG_PTR* pOut) override;
 	STDMETHOD(put_AuthSession)(LONG_PTR session) override;
 
-	static AuthReturnType SSHAuthenticate(IEasySFTPAuthentication* pAuth, LIBSSH2_SESSION* pSession, LPCSTR lpszService, char** ppAuthList = NULL);
+	STDMETHOD(SetPrivateKeyBinary)(const void* buffer, long length) override;
+	STDMETHOD(GetPrivateKeyBinary)(const void** buffer, long* pLength) override;
+
+	static AuthReturnType SSHAuthenticate(IEasySFTPAuthentication2* pAuth, LIBSSH2_SESSION* pSession, LPCSTR lpszService, char** ppAuthList = NULL);
 	static bool CanRetry(IEasySFTPAuthentication* pAuth);
 
 private:
@@ -72,6 +75,8 @@ public:
 	EasySFTPAuthenticationMode m_Mode;
 	CMyStringW m_strUserName;
 	_SecureStringW m_strPassword;
-	CMyStringW m_strPublicKeyFileName;
+	CMyStringW m_strPrivateKeyFileName;
+	void* m_pPrivateKeyData;
+	long m_nPrivateKeyData;
 	void* m_pSession;
 };

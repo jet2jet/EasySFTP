@@ -11,6 +11,7 @@
 #define IDI_NEWHOST                     104
 #define IDD_PROP_HOST                   106
 #define IDS_TRANSFER_RATE               106
+#define IDD_PROP_AUTH                   107
 #define IDS_ADDHOST_PROP                109
 #define IDS_CHANGEHOST_PROP             110
 #define IDS_FOLDER_DIALOG               111
@@ -45,6 +46,10 @@
 #define IDD_SERVER_INFO                 142
 #define IDS_NOT_CONNECTED               151
 #define IDS_CONNECTED                   152
+#define IDS_DATA_SET                    153
+#define IDS_STORE_TYPE_LOCAL            154
+#define IDS_STORE_TYPE_USER             155
+#define IDS_CHANGE_PASSWORD_WITH_PRIVATE_KEY 156
 #define IDS_HEAD_NAME                   201
 #define IDS_HEAD_FILE_NAME              202
 #define IDS_HEAD_FILE_EXT               203
@@ -103,7 +108,9 @@
 #define IDC_PKEY_SEARCH                 1007
 #define IDC_FILE_LIST                   1008
 #define IDC_NAME                        1009
+#define IDC_USE_AUTO_AUTH               1009
 #define IDC_DEF_PORT                    1012
+#define IDC_STORE_TYPE                  1012
 #define IDC_CONNECT_MODE                1013
 #define IDC_LOCAL_CRLF                  1015
 #define IDC_LOCAL_PATH                  1016
@@ -236,9 +243,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        107
+#define _APS_NEXT_RESOURCE_VALUE        109
 #define _APS_NEXT_COMMAND_VALUE         41018
-#define _APS_NEXT_CONTROL_VALUE         1009
+#define _APS_NEXT_CONTROL_VALUE         1013
 #define _APS_NEXT_SYMED_VALUE           104
 #endif
 #endif

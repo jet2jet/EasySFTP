@@ -10,7 +10,7 @@
 class CEasySFTPFolderRoot : public CFolderBase,
 	public IDelegateFolder,
 	public IPersistPropertyBag,
-	public CDispatchImplNoUnknownT<IEasySFTPRoot>,
+	public CDispatchImplNoUnknownT<IEasySFTPRoot2>,
 	public IProvideClassInfo,
 	public IEasySFTPOldRoot2,
 	public IEasySFTPInternal
@@ -95,6 +95,11 @@ public:
 	STDMETHOD(CreateHostSetting)(IEasySFTPHostSetting** ppRet) override;
 	STDMETHOD(ConnectFromSetting)(LONG_PTR hWnd, IEasySFTPHostSetting* pSetting, VARIANT_BOOL bIgnoreFingerprint, IEasySFTPDirectory** ppFolder) override;
 
+	// IEasySFTPRoot2
+public:
+	STDMETHOD(ClearAllCredentials)() override;
+	STDMETHOD(HasCredentials)(VARIANT_BOOL* pRet) override;
+
 	// IEasySFTPOldRoot
 public:
 	//STDMETHOD(SetListener)(IEasySFTPListener* pListener);
@@ -128,7 +133,7 @@ public:
 	HRESULT RemoveHostSettings(CEasySFTPHostSetting* pSettings);
 
 protected:
-	HRESULT _BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl, LPBC pbc, IEasySFTPAuthentication* pUser, CFTPDirectoryRootBase** ppRoot);
+	HRESULT _BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl, LPBC pbc, IEasySFTPAuthentication2* pUser, CFTPDirectoryRootBase** ppRoot);
 
 	friend class CEnumRootItemIDList;
 	friend class CEasySFTPRootIcon;

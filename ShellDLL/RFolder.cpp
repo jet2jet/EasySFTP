@@ -13,6 +13,7 @@
 #include "SFTPFldr.h"
 
 #include "HostPage.h"
+#include "AuthPage.h"
 #include "CsetPage.h"
 #include "TferPage.h"
 
@@ -238,9 +239,9 @@ STDMETHODIMP CEasySFTPFolderRoot::QueryInterface(REFIID riid, void** ppv)
 		AddRef();
 		return S_OK;
 	}
-	if (IsEqualIID(riid, IID_IDispatch) || IsEqualIID(riid, IID_IEasySFTPRoot))
+	if (IsEqualIID(riid, IID_IDispatch) || IsEqualIID(riid, IID_IEasySFTPRoot) || IsEqualIID(riid, IID_IEasySFTPRoot2))
 	{
-		*ppv = static_cast<IEasySFTPRoot*>(this);
+		*ppv = static_cast<IEasySFTPRoot2*>(this);
 		AddRef();
 		return S_OK;
 	}
@@ -457,7 +458,7 @@ STDMETHODIMP CEasySFTPFolderRoot::BindToObject(PCUIDLIST_RELATIVE pidl, LPBC pbc
 	return hr;
 }
 
-HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl, LPBC pbc, IEasySFTPAuthentication* pUser, CFTPDirectoryRootBase** ppRoot)
+HRESULT CEasySFTPFolderRoot::_BindToObject(HWND hWndOwner, PCUITEMID_CHILD pidl, LPBC pbc, IEasySFTPAuthentication2* pUser, CFTPDirectoryRootBase** ppRoot)
 {
 	if (!pidl)
 		return E_POINTER;
@@ -1714,6 +1715,35 @@ STDMETHODIMP CEasySFTPFolderRoot::ConnectFromSetting(LONG_PTR hWnd, IEasySFTPHos
 	return hr;
 }
 
+STDMETHODIMP CEasySFTPFolderRoot::ClearAllCredentials()
+{
+	CGeneralSettings settings;
+	CMyPtrArrayT<CEasySFTPHostSetting> aHostSettings;
+	CMyPtrArrayT<CKnownFingerPrint> aKnownFingerPrints;
+
+	theApp.LoadINISettings(&settings, &aKnownFingerPrints, nullptr);
+	for (int i = 0; i < theApp.m_aHosts.GetCount(); i++)
+	{
+		auto pHostData = theApp.m_aHosts.GetItem(i);
+		aHostSettings.Add(pHostData->pSettings);
+		pHostData->pSettings->ClearCredentials();
+	}
+	theApp.SaveINISettings(&settings, &aKnownFingerPrints, &aHostSettings);
+	theApp.EmptyKnownFingerPrints(aKnownFingerPrints);
+	// do not 'delete'
+	aHostSettings.RemoveAllCompletely();
+	CEasySFTPHostSetting::ClearAllCredentials();
+	return S_OK;
+}
+
+STDMETHODIMP CEasySFTPFolderRoot::HasCredentials(VARIANT_BOOL* pRet)
+{
+	if (!pRet)
+		return E_POINTER;
+	*pRet = CEasySFTPHostSetting::HasCredentials() ? VARIANT_TRUE : VARIANT_FALSE;
+	return S_OK;
+}
+
 STDMETHODIMP CEasySFTPFolderRoot::SetEmulateRegMode(bool bEmulate)
 {
 	theApp.m_bEmulateRegMode = bEmulate;
@@ -1788,7 +1818,7 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, IEasySFTPAuthenti
 		if (pszAuthList)
 		{
 			m_dlgConnect.m_bDisableAuthPassword = true;
-			m_dlgConnect.m_bDisableAuthPublicKey = true;
+			m_dlgConnect.m_bDisableAuthPrivateKey = true;
 			bAvailable = false;
 			while (*pszAuthList)
 			{
@@ -1799,7 +1829,7 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, IEasySFTPAuthenti
 				}
 				else if (_stricmp(pszAuthList, "publickey") == 0)
 				{
-					m_dlgConnect.m_bDisableAuthPublicKey = false;
+					m_dlgConnect.m_bDisableAuthPrivateKey = false;
 					bAvailable = true;
 				}
 				while (*pszAuthList++);
@@ -1808,7 +1838,7 @@ int CEasySFTPFolderRoot::DoRetryAuthentication(HWND hWndOwner, IEasySFTPAuthenti
 		else
 		{
 			m_dlgConnect.m_bDisableAuthPassword = false;
-			m_dlgConnect.m_bDisableAuthPublicKey = false;
+			m_dlgConnect.m_bDisableAuthPrivateKey = false;
 			bAvailable = true;
 		}
 		// If the authentication methods EasySFTP supports are not found, return error
@@ -1841,11 +1871,33 @@ HRESULT CEasySFTPFolderRoot::OpenWithConnectDialog(HWND hWndOwner, PCUITEMID_CHI
 		return E_INVALIDARG;
 	CSFTPHostItem UNALIGNED* pItem = (CSFTPHostItem UNALIGNED*) pidl;
 
-	CAuthentication* pUser = new CAuthentication();
-	if (DoRetryAuthentication(hWndOwner, pUser, pItem->GetConnectionMode(), NULL, true) <= 0)
+	CHostFolderData* pHostData;
+	bool bFound = false;
+	for (int i = 0; i < theApp.m_aHosts.GetCount(); i++)
 	{
-		pUser->Release();
-		return E_ABORT;
+		pHostData = theApp.m_aHosts.GetItem(i);
+		if (pHostData->ConnectionMode == pItem->GetConnectionMode() &&
+			pHostData->pDirItem->strName.Compare(strHostName) == 0 &&
+			pHostData->nPort == (int)pItem->nPort)
+		{
+			bFound = true;
+			break;
+		}
+	}
+
+	CAuthentication* pUser = nullptr;
+	if (bFound)
+	{
+		pUser = pHostData->pSettings->CreateAuthentication();
+	}
+	if (!pUser)
+	{
+		pUser = new CAuthentication();
+		if (DoRetryAuthentication(hWndOwner, pUser, pItem->GetConnectionMode(), NULL, true) <= 0)
+		{
+			pUser->Release();
+			return E_ABORT;
+		}
 	}
 	HRESULT hr = _BindToObject(hWndOwner, pidl, NULL, pUser, ppRoot);
 	pUser->Release();
@@ -2467,6 +2519,7 @@ void CEasySFTPRootMenu::DoAdd(HWND hWndOwner)
 	bool br1 = true;
 	bool br2 = true;
 	bool br3 = true;
+	bool br4 = true;
 	CEasySFTPHostSetting* pSettings = new CEasySFTPHostSetting();
 
 	pSettings->ConnectionMode = EasySFTPConnectionMode::FTP;
@@ -2480,11 +2533,13 @@ void CEasySFTPRootMenu::DoAdd(HWND hWndOwner)
 
 	CMyStringW strTitle(MAKEINTRESOURCEW(IDS_ADDHOST_PROP));
 	CMyPropertySheet sht;
-	sht.AddPage(new CHostGeneralSettingPage(pSettings, &br1));
-	sht.AddPage(new CHostCharsetPage(pSettings, &br2));
-	sht.AddPage(new CHostTransferPage(pSettings, &br3));
+	auto* pGeneral = new CHostGeneralSettingPage(pSettings, &br1);
+	sht.AddPage(pGeneral);
+	sht.AddPage(new CHostAuthPage(pSettings, pGeneral, &br2));
+	sht.AddPage(new CHostCharsetPage(pSettings, &br3));
+	sht.AddPage(new CHostTransferPage(pSettings, &br4));
 	sht.m_dwPSHFlags = PSH_NOAPPLYNOW;
-	if (sht.Create(true, strTitle, hWndOwner) != (HWND)-1 && br1 && br2 && br3)
+	if (sht.Create(true, strTitle, hWndOwner) != (HWND)-1 && br1 && br2 && br3 && br4)
 	{
 		m_pRoot->AddHostSettings(pSettings);
 	}
@@ -2511,6 +2566,7 @@ void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
 	bool br1 = true;
 	bool br2 = true;
 	bool br3 = true;
+	bool br4 = true;
 	CEasySFTPHostSetting* pOldSettings = new CEasySFTPHostSetting(pHostData->pSettings);
 	CEasySFTPHostSetting* pSettings = new CEasySFTPHostSetting(pHostData->pSettings);
 	CMyStringW strTitle(MAKEINTRESOURCEW(IDS_CHANGEHOST_PROP));
@@ -2519,10 +2575,11 @@ void CEasySFTPRootMenu::DoProperty(HWND hWndOwner)
 	pHGSPage->m_bNoModeChange = (pHostData->pDirItem->pDirectory != NULL &&
 		pHostData->pDirItem->pDirectory->IsConnected() == S_OK);
 	sht.AddPage(pHGSPage);
-	sht.AddPage(new CHostCharsetPage(pSettings, &br2));
-	sht.AddPage(new CHostTransferPage(pSettings, &br3));
+	sht.AddPage(new CHostAuthPage(pSettings, pHGSPage, &br2));
+	sht.AddPage(new CHostCharsetPage(pSettings, &br3));
+	sht.AddPage(new CHostTransferPage(pSettings, &br4));
 	sht.m_dwPSHFlags = PSH_NOAPPLYNOW;
-	if (sht.Create(true, strTitle, hWndOwner) != (HWND)-1 && br1 && br2 && br3)
+	if (sht.Create(true, strTitle, hWndOwner) != (HWND)-1 && br1 && br2 && br3 && br4)
 	{
 		pHostData->nPort = pSettings->nPort;
 		pHostData->pDirItem->strName = pSettings->strHostName;

@@ -88,6 +88,7 @@ static void __stdcall EmptyBufferX(PVOID pBufferX, size_t nSize, BYTE nSeed)
 	n = nSize;
 	while (n--)
 		*(--pbx) = (char) (BYTE)((DWORD) (rand() * n / RAND_MAX) - nSeed + n);
+	SecureZeroMemory(pBufferX, nSize);
 }
 
 _SecureStringW::_SecureStringW(void)

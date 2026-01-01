@@ -28,7 +28,7 @@ public:
 
 	CMyStringW m_strMessage;
 	bool m_bDisableAuthPassword;
-	bool m_bDisableAuthPublicKey;
+	bool m_bDisableAuthPrivateKey;
 
 	HRESULT SetToAuthentication(IEasySFTPAuthentication* pUser);
 
