@@ -228,6 +228,14 @@ LRESULT CHostAuthPage::OnApply(WPARAM wParam, LPARAM lParam)
 	}
 	if (bAutoLogin)
 	{
+		if (strUserName.IsEmpty())
+		{
+			_SecureStringW::SecureEmptyString(strPassword);
+			::MyMessageBoxW(m_hWnd, MAKEINTRESOURCEW(IDS_NO_USER_NAME), NULL, MB_ICONEXCLAMATION);
+			GetParentSheet()->SetCurSel(this);
+			return PSNRET_INVALID_NOCHANGEPAGE;
+		}
+
 		CMyStringW strPKey;
 		if (nAuthType == EasySFTPAuthenticationMode::PrivateKey)
 		{
@@ -303,6 +311,7 @@ LRESULT CHostAuthPage::OnApply(WPARAM wParam, LPARAM lParam)
 		else
 		{
 			m_pSettings->ClearCredentials();
+			m_pSettings->strUserName = strUserName;
 		}
 	}
 	else

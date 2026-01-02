@@ -189,6 +189,11 @@ AuthReturnType CAuthentication::SSHAuthenticate(IEasySFTPAuthentication2* pAuth,
 	::SysFreeString(bstr);
 	size_t nUserLen = 0;
 	auto* pUser = reinterpret_cast<LPCSTR>(strUserName.AllocUTF8String(&nUserLen));
+	if (!pUser)
+	{
+		pUser = "";
+		nUserLen = 0;
+	}
 	switch (mode)
 	{
 		case EasySFTPAuthenticationMode::None:
@@ -365,6 +370,11 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 {
 	size_t nUserLen = 0;
 	auto* lpszUser = reinterpret_cast<LPCSTR>(strUserName.AllocUTF8String(&nUserLen));
+	if (!lpszUser)
+	{
+		lpszUser = "";
+		nUserLen = 0;
+	}
 
 	CAuthSession* pAuthSession = NULL;
 	{

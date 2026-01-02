@@ -556,9 +556,9 @@ BSTR __stdcall MyStringToBSTR(
 	CMyStringW& string)
 {
 #ifdef OLE2ANSI
-	return ::SysAllocStringLen(string, (UINT) string.GetLengthA());
+	return ::SysAllocStringLen(string.IsEmpty() ? "" : string, (UINT) string.GetLengthA());
 #else
-	return ::SysAllocStringLen(string, (UINT) string.GetLength());
+	return ::SysAllocStringLen(string.IsEmpty() ? L"" : string, (UINT)string.GetLength());
 #endif
 }
 
