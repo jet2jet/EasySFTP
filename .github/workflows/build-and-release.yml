@@ -1,0 +1,139 @@
+name: Build and Release EasySFTP
+
+on:
+  push:
+    tags:
+      - 'v*' # v1.2.3.4 のようなタグが push されたら発火
+  workflow_dispatch:
+
+jobs:
+  check-cache:
+    runs-on: windows-latest
+    outputs:
+      cache-hit: ${{ steps.cache-deps.outputs.cache-hit }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Restore OpenSSL/libssh2 cache
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: easysftp-libs-${{ runner.os }}-${{ hashFiles('.github/lib-versions.env') }}
+
+  build-libs:
+    needs: check-cache
+    if: needs.check-cache.outputs.cache-hit != 'true'
+    uses: ./.github/workflows/build-libs.yml
+
+  build:
+    needs: [check-cache, build-libs]
+    if: always() && !cancelled()
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Restore OpenSSL/libssh2 cache
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: easysftp-libs-${{ runner.os }}-${{ hashFiles('.github/lib-versions.env') }}
+
+      - name: Fail if deps cache not found
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          echo "❌ Required deps cache was not found. Aborting."
+          exit 1
+
+      # --- Common.user.props の生成 ---
+      - name: Generate Common.user.props
+        shell: pwsh
+        run: |
+          $content = Get-Content Common.user.sample.props -Raw
+
+          $content = $content `
+            -replace '<OpenSSLRoot>.*?</OpenSSLRoot>',
+                     '<OpenSSLRoot>$(MSBuildThisFileDirectory)deps\openssl\</OpenSSLRoot>' `
+            -replace '<LibSSH2Root>.*?</LibSSH2Root>',
+                     '<LibSSH2Root>$(MSBuildThisFileDirectory)deps\libssh2\</LibSSH2Root>'
+
+          $content | Set-Content Common.user.props -Encoding UTF8
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: 'latest'
+
+      - name: Build Win32
+        run: |
+          msbuild EasySFTP.sln /p:Configuration=Release /p:Platform=Win32
+
+      - name: Build x64
+        run: |
+          msbuild EasySFTP.sln /p:Configuration=Release /p:Platform=x64
+
+      - name: Prepare artifacts directory
+        run: |
+          mkdir dist
+          mkdir dist\x64
+
+          copy bin\Win32\Release\*.exe dist\
+          copy bin\Win32\Release\*.dll dist\
+          copy EasySFTP.txt dist\
+          copy license.txt dist\
+          copy README.md dist\
+          copy CHANGELOG.md dist\
+
+          copy bin\x64\Release\*.exe dist\x64\
+          copy bin\x64\Release\*.dll dist\x64\
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: easysftp-build
+          path: dist/
+
+      - name: Create zip archive
+        if: github.event_name != 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}" # 例: v1.2.3.4
+          $version = $tag.TrimStart("v")  # 先頭のvを取る
+          Compress-Archive -Path dist\* -DestinationPath "EasySFTP-$version.zip"
+
+      - name: Extract release notes from CHANGELOG.md
+        if: github.event_name != 'workflow_dispatch'
+        id: changelog
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}" # 例: v1.2.3.4
+          echo "TAG_NAME=$tag" >> $env:GITHUB_ENV
+
+          $lines = Get-Content CHANGELOG.md
+          $start = $lines.IndexOf("## $tag")
+          if ($start -ge 0) {
+            $rest = $lines[($start + 1)..($lines.Count - 1)]
+            $bodyLines = @()
+            foreach ($line in $rest) {
+              if ($line -match "^## ") { break }
+              $bodyLines += $line
+            }
+
+            $body = $bodyLines -join "`n"
+            "RELEASE_BODY<<EOF" >> $env:GITHUB_ENV
+            $body >> $env:GITHUB_ENV
+            "EOF" >> $env:GITHUB_ENV
+          }
+
+      - name: Upload release asset
+        if: github.event_name != 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.TAG_NAME }}
+          body: ${{ env.RELEASE_BODY }}
+          files: EasySFTP-*.zip

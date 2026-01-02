@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
+    <Filter Include="GitHub Workflows">
+      <UniqueIdentifier>{cf47e698-6136-4bfb-b502-bae68e3663d6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AddrCBox.cpp">
@@ -126,6 +129,16 @@
     </None>
     <None Include="..\README.md" />
     <None Include="..\CHANGELOG.md" />
+    <None Include="..\.github\workflows\build-and-release.yml">
+      <Filter>GitHub Workflows</Filter>
+    </None>
+    <None Include="..\.editorconfig" />
+    <None Include="..\.github\workflows\build-libs.yml">
+      <Filter>GitHub Workflows</Filter>
+    </None>
+    <None Include="..\.github\lib-versions.env">
+      <Filter>GitHub Workflows</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="EasySFTP.rc">
@@ -145,5 +158,6 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\EasySFTP.txt" />
+    <Text Include="..\license.txt" />
   </ItemGroup>
 </Project>

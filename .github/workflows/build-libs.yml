@@ -1,0 +1,125 @@
+name: Build OpenSSL and libssh2 (Static)
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  OPENSSL_REPO: https://github.com/openssl/openssl.git
+  LIBSSH2_REPO: https://github.com/libssh2/libssh2.git
+
+jobs:
+  build-libs:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load library versions
+        run: |
+          Get-Content .github/lib-versions.env | ForEach-Object {
+            if ($_ -match "^\s*([^#][^=]+)=(.+)$") {
+              "$($matches[1])=$($matches[2])" >> $env:GITHUB_ENV
+            }
+          }
+
+      - name: Install Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.32'
+
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: 'latest'
+
+      - name: Build OpenSSL and libssh2
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-StrictMode -Version Latest
+          $PSNativeCommandUseErrorActionPreference = $true
+          Set-PSDebug -Trace 1
+  
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+
+          if (-not $vsPath) {
+            throw "Visual Studio not found"
+          }
+
+          $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvarsall.bat"
+
+          $arches = @(
+            @{ Name = "x86"; VC = "x86"; OpenSSL = "VC-WIN32";  LibSSH2 = "Win32" },
+            @{ Name = "x64"; VC = "x64"; OpenSSL = "VC-WIN64A"; LibSSH2 = "x64" }
+          )
+
+          foreach ($a in $arches) {
+            $arch = $a.Name
+            $vc = $a.VC
+            $targetOpenSSL = $a.OpenSSL
+            $targetLibSSH2 = $a.LibSSH2
+
+            $logDir = "$env:GITHUB_WORKSPACE\logs"
+            New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+
+            # --- OpenSSL ---
+            git clone --depth=1 --branch $env:OPENSSL_BRANCH $env:OPENSSL_REPO "openssl-$arch"
+
+            $opensslPrefix = "$env:GITHUB_WORKSPACE\deps\openssl\$arch"
+
+            cmd /c "`"$vcvars`" $vc && cd openssl-$arch && perl Configure $targetOpenSSL no-shared no-tests --prefix=$opensslPrefix && nmake && nmake install" `
+              2>&1 | Tee-Object "logs\openssl-$arch.log"
+
+            # --- libssh2 ---
+            git clone --depth=1 --branch "libssh2-$($env:LIBSSH2_VERSION)" $env:LIBSSH2_REPO "libssh2-$arch"
+            Push-Location "libssh2-$arch"
+
+            $libssh2Prefix = "$env:GITHUB_WORKSPACE\deps\libssh2\$arch"
+            cmake -S . -B build `
+              -DBUILD_SHARED_LIBS=OFF `
+              -DCRYPTO_BACKEND=OpenSSL `
+              -DOPENSSL_ROOT_DIR="$opensslPrefix" `
+              -DOPENSSL_INCLUDE_DIR="$opensslPrefix\include" `
+              -DOPENSSL_LIBRARIES="$opensslPrefix\lib" `
+              -DOPENSSL_CRYPTO_LIBRARY="$opensslPrefix\lib\libcrypto.lib" `
+              -DOPENSSL_SSL_LIBRARY="$opensslPrefix\lib\libssl.lib" `
+              -DOPENSSL_USE_STATIC_LIBS=ON `
+              -DCMAKE_INSTALL_PREFIX="$libssh2Prefix" `
+              -DCMAKE_GENERATOR="Visual Studio 17 2022" `
+              -D CMAKE_C_FLAGS_DEBUG="/MTd"  `
+              -D CMAKE_C_FLAGS_RELEASE="/MT" `
+              -D BUILD_EXAMPLES=OFF `
+              -D BUILD_TESTING=OFF `
+              -A $targetLibSSH2 `
+              2>&1 | Tee-Object "$logDir\libssh2-config-$arch.log"
+
+            cmake --build build --config Release --target install 2>&1 | Tee-Object "$logDir\libssh2-build-$arch.log"
+            Pop-Location
+
+            # 不要ファイル削除
+            Remove-Item "$opensslPrefix\bin","$opensslPrefix\html","$opensslPrefix\share","$opensslPrefix\lib\pkgconfig","$opensslPrefix\lib\engines*" -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item "$libssh2Prefix\bin","$libssh2Prefix\share","$libssh2Prefix\lib\pkgconfig" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
+      # --- キャッシュ保存 ---
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: easysftp-libs-${{ runner.os }}-${{ hashFiles('.github/lib-versions.env') }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openssl-libssh2-build-artifacts
+          path: |
+            logs/
+            deps/
