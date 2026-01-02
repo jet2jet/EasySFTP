@@ -1,5 +1,10 @@
 # ChangeLog
 
+## v0.14.0.1
+
+- Add storing credentials to connect quickly
+- Add logger implementation and show logs on the status bar
+
 ## v0.13.0.1
 
 - Support FTPS (FTP over SSL/TLS)
