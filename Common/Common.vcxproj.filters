@@ -150,5 +150,10 @@
   <ItemGroup>
     <None Include="ReadMe.txt" />
     <None Include="..\.gitignore" />
+    <None Include="..\MuiResourceCompile.targets" />
+    <None Include="..\MuiResourceCompile.props" />
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="..\MuiResourceCompile.xml" />
   </ItemGroup>
 </Project>

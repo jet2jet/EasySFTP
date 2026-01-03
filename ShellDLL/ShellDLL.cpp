@@ -1303,101 +1303,101 @@ bool CMainDLL::InitInstance()
 		auto cxSysSmall = ::GetSystemMetrics(SM_CXSMICON);
 		auto cySysSmall = ::GetSystemMetrics(SM_CYSMICON);
 		HICON hi;
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 			256, 256, LR_DEFAULTCOLOR);
 		if (!hi)
-			hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+			hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 				32, 32, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconJumbo, hi);
 		if (m_pimlSysIconJumbo)
 			m_pimlSysIconJumbo->ReplaceIcon(-1, hi, &m_iEasySFTPIconIndex[iconIndexJumbo]);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 			48, 48, LR_DEFAULTCOLOR);
 		if (!hi)
-			hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+			hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 				32, 32, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconExtraLarge, hi);
 		if (m_pimlSysIconExtraLarge)
 			m_pimlSysIconExtraLarge->ReplaceIcon(-1, hi, &m_iEasySFTPIconIndex[iconIndexExtraLarge]);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 			cxSysSmall, cySysSmall, LR_DEFAULTCOLOR);
 		if (!hi)
-			hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+			hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 				16, 16, LR_DEFAULTCOLOR);
 		if (m_pimlSysIconSysSmall)
 			m_pimlSysIconSysSmall->ReplaceIcon(-1, hi, &m_iEasySFTPIconIndex[iconIndexSysSmall]);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 			32, 32, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconLarge, hi);
 		m_iEasySFTPIconIndex[iconIndexLarge] = ::ImageList_AddIcon(m_himlSysIconLarge, hi);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP), IMAGE_ICON,
 			16, 16, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconSmall, hi);
 		m_iEasySFTPIconIndex[iconIndexSmall] = ::ImageList_AddIcon(m_himlSysIconSmall, hi);
 		::DestroyIcon(hi);
 
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
 			256, 256, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconJumbo, hi);
 		if (m_pimlSysIconJumbo)
 			m_pimlSysIconJumbo->ReplaceIcon(-1, hi, &m_iNetDriveIconIndex[iconIndexJumbo]);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
 			48, 48, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconExtraLarge, hi);
 		if (m_pimlSysIconExtraLarge)
 			m_pimlSysIconExtraLarge->ReplaceIcon(-1, hi, &m_iNetDriveIconIndex[iconIndexExtraLarge]);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
 			cxSysSmall, cySysSmall, LR_DEFAULTCOLOR);
 		if (!hi)
-			hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
+			hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
 				16, 16, LR_DEFAULTCOLOR);
 		if (m_pimlSysIconSysSmall)
 			m_pimlSysIconSysSmall->ReplaceIcon(-1, hi, &m_iNetDriveIconIndex[iconIndexSysSmall]);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
 			32, 32, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconLarge, hi);
 		m_iNetDriveIconIndex[iconIndexLarge] = ::ImageList_AddIcon(m_himlSysIconLarge, hi);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NETDRIVE), IMAGE_ICON,
 			16, 16, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconSmall, hi);
 		m_iNetDriveIconIndex[iconIndexSmall] = ::ImageList_AddIcon(m_himlSysIconSmall, hi);
 		::DestroyIcon(hi);
 
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
 			256, 256, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconJumbo, hi);
 		if (m_pimlSysIconJumbo)
 			m_pimlSysIconJumbo->ReplaceIcon(-1, hi, &m_iNewHostIconIndex[iconIndexJumbo]);
 		::DestroyIcon(hi);
 		m_iNewHostIconIndex[iconIndexJumbo] = -1;
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
 			48, 48, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconExtraLarge, hi);
 		if (m_pimlSysIconExtraLarge)
 			m_pimlSysIconExtraLarge->ReplaceIcon(-1, hi, &m_iNewHostIconIndex[iconIndexExtraLarge]);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
 			cxSysSmall, cySysSmall, LR_DEFAULTCOLOR);
 		if (!hi)
-			hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
+			hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
 				16, 16, LR_DEFAULTCOLOR);
 		if (m_pimlSysIconSysSmall)
 			m_pimlSysIconSysSmall->ReplaceIcon(-1, hi, &m_iNewHostIconIndex[iconIndexSysSmall]);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
 			32, 32, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconLarge, hi);
 		m_iNewHostIconIndex[iconIndexLarge] = ::ImageList_AddIcon(m_himlSysIconLarge, hi);
 		::DestroyIcon(hi);
-		hi = (HICON) ::LoadImage(m_hInstance, MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
+		hi = (HICON) ::LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_NEWHOST), IMAGE_ICON,
 			16, 16, LR_DEFAULTCOLOR);
 		::ImageList_AddIcon(m_himlIconSmall, hi);
 		m_iNewHostIconIndex[iconIndexSmall] = ::ImageList_AddIcon(m_himlSysIconSmall, hi);
@@ -1412,8 +1412,8 @@ bool CMainDLL::InitInstance()
 		m_hFontWindow = ::CreateFontIndirect(&ncm.lfMessageFont);
 	}
 
-	m_hMenuPopup = MyLoadMenuW(m_hInstance, MAKEINTRESOURCEW(IDR_POPUP));
-	m_hMenuContext = MyLoadMenuW(m_hInstance, MAKEINTRESOURCEW(IDR_SHELLMENU));
+	m_hMenuPopup = MyLoadMenuW(GetResourceInstance(), MAKEINTRESOURCEW(IDR_POPUP));
+	m_hMenuContext = MyLoadMenuW(GetResourceInstance(), MAKEINTRESOURCEW(IDR_SHELLMENU));
 
 	// Build the INI file name
 	{

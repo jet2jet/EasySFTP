@@ -77,12 +77,18 @@ jobs:
           msbuild EasySFTP.sln /p:Configuration=Release /p:Platform=x64
 
       - name: Prepare artifacts directory
+        shell: pwsh
         run: |
           mkdir dist
           mkdir dist\x64
+          $PSNativeCommandUseErrorActionPreference = $true
 
           copy bin\Win32\Release\*.exe dist\
           copy bin\Win32\Release\*.dll dist\
+          $PSNativeCommandUseErrorActionPreference = $false
+          robocopy bin\Win32\Release dist /S /E /IF *.mui
+          if ($global:LASTEXITCODE -le 7) { $global:LASTEXITCODE = 0 } else { throw "Robocopy error: $global:LASTEXITCODE" }
+          $PSNativeCommandUseErrorActionPreference = $true
           copy EasySFTP.txt dist\
           copy license.txt dist\
           copy README.md dist\
@@ -90,6 +96,9 @@ jobs:
 
           copy bin\x64\Release\*.exe dist\x64\
           copy bin\x64\Release\*.dll dist\x64\
+          $PSNativeCommandUseErrorActionPreference = $false
+          robocopy bin\x64\Release dist\x64 /S /E /IF *.mui
+          if ($global:LASTEXITCODE -le 7) { $global:LASTEXITCODE = 0 } else { throw "Robocopy error: $global:LASTEXITCODE" }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -49,6 +49,7 @@
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\MuiResourceCompile.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
@@ -136,9 +137,11 @@ echo #define VERSION_HASH "%VERSION_HASH%"&gt;version-hash.h
 exit /b 0
 </Command>
     </PreBuildEvent>
-    <ResourceCompile>
+    <MuiResourceCompile>
       <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
+      <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
+    </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>
@@ -185,9 +188,11 @@ echo #define VERSION_HASH "%VERSION_HASH%"&gt;version-hash.h
 exit /b 0
 </Command>
     </PreBuildEvent>
-    <ResourceCompile>
+    <MuiResourceCompile>
       <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
+      <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
+    </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -237,9 +242,11 @@ echo #define VERSION_HASH "%VERSION_HASH%"&gt;version-hash.h
 exit /b 0
 </Command>
     </PreBuildEvent>
-    <ResourceCompile>
+    <MuiResourceCompile>
       <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
+      <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
+    </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
@@ -289,9 +296,11 @@ echo #define VERSION_HASH "%VERSION_HASH%"&gt;version-hash.h
 exit /b 0
 </Command>
     </PreBuildEvent>
-    <ResourceCompile>
+    <MuiResourceCompile>
       <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
+      <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
+    </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Auth.cpp" />
@@ -365,6 +374,9 @@ exit /b 0
     <None Include="EasySFTP_2.ico" />
     <None Include="netdrive.ico" />
     <None Include="ReadMe.txt" />
+    <None Include="ShellDLL.rcconfig">
+      <FileType>Document</FileType>
+    </None>
     <None Include="ShellDLL.tlb.rc2" />
   </ItemGroup>
   <ItemGroup>
@@ -426,7 +438,20 @@ exit /b 0
     <ClInclude Include="WinOpSSH.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="ShellDLL.rc" />
+    <MuiResourceCompile Include="ShellDLL.en-US.rc" />
+    <MuiResourceCompile Include="ShellDLL.ja-JP.rc">
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</IncludeNeutralResourceToLink>
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</IncludeNeutralResourceToLink>
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IncludeNeutralResourceToLink>
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</IncludeNeutralResourceToLink>
+      <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
+      <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
+      <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
+      <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
+    </MuiResourceCompile>
+    <ResourceCompile Include="ShellDLL.rc">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.vcxproj">
@@ -438,6 +463,7 @@ exit /b 0
     <Midl Include="ShellDLL.idl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)..\MuiResourceCompile.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
   <Import Project="..\Common.props" />
