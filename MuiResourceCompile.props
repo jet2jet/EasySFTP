@@ -9,6 +9,7 @@
 		<MuiResourceCompile>
 			<RCConfigFileName>$(ProjectName).rcconfig</RCConfigFileName>
 			<ResourceOutputMuiFileName>$(IntDir)%(Filename).res</ResourceOutputMuiFileName>
+			<IncludeNeutralResourceToLink>true</IncludeNeutralResourceToLink>
 		</MuiResourceCompile>
 	</ItemDefinitionGroup>
 </Project>

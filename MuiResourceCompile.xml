@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- from https://github.com/ffftp/ffftp/blob/v3.0/MuiResourceCompile.xml -->
+<!-- Based on https://github.com/ffftp/ffftp/blob/v3.0/MuiResourceCompile.xml -->
 <ProjectSchemaDefinitions xmlns="http://schemas.microsoft.com/build/2009/properties">
 	<ContentType Name="MUIRC" DisplayName="MUI RC file" ItemType="MuiResourceCompile" />
 	<ItemType Name="MuiResourceCompile" DisplayName="Mui Resource compiler" />
@@ -33,13 +33,12 @@
 		<StringProperty Category="MUI" Name="RCConfigFileName" DisplayName="RC Configuration File Name" Description="Specifies the name of the RC configuration file. (/q [file])" Switch="q" Subtype="file" IsRequired="true" />
 		<StringProperty Category="MUI" Name="ResourceOutputMuiFileName" DisplayName="Mui Resource File Name" Description="Specifies the name of the language-dependent resource file (/fm[file])" Switch="fm" Subtype="file" IsRequired="true" />
 		<StringProperty Category="MUI" Name="MuiCulture" DisplayName="Culture Directory Name" Description="Specifies the name of the cutlure directory." IsRequired="true" IncludeInCommandLine="false" />
-		<EnumProperty Category="MUI" Name="GenerateLanguageNeutralResource" DisplayName="Generate Language-Neutral Resource" Description="Generate the language-neutral resource file. (/g1)">
-			<EnumValue Name="true" DisplayName="Generate">
-				<Argument Property="ResourceOutputLNFileName" IsRequired="true" />
-			</EnumValue>
-			<EnumValue Name="false" DisplayName="Don't Generate" Switch="g1" />
+		<EnumProperty Category="MUI" Name="GenerateMuiResEvenIfVersionIsOnly" DisplayName="Generate Mui Resource Even If VERSION only" Description="Always generate the MUI resource file even if the resource includes VERSION resource only. (/g1)">
+			<EnumValue Name="false" DisplayName="None" />
+			<EnumValue Name="true" DisplayName="Generate always" Switch="g1" />
 		</EnumProperty>
 		<StringProperty Category="MUI" Name="ResourceOutputLNFileName" DisplayName="LN Resource File Name" Description="Specifies the name of the language-neutral resource file (/fo[file])" Switch="fo" Subtype="file" />
+		<BoolProperty Category="MUI" Name="IncludeNeutralResourceToLink" DisplayName="Include Neutral Resource to Executable" Description="Includes generated neutral resource file into the target executable file." IncludeInCommandLine="false" />
 
 		<StringProperty Name="AdditionalOptions" DisplayName="Additional Options" Description="Additional Options" Category="Command Line" F1Keyword="vc.project.AdditionalOptionsPage" />
 	</Rule>

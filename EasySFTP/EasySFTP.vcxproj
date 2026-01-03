@@ -121,7 +121,7 @@
       <AdditionalManifestFiles>$(TargetFileName).manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <MuiResourceCompile>
-      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
       <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
     </MuiResourceCompile>
   </ItemDefinitionGroup>
@@ -157,7 +157,7 @@
       <AdditionalManifestFiles>$(TargetFileName).manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <MuiResourceCompile>
-      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
       <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
     </MuiResourceCompile>
   </ItemDefinitionGroup>
@@ -194,7 +194,7 @@
       <AdditionalManifestFiles>$(TargetFileName).manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <MuiResourceCompile>
-      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
       <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
     </MuiResourceCompile>
   </ItemDefinitionGroup>
@@ -232,7 +232,7 @@
       <AdditionalManifestFiles>$(TargetFileName).manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
     <MuiResourceCompile>
-      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
       <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
     </MuiResourceCompile>
   </ItemDefinitionGroup>
@@ -298,6 +298,10 @@
   <ItemGroup>
     <MuiResourceCompile Include="EasySFTP.en-US.rc" />
     <MuiResourceCompile Include="EasySFTP.ja-JP.rc">
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</IncludeNeutralResourceToLink>
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</IncludeNeutralResourceToLink>
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IncludeNeutralResourceToLink>
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</IncludeNeutralResourceToLink>
       <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
       <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
       <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>

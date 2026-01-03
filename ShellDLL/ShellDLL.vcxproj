@@ -140,7 +140,7 @@ exit /b 0
     <MuiResourceCompile>
       <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
-      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
     </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -191,7 +191,7 @@ exit /b 0
     <MuiResourceCompile>
       <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
-      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
     </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -245,7 +245,7 @@ exit /b 0
     <MuiResourceCompile>
       <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
-      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
     </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -299,7 +299,7 @@ exit /b 0
     <MuiResourceCompile>
       <PreprocessorDefinitions>_TLB_FILE="$(IntDir)$(ProjectName).tlb";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
-      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+      <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
     </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -440,6 +440,10 @@ exit /b 0
   <ItemGroup>
     <MuiResourceCompile Include="ShellDLL.en-US.rc" />
     <MuiResourceCompile Include="ShellDLL.ja-JP.rc">
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</IncludeNeutralResourceToLink>
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</IncludeNeutralResourceToLink>
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IncludeNeutralResourceToLink>
+      <IncludeNeutralResourceToLink Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</IncludeNeutralResourceToLink>
       <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
       <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
       <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>

@@ -3,14 +3,15 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	<ItemDefinitionGroup>
 		<MuiResourceCompile>
-			<SuppressStartupBanner            Condition="'%(MuiResourceCompile.SuppressStartupBanner)'           == ''">true</SuppressStartupBanner>
-			<GenerateLanguageNeutralResource  Condition="'%(MuiResourceCompile.GenerateLanguageNeutralResource)' == ''">false</GenerateLanguageNeutralResource>
-			<ResourceOutputLNFileName         Condition="'%(MuiResourceCompile.ResourceOutputLNFileName)'        == ''">$(IntDir)%(Filename).ln.res</ResourceOutputLNFileName>
-			<ResourceOutputMuiFileName        Condition="'%(MuiResourceCompile.ResourceOutputMuiFileName)'       == ''">$(IntDir)%(Filename).res</ResourceOutputMuiFileName>
-			<Culture                          Condition="'%(MuiResourceCompile.Culture)'                         == ''">0x0409</Culture>
-			<TrackerLogDirectory              Condition="'%(MuiResourceCompile.TrackerLogDirectory)'             == ''">$(TLogLocation)</TrackerLogDirectory>
-			<MinimalRebuildFromTracking       Condition="'%(MuiResourceCompile.MinimalRebuildFromTracking)'      == ''">true</MinimalRebuildFromTracking>
-			<AcceptableNonZeroExitCodes       Condition="'%(MuiResourceCompile.AcceptableNonZeroExitCodes)'      == ''">$(AcceptableNonZeroExitCodes)</AcceptableNonZeroExitCodes>
+			<SuppressStartupBanner              Condition="'%(MuiResourceCompile.SuppressStartupBanner)'             == ''">true</SuppressStartupBanner>
+			<GenerateMuiResEvenIfVersionIsOnly  Condition="'%(MuiResourceCompile.GenerateMuiResEvenIfVersionIsOnly)' == ''">false</GenerateMuiResEvenIfVersionIsOnly>
+			<ResourceOutputLNFileName           Condition="'%(MuiResourceCompile.ResourceOutputLNFileName)'          == ''">$(IntDir)%(Filename).ln.res</ResourceOutputLNFileName>
+			<ResourceOutputMuiFileName          Condition="'%(MuiResourceCompile.ResourceOutputMuiFileName)'         == ''">$(IntDir)%(Filename).res</ResourceOutputMuiFileName>
+			<IncludeNeutralResourceToLink       Condition="'%(MuiResourceCompile.IncludeNeutralResourceToLink)'      == ''">true</IncludeNeutralResourceToLink>
+			<Culture                            Condition="'%(MuiResourceCompile.Culture)'                           == ''">0x0409</Culture>
+			<TrackerLogDirectory                Condition="'%(MuiResourceCompile.TrackerLogDirectory)'               == ''">$(TLogLocation)</TrackerLogDirectory>
+			<MinimalRebuildFromTracking         Condition="'%(MuiResourceCompile.MinimalRebuildFromTracking)'        == ''">true</MinimalRebuildFromTracking>
+			<AcceptableNonZeroExitCodes         Condition="'%(MuiResourceCompile.AcceptableNonZeroExitCodes)'        == ''">$(AcceptableNonZeroExitCodes)</AcceptableNonZeroExitCodes>
 		</MuiResourceCompile>
 	</ItemDefinitionGroup>
 
@@ -71,7 +72,7 @@
 	<Target Name="ComputeMUIRCOutputs" DependsOnTargets="$(ComputeMuiResourceCompileInputsTargets)">
 
 		<ItemGroup Condition="'@(MuiResourceCompile)' != ''">
-			<LnResObj Condition="'%(MuiResourceCompile.ResourceOutputLNFileName)' != '' and '%(MuiResourceCompile.ExcludedFromBuild)'!='true'" Include="@(MuiResourceCompile->'%(ResourceOutputLNFileName)')">
+			<LnResObj Condition="'%(MuiResourceCompile.ResourceOutputLNFileName)' != '' and '%(MuiResourceCompile.ExcludedFromBuild)'!='true' and '%(MuiResourceCompile.IncludeNeutralResourceToLink)'=='true'" Include="@(MuiResourceCompile->'%(ResourceOutputLNFileName)')">
 				<LinkCompiled>%(MuiResourceCompile.LinkCompiled)</LinkCompiled>
 			</LnResObj>
 			<MuiResObj Condition="'%(MuiResourceCompile.ResourceOutputMuiFileName)' != '' and '%(MuiResourceCompile.ExcludedFromBuild)'!='true'" Include="@(MuiResourceCompile->'%(ResourceOutputMuiFileName)')">
@@ -184,7 +185,6 @@
 				<OutputMuiFileName>$(MuiOutputDirectoryName)\%(MuiResourceCompile.MuiCulture)\$(MuiOutputFileName)</OutputMuiFileName>
 			</MuiResourceCompile>
 		</ItemGroup>
-		<Message Text="MuiCulture: %(MuiResourceCompile.MuiCulture)" />
 
 		<Link
 			BuildingInIDE                  ="$(BuildingInsideVisualStudio)"
@@ -227,8 +227,7 @@
 				<AdditionalOptions Condition="'%(MuiResourceCompile.ResourceOutputMuiFileName)' != ''">/fm"%(MuiResourceCompile.ResourceOutputMuiFileName)" %(MuiResourceCompile.AdditionalOptions)</AdditionalOptions>
 			</MuiResourceCompile>
 			<MuiResourceCompile>
-				<AdditionalOptions Condition="'%(MuiResourceCompile.GenerateLanguageNeutralResource)' != 'true'">/g1 %(MuiResourceCompile.AdditionalOptions)</AdditionalOptions>
-				<ResourceOutputLNFileName Condition="'%(MuiResourceCompile.GenerateLanguageNeutralResource)' != 'true'"></ResourceOutputLNFileName>
+				<AdditionalOptions Condition="'%(MuiResourceCompile.GenerateMuiResEvenIfVersionIsOnly)' == 'true'">/g1 %(MuiResourceCompile.AdditionalOptions)</AdditionalOptions>
 			</MuiResourceCompile>
 			<MuiResourceCompile>
 				<AdditionalOptions Condition="'%(MuiResourceCompile.RCConfigFileName)' != ''">/q %(MuiResourceCompile.RCConfigFileName) %(MuiResourceCompile.AdditionalOptions)</AdditionalOptions>
