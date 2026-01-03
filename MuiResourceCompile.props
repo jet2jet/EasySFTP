@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This is a utility props file for MuiResourceCompile.targets -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<ItemGroup>
+		<ProjectTools Include="MuiResourceCompile"/>
+		<ResourceCompile Remove="@(ResourceCompile)" />
+	</ItemGroup>
+	<ItemDefinitionGroup>
+		<MuiResourceCompile>
+			<RCConfigFileName>$(ProjectName).rcconfig</RCConfigFileName>
+			<ResourceOutputMuiFileName>$(IntDir)%(Filename).res</ResourceOutputMuiFileName>
+		</MuiResourceCompile>
+	</ItemDefinitionGroup>
+</Project>

@@ -52,8 +52,6 @@ void CMainWindow::DoConnect()
 		}
 		pFolder->Release();
 	}
-	//else if (FAILED(hr))
-	//	::MyMessageBoxW(m_hWnd, MAKEINTRESOURCEW(IDS_FAILED_TO_CONNECT), NULL, MB_ICONEXCLAMATION);
 }
 
 //void CMainWindow::DoCloseConnection(bool bForce)

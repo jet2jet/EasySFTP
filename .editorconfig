@@ -6,6 +6,17 @@ indent_style = tab
 indent_size = 4
 root = true
 
+[{*.rc}]
+charset = utf-16le
+
+[{resource.h}]
+charset = utf-8-bom
+
+[{*.vcxproj}]
+charset = utf-8-bom
+indent_style = space
+indent_size = 2
+
 [{*.yml}]
 end_of_line = lf
 indent_style = space

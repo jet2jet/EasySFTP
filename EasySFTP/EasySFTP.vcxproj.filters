@@ -160,4 +160,12 @@
     <Text Include="..\EasySFTP.txt" />
     <Text Include="..\license.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <MuiResourceCompile Include="EasySFTP.ja-JP.rc">
+      <Filter>リソース ファイル</Filter>
+    </MuiResourceCompile>
+    <MuiResourceCompile Include="EasySFTP.en-US.rc">
+      <Filter>リソース ファイル</Filter>
+    </MuiResourceCompile>
+  </ItemGroup>
 </Project>

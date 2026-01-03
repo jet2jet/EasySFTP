@@ -868,24 +868,6 @@ void CMainWindow::SetStatusText(UINT uStatusID, LPCWSTR lpszStatusText)
 	}
 }
 
-//void CMainWindow::SetSFTPStatusText(int nStatus, const CMyStringW& strMessage)
-//{
-//	if (nStatus == SSH_FX_OK)
-//		SetStatusText(MAKEINTRESOURCEW(IDS_COMMAND_OK));
-//	else
-//	{
-//		CMyStringW str;
-//		str.Format(IDS_COMMAND_FAILED, nStatus);
-//		if (!strMessage.IsEmpty())
-//		{
-//			str += L" (";
-//			str += strMessage;
-//			str += L')';
-//		}
-//		SetStatusText(str);
-//	}
-//}
-
 void CMainWindow::SetStatusSecureIcon(bool bSecure)
 {
 	for (int i = 0; i < sizeof(s_arrBarParts) / sizeof(s_arrBarParts[0]); i++)

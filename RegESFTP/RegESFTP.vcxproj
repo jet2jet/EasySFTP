@@ -59,6 +59,7 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\MuiResourceCompile.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -111,6 +112,12 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <MuiResourceCompile>
+      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+    </MuiResourceCompile>
+    <MuiResourceCompile>
+      <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
+    </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -136,6 +143,12 @@
     <Manifest>
       <AdditionalManifestFiles>$(TargetFileName).manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
+    <MuiResourceCompile>
+      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+    </MuiResourceCompile>
+    <MuiResourceCompile>
+      <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
+    </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -152,6 +165,12 @@
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Version>0.14</Version>
     </Link>
+    <MuiResourceCompile>
+      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+    </MuiResourceCompile>
+    <MuiResourceCompile>
+      <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
+    </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -178,6 +197,12 @@
     <Manifest>
       <AdditionalManifestFiles>$(TargetFileName).manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
+    <MuiResourceCompile>
+      <GenerateLanguageNeutralResource>true</GenerateLanguageNeutralResource>
+    </MuiResourceCompile>
+    <MuiResourceCompile>
+      <ResourceOutputLNFileName>$(IntDir)$(ProjectName).ignore.res</ResourceOutputLNFileName>
+    </MuiResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
@@ -186,12 +211,25 @@
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="RegESFTP.rc" />
+    <MuiResourceCompile Include="RegESFTP.en-US.rc" />
+    <MuiResourceCompile Include="RegESFTP.ja-JP.rc">
+      <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
+      <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
+      <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
+      <ResourceOutputLNFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)$(ProjectName).res</ResourceOutputLNFileName>
+    </MuiResourceCompile>
+    <ResourceCompile Include="RegESFTP.rc">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="RegESFTP.exe.manifest" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="RegESFTP.rcconfig" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)..\MuiResourceCompile.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
   <Import Project="..\Common.props" />

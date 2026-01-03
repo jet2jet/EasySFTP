@@ -32,4 +32,17 @@
   <ItemGroup>
     <Manifest Include="RegESFTP.exe.manifest" />
   </ItemGroup>
+  <ItemGroup>
+    <MuiResourceCompile Include="RegESFTP.en-US.rc">
+      <Filter>リソース ファイル</Filter>
+    </MuiResourceCompile>
+    <MuiResourceCompile Include="RegESFTP.ja-JP.rc">
+      <Filter>リソース ファイル</Filter>
+    </MuiResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="RegESFTP.rcconfig">
+      <Filter>リソース ファイル</Filter>
+    </None>
+  </ItemGroup>
 </Project>
