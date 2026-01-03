@@ -1,7 +1,7 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <VersionMajor>0</VersionMajor>
-    <VersionMinor>14</VersionMinor>
+    <VersionMinor>15</VersionMinor>
     <VersionPatch>0</VersionPatch>
     <VersionRevision>1</VersionRevision>
     <VersionString>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(VersionRevision)</VersionString>

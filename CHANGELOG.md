@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v0.15.0.1
+
+- Add localization feature (now includes English translation)
+
 ## v0.14.0.1
 
 - Add storing credentials to connect quickly
