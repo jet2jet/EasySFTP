@@ -8,8 +8,10 @@
 
 #include "../version-hash.h"
 
-#define VERSION_NUMBER "0.13.0.1"
+#ifndef VERSION_STRING
+#error VERSION_STRING is not defined
+#endif
 
 #define __W(x) L##x
 #define _W(x) __W(x)
-#define VERSION_STRING_W _W(VERSION_NUMBER) L"-" _W(VERSION_HASH)
+#define VERSION_STRING_W _W(VERSION_STRING) L"-" _W(VERSION_HASH)

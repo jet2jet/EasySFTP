@@ -50,6 +50,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <Import Project="$(MSBuildThisFileDirectory)..\MuiResourceCompile.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\versions.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
@@ -112,7 +113,6 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;kernel32.lib;comctl32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.14</Version>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
@@ -148,7 +148,6 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;kernel32.lib;comctl32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.14</Version>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
@@ -183,7 +182,6 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;kernel32.lib;comctl32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.14</Version>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -221,7 +219,6 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;kernel32.lib;comctl32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.14</Version>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -290,6 +287,7 @@
     <None Include="..\README.md" />
     <None Include="AddrBtns.bmp" />
     <None Include="EasySFTP.ico" />
+    <None Include="EasySFTP.version.rc2" />
     <None Include="EasySFTP_2.ico" />
     <None Include="prntfldr.ico" />
     <None Include="secure.ico" />

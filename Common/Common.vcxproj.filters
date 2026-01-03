@@ -152,6 +152,7 @@
     <None Include="..\.gitignore" />
     <None Include="..\MuiResourceCompile.targets" />
     <None Include="..\MuiResourceCompile.props" />
+    <None Include="..\versions.props" />
   </ItemGroup>
   <ItemGroup>
     <Xml Include="..\MuiResourceCompile.xml" />

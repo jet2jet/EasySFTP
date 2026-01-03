@@ -199,6 +199,7 @@
     <None Include="..\.gitignore" />
     <None Include="..\MuiResourceCompile.props" />
     <None Include="..\MuiResourceCompile.targets" />
+    <None Include="..\versions.props" />
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>

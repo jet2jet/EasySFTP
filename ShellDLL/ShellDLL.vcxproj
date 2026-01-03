@@ -50,6 +50,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <Import Project="$(MSBuildThisFileDirectory)..\MuiResourceCompile.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\versions.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
@@ -107,7 +108,6 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(TargetDir)Common.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.14</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
@@ -167,7 +167,6 @@ exit /b 0
     <Link>
       <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>$(TargetDir)Common.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.14</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
@@ -210,7 +209,6 @@ exit /b 0
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(TargetDir)Common.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.14</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
@@ -273,7 +271,6 @@ exit /b 0
     <Link>
       <AdditionalOptions>/SECTION:.rsrc,rw %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>$(TargetDir)Common.lib;ws2_32.lib;crypt32.lib;$(OpenSSLLibraryNames);$(LibSSH2LibraryNames);comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Version>0.14</Version>
       <ModuleDefinitionFile>ShellDLL.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>$(TargetDir)ShellDLL.pdb</ProgramDatabaseFile>
@@ -378,6 +375,7 @@ exit /b 0
       <FileType>Document</FileType>
     </None>
     <None Include="ShellDLL.tlb.rc2" />
+    <None Include="ShellDLL.version.rc2" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\version-hash.h" />

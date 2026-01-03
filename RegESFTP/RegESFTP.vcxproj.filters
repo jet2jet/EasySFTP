@@ -44,5 +44,8 @@
     <None Include="RegESFTP.rcconfig">
       <Filter>リソース ファイル</Filter>
     </None>
+    <None Include="RegESFTP.version.rc2">
+      <Filter>リソース ファイル</Filter>
+    </None>
   </ItemGroup>
 </Project>

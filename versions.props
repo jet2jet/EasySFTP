@@ -1,0 +1,20 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <VersionMajor>0</VersionMajor>
+    <VersionMinor>14</VersionMinor>
+    <VersionPatch>0</VersionPatch>
+    <VersionRevision>1</VersionRevision>
+    <VersionString>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(VersionRevision)</VersionString>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>VERSION_MAJOR=$(VersionMajor);VERSION_MINOR=$(VersionMinor);VERSION_PATCH=$(VersionPatch);VERSION_REVISION=$(VersionRevision);VERSION_STRING="$(VersionString)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+	  <Version>$(VersionMajor).$(VersionMinor)</Version>
+	</Link>
+    <MuiResourceCompile>
+      <PreprocessorDefinitions>VERSION_MAJOR=$(VersionMajor);VERSION_MINOR=$(VersionMinor);VERSION_PATCH=$(VersionPatch);VERSION_REVISION=$(VersionRevision);VERSION_STRING="$(VersionString)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </MuiResourceCompile>
+  </ItemDefinitionGroup>
+</Project>
