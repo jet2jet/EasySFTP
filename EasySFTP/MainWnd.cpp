@@ -1273,7 +1273,7 @@ LRESULT CMainWindow::OnCreate(WPARAM wParam, LPARAM lParam)
 
 	m_uDpi = _MyGetDpiForWindow(m_hWnd);
 
-	m_hMenu = MyLoadMenuW(theApp.m_hInstance, MAKEINTRESOURCEW(IDC_EASYFTP));
+	m_hMenu = MyLoadMenuW(MyGetCurrentResourceInstance(), MAKEINTRESOURCEW(IDC_EASYFTP));
 	if (!m_hMenu)
 		return -1;
 	_SetMenuItemAllInfoIfNeed(m_hMenu);
@@ -1407,8 +1407,8 @@ LRESULT CMainWindow::OnCreate(WPARAM wParam, LPARAM lParam)
 	m_wndAddress.ChangeCurrentFolder(m_wndListViewLocal.m_lpidlAbsoluteMe);
 	m_wndServerAddress.ChangeCurrentFolder(m_wndListViewServer.m_lpidlAbsoluteMe);
 
-	m_hAccel = ::LoadAccelerators(theApp.m_hInstance, MAKEINTRESOURCE(IDC_EASYFTP));
-	m_hIconSecure = (HICON) ::LoadImage(theApp.m_hInstance, MAKEINTRESOURCE(ID_STATUS_SECURE),
+	m_hAccel = ::LoadAccelerators(MyGetCurrentResourceInstance(), MAKEINTRESOURCE(IDC_EASYFTP));
+	m_hIconSecure = (HICON) ::LoadImage(MyGetCurrentResourceInstance(), MAKEINTRESOURCE(ID_STATUS_SECURE),
 		IMAGE_ICON, 16, 16, 0);
 
 	//::SetMenu(m_hWnd, m_hMenu);
@@ -1930,7 +1930,7 @@ static INT_PTR CALLBACK _AboutDlgProc(HWND hDlg, UINT message, WPARAM wParam, LP
 
 void CMainWindow::ShowAboutDialog()
 {
-	ExDialogBoxParam(theApp.m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), m_hWnd, _AboutDlgProc, 0);
+	ExDialogBoxParam(MyGetCurrentResourceInstance(), MAKEINTRESOURCE(IDD_ABOUTBOX), m_hWnd, _AboutDlgProc, 0);
 }
 
 void CMainWindow::OnResize()

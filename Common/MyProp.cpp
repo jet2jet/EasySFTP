@@ -170,7 +170,7 @@ LPCWSTR CMyPropertyPage::GetPageTitle()
 
 HGLOBAL CMyPropertyPage::GetDialogResource()
 {
-	HINSTANCE hInst = MyGetCurrentInstance();
+	HINSTANCE hInst = MyGetCurrentResourceInstance();
 
 	if (m_hGlobal)
 		GlobalFree(m_hGlobal);

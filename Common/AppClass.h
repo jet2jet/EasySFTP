@@ -62,8 +62,14 @@ public:
 	virtual ~CMyApplication();
 
 	HINSTANCE m_hInstance;
+	HINSTANCE m_hResInstance;
 	LPTSTR m_lpCmdLine;
 	int m_nCmdShow;
+
+	inline HINSTANCE GetResourceInstance() const
+	{
+		return m_hResInstance ? m_hResInstance : m_hInstance;
+	}
 
 public:
 	//virtual bool InitInstance() = 0;
@@ -76,6 +82,12 @@ public:
 	virtual ~CMyDLLApplication();
 
 	HINSTANCE m_hInstance;
+	HINSTANCE m_hResInstance;
+
+	inline HINSTANCE GetResourceInstance() const
+	{
+		return m_hResInstance ? m_hResInstance : m_hInstance;
+	}
 
 public:
 	virtual bool InitInstance() = 0;
@@ -86,6 +98,7 @@ CMyThread* WINAPI GetCurThread();
 CMyApplication* WINAPI GetCurApp();
 CMyDLLApplication* WINAPI GetCurDLLApp();
 EXTERN_C HINSTANCE WINAPI MyGetCurrentInstance();
+EXTERN_C HINSTANCE WINAPI MyGetCurrentResourceInstance();
 
 EXTERN_C int APIENTRY MyWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPTSTR lpCmdLine, int nCmdShow);

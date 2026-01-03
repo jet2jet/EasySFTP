@@ -727,26 +727,26 @@ HRESULT CMainApplication::InitGraphics()
 	if (!m_hImageListFileIcon)
 		return E_OUTOFMEMORY;
 
-	//m_hImageListToolBar = ::ImageList_LoadImage(m_hInstance, MAKEINTRESOURCE(IDB_TOOLBAR),
+	//m_hImageListToolBar = ::ImageList_LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDB_TOOLBAR),
 	//	16, 0, CLR_NONE, IMAGE_BITMAP, LR_LOADTRANSPARENT);
 	//if (!m_hImageListToolBar)
 	//	return false;
 	m_hImageListToolBar = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListToolBar)
 		return E_OUTOFMEMORY;
-	::ImageList_Add(m_hImageListToolBar, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_TOOLBAR)), NULL);
+	::ImageList_Add(m_hImageListToolBar, ::LoadBitmap(GetResourceInstance(), MAKEINTRESOURCE(IDB_TOOLBAR)), NULL);
 	m_hImageListToolBarL = ::ImageList_Create(32, 32, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListToolBarL)
 		return E_OUTOFMEMORY;
-	::ImageList_Add(m_hImageListToolBarL, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_TOOLBAR_L)), NULL);
+	::ImageList_Add(m_hImageListToolBarL, ::LoadBitmap(GetResourceInstance(), MAKEINTRESOURCE(IDB_TOOLBAR_L)), NULL);
 	m_hImageListAddrButtons = ::ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListAddrButtons)
 		return E_OUTOFMEMORY;
-	::ImageList_Add(m_hImageListAddrButtons, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_ADDRESS_BUTTONS)), NULL);
+	::ImageList_Add(m_hImageListAddrButtons, ::LoadBitmap(GetResourceInstance(), MAKEINTRESOURCE(IDB_ADDRESS_BUTTONS)), NULL);
 	m_hImageListAddrButtonsL = ::ImageList_Create(32, 32, ILC_COLOR32 | ILC_MASK, 0, 0);
 	if (!m_hImageListAddrButtonsL)
 		return E_OUTOFMEMORY;
-	::ImageList_Add(m_hImageListAddrButtonsL, ::LoadBitmap(m_hInstance, MAKEINTRESOURCE(IDB_ADDRESS_BUTTONS_L)), NULL);
+	::ImageList_Add(m_hImageListAddrButtonsL, ::LoadBitmap(GetResourceInstance(), MAKEINTRESOURCE(IDB_ADDRESS_BUTTONS_L)), NULL);
 
 	return S_OK;
 }
@@ -771,13 +771,13 @@ HRESULT CMainApplication::InitWindowClasses()
 	wcex.cbClsExtra		= 0;
 	wcex.cbWndExtra		= 0;
 	wcex.hInstance		= m_hInstance;
-	wcex.hIcon			= LoadIcon(m_hInstance, MAKEINTRESOURCE(IDI_EASYFTP));
+	wcex.hIcon			= LoadIcon(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP));
 	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
 	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW+1);
 	//wcex.hbrBackground  = NULL;
 	wcex.lpszMenuName	= NULL;
 	wcex.lpszClassName	= strC;
-	wcex.hIconSm		= (HICON) LoadImage(wcex.hInstance, MAKEINTRESOURCE(IDI_EASYFTP),
+	wcex.hIconSm		= (HICON) LoadImage(GetResourceInstance(), MAKEINTRESOURCE(IDI_EASYFTP),
 		IMAGE_ICON, 16, 16, 0);
 
 	if (!::RegisterClassExW(&wcex))
@@ -887,7 +887,7 @@ HRESULT CMainApplication::InitAppData()
 		m_strTempPath += L'\\';
 	}
 
-	m_hMenuPopup = MyLoadMenuW(m_hInstance, MAKEINTRESOURCEW(IDR_POPUP));
+	m_hMenuPopup = MyLoadMenuW(GetResourceInstance(), MAKEINTRESOURCEW(IDR_POPUP));
 
 	m_strTitle.LoadString(IDS_APP_TITLE);
 

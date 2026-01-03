@@ -27,6 +27,7 @@ EXTERN_C int APIENTRY MyWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	s_app.pMainApp->m_dwThreadID = ::GetCurrentThreadId();
 	s_app.pMainApp->m_hThread = ::GetCurrentThread();
 	s_app.pMainApp->m_hInstance = hInstance;
+	s_app.pMainApp->m_hResInstance = hInstance;
 	s_app.pMainApp->m_lpCmdLine = lpCmdLine;
 	s_app.pMainApp->m_nCmdShow = nCmdShow;
 	if (!s_app.pMainApp->InitInstance())
@@ -45,6 +46,7 @@ EXTERN_C BOOL APIENTRY MyDllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpR
 			if (!s_app.pDLLApp)
 				return FALSE;
 			s_app.pDLLApp->m_hInstance = hInstance;
+			s_app.pDLLApp->m_hResInstance = hInstance;
 			if (!s_app.pDLLApp->InitInstance())
 			{
 				s_app.pDLLApp->ExitInstance();
@@ -85,6 +87,16 @@ EXTERN_C HINSTANCE WINAPI MyGetCurrentInstance()
 		return s_app.pMainApp->m_hInstance;
 	else if (s_app.pDLLApp)
 		return s_app.pDLLApp->m_hInstance;
+	else
+		return NULL;
+}
+
+EXTERN_C HINSTANCE WINAPI MyGetCurrentResourceInstance()
+{
+	if (s_app.pMainApp)
+		return s_app.pMainApp->GetResourceInstance();
+	else if (s_app.pDLLApp)
+		return s_app.pDLLApp->GetResourceInstance();
 	else
 		return NULL;
 }
@@ -270,6 +282,10 @@ bool CMyWinThread::PumpMessage()
 ////////////////////////////////////////////////////////////////////////////////
 
 CMyApplication::CMyApplication()
+	: m_hInstance(nullptr)
+	, m_hResInstance(nullptr)
+	, m_lpCmdLine(nullptr)
+	, m_nCmdShow(SW_SHOWNORMAL)
 {
 	if (!s_app.pMainApp)
 		s_app.pMainApp = this;
@@ -283,6 +299,8 @@ CMyApplication::~CMyApplication()
 ////////////////////////////////////////////////////////////////////////////////
 
 CMyDLLApplication::CMyDLLApplication()
+	: m_hInstance(nullptr)
+	, m_hResInstance(nullptr)
 {
 	if (!s_app.pDLLApp)
 		s_app.pDLLApp = this;

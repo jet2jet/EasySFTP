@@ -461,7 +461,7 @@ INT_PTR CMyDialog::ModalDialogA(HWND hWndParent)
 		return (INT_PTR) -1;
 	HGLOBAL hGlobal;
 	INT_PTR nRet;
-	HINSTANCE hInst = MyGetCurrentInstance();
+	HINSTANCE hInst = MyGetCurrentResourceInstance();
 
 	hGlobal = _DuplicateDialogTemplate(hInst, MAKEINTRESOURCE(m_uID));
 	if (hGlobal == NULL)
@@ -491,7 +491,7 @@ INT_PTR CMyDialog::ModalDialogW(HWND hWndParent)
 		return (INT_PTR) -1;
 	HGLOBAL hGlobal;
 	INT_PTR nRet;
-	HINSTANCE hInst = MyGetCurrentInstance();
+	HINSTANCE hInst = MyGetCurrentResourceInstance();
 
 	hGlobal = _DuplicateDialogTemplate(hInst, MAKEINTRESOURCE(m_uID));
 	if (hGlobal == NULL)
@@ -527,7 +527,7 @@ HWND CMyDialog::CreateA(HWND hWndParent)
 		return NULL;
 	HGLOBAL hGlobal;
 	HWND hRet;
-	HINSTANCE hInst = MyGetCurrentInstance();
+	HINSTANCE hInst = MyGetCurrentResourceInstance();
 
 	hGlobal = _DuplicateDialogTemplate(hInst, MAKEINTRESOURCE(m_uID));
 	if (hGlobal == NULL)
@@ -557,7 +557,7 @@ HWND CMyDialog::CreateW(HWND hWndParent)
 		return NULL;
 	HGLOBAL hGlobal;
 	HWND hRet;
-	HINSTANCE hInst = MyGetCurrentInstance();
+	HINSTANCE hInst = MyGetCurrentResourceInstance();
 
 	hGlobal = _DuplicateDialogTemplate(hInst, MAKEINTRESOURCE(m_uID));
 	if (hGlobal == NULL)

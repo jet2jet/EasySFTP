@@ -32,7 +32,11 @@ static LPSTR __stdcall _MyLoadStringA(HINSTANCE hInstance, UINT uID)
 	LPSTR szTemp, szRet;
 	int nSize, nLen;
 	if (!hInstance)
-		hInstance = ::GetModuleHandle(NULL);
+	{
+		hInstance = MyGetCurrentResourceInstance();
+		if (!hInstance)
+			hInstance = ::GetModuleHandle(NULL);
+	}
 	szTemp = (LPSTR) malloc(sizeof(CHAR) * 256);
 	szTemp[0] = 0;
 	nSize = 256;
@@ -71,7 +75,7 @@ LPWSTR __stdcall UniLoadStringW(HINSTANCE hInstance, UINT uID)
 	int nSize, nLen;
 	if (!hInstance)
 	{
-		hInstance = MyGetCurrentInstance();
+		hInstance = MyGetCurrentResourceInstance();
 		if (!hInstance)
 			hInstance = ::GetModuleHandle(NULL);
 	}
