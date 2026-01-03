@@ -96,6 +96,7 @@ jobs:
               -DCMAKE_GENERATOR="Visual Studio 17 2022" `
               -D CMAKE_C_FLAGS_DEBUG="/MTd"  `
               -D CMAKE_C_FLAGS_RELEASE="/MT" `
+              -D CMAKE_BUILD_TYPE=Release `
               -D BUILD_EXAMPLES=OFF `
               -D BUILD_TESTING=OFF `
               -A $targetLibSSH2 `
