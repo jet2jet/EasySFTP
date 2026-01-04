@@ -53,6 +53,13 @@ ITypeInfo* GetTypeInfo(const GUID& guid)
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// workaround (related: https://github.com/openssl/openssl/issues/27701 )
+#if !defined(WIN64)
+extern "C" unsigned _int64 _dtoul3_legacy(double v) { return (unsigned _int64)llround(v); }
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+
 #if !defined(NTDDI_WIN7) || (NTDDI_VERSION < NTDDI_WIN7)
 #define INITGUID
 #include <guiddef.h>
