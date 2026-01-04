@@ -90,8 +90,10 @@ jobs:
 
             # --- libssh2 ---
             curl.exe -LO "$($env:LIBSSH2_URL)/releases/download/libssh2-$($env:LIBSSH2_VERSION)/libssh2-$($env:LIBSSH2_VERSION).zip"
+            Set-PSDebug -Off
             Expand-Archive ".\libssh2-$($env:LIBSSH2_VERSION).zip" -DestinationPath .
             Rename-Item "libssh2-$($env:LIBSSH2_VERSION)" "libssh2-$arch"
+            Set-PSDebug -Trace 1
             Push-Location "libssh2-$arch"
 
             $libssh2Prefix = "$env:GITHUB_WORKSPACE\deps\libssh2\$arch"
