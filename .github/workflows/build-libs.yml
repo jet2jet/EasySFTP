@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 
 env:
+  JOM_DOWNLOAD_URL: http://download.qt.io/official_releases/jom/jom.zip
   OPENSSL_REPO: https://github.com/openssl/openssl.git
   LIBSSH2_URL: https://github.com/libssh2/libssh2
 
@@ -31,6 +32,15 @@ jobs:
 
       - name: Install NASM
         uses: ilammy/setup-nasm@v1
+
+      - name: Install jom
+        shell: cmd
+        run: |
+          curl.exe -LO "%JOM_DOWNLOAD_URL%"
+          set "JOM_DIR=%HOMEDRIVE%%HOMEPATH%\jom"
+          md "%JOM_DIR%" 2>NUL || type NUL
+          tar.exe xz -C "%JOM_DIR%" -f jom.zip
+          echo %JOM_DIR%>>%GITHUB_PATH%
 
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -75,7 +85,7 @@ jobs:
 
             $opensslPrefix = "$env:GITHUB_WORKSPACE\deps\openssl\$arch"
 
-            cmd /c "`"$vcvars`" $vc && cd openssl-$arch && perl Configure $targetOpenSSL no-shared no-tests --prefix=$opensslPrefix && nmake && nmake install" `
+            cmd /c "`"$vcvars`" $vc && cd openssl-$arch && perl Configure $targetOpenSSL no-shared no-tests --prefix=$opensslPrefix /FS && jom /J 8 && jom install" `
               2>&1 | Tee-Object "logs\openssl-$arch.log"
 
             # --- libssh2 ---
