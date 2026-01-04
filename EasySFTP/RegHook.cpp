@@ -10,6 +10,7 @@
 #include "../ShellDLL/EasySFTP_h.h"
 #include "Array.h"
 #include "UString.h"
+#include "OS.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -482,12 +483,7 @@ static bool __stdcall InitOldRegFunctions()
 	s_pfnRegSetKeyValueW = (T_RegSetKeyValueW) ::GetProcAddress(hInstAdvapi32, "RegSetKeyValueW");
 #undef GetProcAddress
 
-	{
-		OSVERSIONINFO osvi;
-		osvi.dwOSVersionInfoSize = sizeof(osvi);
-		::GetVersionEx(&osvi);
-		s_bUnicodeSupported = (osvi.dwPlatformId == VER_PLATFORM_WIN32_NT);
-	}
+	s_bUnicodeSupported = IsUnicodeAvailableOS();
 
 	return true;
 }

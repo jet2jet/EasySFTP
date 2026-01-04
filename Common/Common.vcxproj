@@ -151,6 +151,7 @@
     <ClCompile Include="MyFunc.cpp" />
     <ClCompile Include="MyProp.cpp" />
     <ClCompile Include="MyWindow.cpp" />
+    <ClCompile Include="OS.cpp" />
     <ClCompile Include="ShlItem.cpp" />
     <ClCompile Include="Splitter.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -181,6 +182,7 @@
     <ClInclude Include="MyFunc.h" />
     <ClInclude Include="MyProp.h" />
     <ClInclude Include="MyWindow.h" />
+    <ClInclude Include="OS.h" />
     <ClInclude Include="RefDelg.h" />
     <ClInclude Include="ShlItem.h" />
     <ClInclude Include="Splitter.h" />

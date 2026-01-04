@@ -14,6 +14,7 @@
 
 #include "IDList.h"
 #include "FileStrm.h"
+#include "OS.h"
 #include "Logger.h"
 
 CMainApplication theApp;
@@ -514,22 +515,10 @@ HRESULT CMainApplication::InitSystemLibraries()
 	m_nCFShellIDList = ::RegisterClipboardFormat(CFSTR_SHELLIDLIST);
 
 	{
-		OSVERSIONINFO vi;
-		vi.dwOSVersionInfoSize = sizeof(vi);
-		if (!::GetVersionExA(&vi))
-		{
-			m_bUseOFNUnicode = false;
+		m_bUseOFNUnicode = IsUnicodeAvailableOS();
 #ifndef _WIN64
-			m_bIsWin9x = true;
+		m_bIsWin9x = !m_bUseOFNUnicode;
 #endif
-		}
-		else
-		{
-			m_bUseOFNUnicode = (vi.dwPlatformId == VER_PLATFORM_WIN32_NT);
-#ifndef _WIN64
-			m_bIsWin9x = !m_bUseOFNUnicode;
-#endif
-		}
 	}
 
 	return S_OK;

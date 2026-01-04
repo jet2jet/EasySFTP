@@ -12,6 +12,7 @@
 #include "CFactory.h"
 #include "INIFile.h"
 #include "MErrDlg.h"
+#include "OS.h"
 
 CMainDLL theApp;
 
@@ -1243,14 +1244,7 @@ bool CMainDLL::InitInstance()
 	::srand((unsigned int) (time(NULL) * GetTickCount()));
 
 	// Check whether we can use Unicode version of GetOpenFileName/GetSaveFileName
-	{
-		OSVERSIONINFO vi;
-		vi.dwOSVersionInfoSize = sizeof(vi);
-		if (!::GetVersionExA(&vi))
-			m_bUseOFNUnicode = false;
-		else
-			m_bUseOFNUnicode = (vi.dwPlatformId == VER_PLATFORM_WIN32_NT);
-	}
+	m_bUseOFNUnicode = IsUnicodeAvailableOS();
 
 	// Initializing system image lists
 	{
