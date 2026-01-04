@@ -6,7 +6,7 @@ on:
 
 env:
   OPENSSL_REPO: https://github.com/openssl/openssl.git
-  LIBSSH2_REPO: https://github.com/libssh2/libssh2.git
+  LIBSSH2_URL: https://github.com/libssh2/libssh2
 
 jobs:
   build-libs:
@@ -79,7 +79,9 @@ jobs:
               2>&1 | Tee-Object "logs\openssl-$arch.log"
 
             # --- libssh2 ---
-            git clone --depth=1 --branch "libssh2-$($env:LIBSSH2_VERSION)" $env:LIBSSH2_REPO "libssh2-$arch"
+            curl.exe -LO "$($env:LIBSSH2_URL)/releases/download/libssh2-$($env:LIBSSH2_VERSION)/libssh2-$($env:LIBSSH2_VERSION).zip"
+            Expand-Archive ".\libssh2-$($env:LIBSSH2_VERSION).zip" -DestinationPath .
+            Rename-Item "libssh2-$($env:LIBSSH2_VERSION)" "libssh2-$arch"
             Push-Location "libssh2-$arch"
 
             $libssh2Prefix = "$env:GITHUB_WORKSPACE\deps\libssh2\$arch"
