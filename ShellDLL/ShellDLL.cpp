@@ -1232,9 +1232,6 @@ bool CMainDLL::InitInstance()
 
 	// for SSL library
 	SSL_library_init();
-	ERR_load_BIO_strings();
-	ERR_load_CRYPTO_strings();
-	ERR_load_SSL_strings();
 
 	::srand((unsigned int) (time(NULL) * GetTickCount()));
 
@@ -1661,13 +1658,9 @@ int CMainDLL::ExitInstance()
 	::DeleteCriticalSection(&m_csHosts);
 	::DeleteCriticalSection(&m_csRootRefs);
 
-	::ERR_remove_state(0);
 	//::ENGINE_cleanup();
 	//::CONF_modules_unload();
 	//::RAND_cleanup();
-	ERR_free_strings();
-	EVP_cleanup();
-	CRYPTO_cleanup_all_ex_data();
 	libssh2_exit();
 
 	m_TimerThread.Finalize();
