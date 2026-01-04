@@ -111,6 +111,7 @@
       <OptimizeReferences>false</OptimizeReferences>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <AdditionalDependencies>$(TargetDir)Common.lib;$(TargetDir)EasySFTP.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <MuiResourceCompile>
       <IncludeNeutralResourceToLink>false</IncludeNeutralResourceToLink>
