@@ -74,6 +74,8 @@ typedef IDataObjectAsyncCapability IAsyncOperation;
 #include <openssl/rand.h>
 
 // libssh2
+// woraround definition (related: https://github.com/libssh2/libssh2/issues/1578 )
+#define LIBSSH2_API
 #include <libssh2.h>
 #include <libssh2_sftp.h>
 
