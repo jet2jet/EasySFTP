@@ -64,8 +64,8 @@ extern "C" LPSTR __stdcall MyFindReturnA(LPCSTR lpszString);
 extern "C" LPWSTR __stdcall MyFindReturnW(LPCWSTR lpszString);
 // Remove "..\" from pszPath
 // (it accepts that (void*) pszPath == (void*) pszOutput)
-extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput);
-extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutput);
+extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput, int nMaxLen);
+extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutput, int nMaxLen);
 // Make an absolute path from lpszRelativePathName and lpszDirectory (a directory path)
 // (this is almost same as a combination of MyGetFullPath and MyRemoveDotsFromPath)
 extern "C" int __stdcall MyGetAbsolutePathA(LPCSTR lpszRelativePathName, LPCSTR lpszDirectory, LPSTR lpszBuffer, int nMaxLen);

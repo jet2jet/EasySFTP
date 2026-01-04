@@ -405,9 +405,11 @@ extern "C" int __stdcall MySearchPathW(LPCWSTR lpszPathName, LPWSTR lpszBuffer, 
 
 void __stdcall MyRemoveDotsFromPathStringW(CMyStringW& rstrPath)
 {
+	if (rstrPath.IsEmpty())
+		return;
 	LPWSTR lp;
 	lp = rstrPath.GetBuffer();
-	MyRemoveDotsFromPathW(lp, lp);
+	MyRemoveDotsFromPathW(lp, lp, rstrPath.GetLength() + 1);
 	rstrPath.ReleaseBuffer();
 }
 
@@ -443,8 +445,10 @@ void __stdcall MyGetAbsolutePathStringW(LPCWSTR lpszRelativePathName, LPCWSTR lp
 	}
 
 	MyGetFullPathStringW(lpszDirectory, lpszRelativePathName, rstrBuffer);
+	if (rstrBuffer.IsEmpty())
+		return;
 	lp = rstrBuffer.GetBuffer();
-	MyRemoveDotsFromPathW(lp, lp);
+	MyRemoveDotsFromPathW(lp, lp, rstrBuffer.GetLength() + 1);
 	rstrBuffer.ReleaseBuffer();
 }
 

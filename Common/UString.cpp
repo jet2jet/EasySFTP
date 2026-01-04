@@ -66,9 +66,8 @@ static size_t _mbsntowcs(wchar_t* wszOut, size_t nwszBuff, const char* szIn, siz
 	nszLenAct = mystrnlen(szIn, nszLen);
 	while (nszLenAct < nszLen)
 	{
-		r = mbstowcs(wszOut, szIn, nwszBuff);
-		if (r == (size_t) -1)
-			return r;
+		if (mbstowcs_s(&r, wszOut, nwszBuff, szIn, nwszBuff) != 0)
+			return static_cast<size_t>(-1);
 		wszOut += r;
 		szIn += nszLenAct;
 		nwszBuff -= r;
@@ -94,10 +93,9 @@ static size_t _mbsntowcs(wchar_t* wszOut, size_t nwszBuff, const char* szIn, siz
 	{
 		memcpy(pbuff, szIn, sizeof(char) * MBSWCS_BUFF_LEN);
 		pbuff[MBSWCS_BUFF_LEN] = 0;
-		r = mbstowcs(wszOut, pbuff, nwszBuff);
-		if (r == (size_t) -1)
+		if (mbstowcs_s(&r, wszOut, nwszBuff, pbuff, nwszBuff) != 0)
 		{
-			nLen = r;
+			nLen = static_cast<size_t>(-1);
 			nwszBuff = 0;
 			break;
 		}
@@ -113,9 +111,8 @@ static size_t _mbsntowcs(wchar_t* wszOut, size_t nwszBuff, const char* szIn, siz
 	{
 		memcpy(pbuff, szIn, sizeof(char) * nszLen);
 		pbuff[nszLen] = 0;
-		r = mbstowcs(wszOut, pbuff, nwszBuff);
-		if (r == (size_t) -1)
-			nLen = r;
+		if (mbstowcs_s(&r, wszOut, nwszBuff, pbuff, nwszBuff) != 0)
+			nLen = static_cast<size_t>(-1);
 		else
 			nLen += r;
 	}
@@ -132,9 +129,8 @@ static size_t _wcsntombs(char* szOut, size_t nszBuff, const wchar_t* wszIn, size
 	nwszLenAct = mywcsnlen(wszIn, nwszLen);
 	while (nwszLenAct < nwszLen)
 	{
-		r = wcstombs(szOut, wszIn, nszBuff);
-		if (r == (size_t) -1)
-			return r;
+		if (wcstombs_s(&r, szOut, nszBuff, wszIn, nszBuff) != 0)
+			return static_cast<size_t>(-1);
 		szOut += r;
 		wszIn += nwszLenAct;
 		nszBuff -= r;
@@ -160,10 +156,9 @@ static size_t _wcsntombs(char* szOut, size_t nszBuff, const wchar_t* wszIn, size
 	{
 		memcpy(pbuff, wszIn, sizeof(char) * MBSWCS_BUFF_LEN);
 		pbuff[MBSWCS_BUFF_LEN] = 0;
-		r = wcstombs(szOut, pbuff, nszBuff);
-		if (r == (size_t) -1)
+		if (wcstombs_s(&r, szOut, nszBuff, pbuff, nszBuff) != 0)
 		{
-			nLen = r;
+			nLen = static_cast<size_t>(-1);
 			nszBuff = 0;
 			break;
 		}
@@ -179,9 +174,8 @@ static size_t _wcsntombs(char* szOut, size_t nszBuff, const wchar_t* wszIn, size
 	{
 		memcpy(pbuff, wszIn, sizeof(wchar_t) * nwszLen);
 		pbuff[nwszLen] = 0;
-		r = wcstombs(szOut, pbuff, nszBuff);
-		if (r == (size_t) -1)
-			nLen = r;
+		if (wcstombs_s(&r, szOut, nszBuff, pbuff, nszBuff) != 0)
+			nLen = static_cast<size_t>(-1);
 		else
 			nLen += r;
 	}
@@ -993,12 +987,12 @@ void __stdcall _FormatStringA(LPWSTR& lpszData, LPCSTR lpszFormat, va_list va, U
 
 	n = 255;
 	lp = (LPSTR)malloc(sizeof(CHAR) * 255);
-	nRet = _vsnprintf(lp, n, lpszFormat, va);
+	nRet = _vsnprintf_s(lp, n, n, lpszFormat, va);
 	while (nRet < 0)
 	{
 		n += 255;
 		lp = (LPSTR)realloc(lp, sizeof(CHAR) * n);
-		nRet = _vsnprintf(lp, n, lpszFormat, va);
+		nRet = _vsnprintf_s(lp, n, n, lpszFormat, va);
 	}
 	if (lpszData)
 		lpszData = ReAllocStringLenA(lpszData, lp, nRet, uCodePage);
@@ -1014,12 +1008,12 @@ void __stdcall _FormatStringW(LPWSTR& lpszData, LPCWSTR lpszFormat, va_list va)
 
 	n = 255;
 	lp = (LPWSTR)malloc(sizeof(WCHAR) * 255);
-	nRet = _vsnwprintf(lp, n, lpszFormat, va);
+	nRet = _vsnwprintf_s(lp, n, n, lpszFormat, va);
 	while (nRet < 0)
 	{
 		n += 255;
 		lp = (LPWSTR)realloc(lp, sizeof(WCHAR) * n);
-		nRet = _vsnwprintf(lp, n, lpszFormat, va);
+		nRet = _vsnwprintf_s(lp, n, n, lpszFormat, va);
 	}
 	if (lpszData)
 		lpszData = ReAllocStringLen(lpszData, lp, nRet);

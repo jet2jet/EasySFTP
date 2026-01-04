@@ -493,8 +493,8 @@ extern "C" CFTPFileItem* __stdcall PickupUnixFileList(CFTPDirectoryBase* pDirect
 	{
 		size_t dwLen = strFile.GetLength();
 		LPWSTR lp = pRet->strFileName.GetBuffer(dwLen);
-		MyRemoveDotsFromPathW(strFile, lp);
-		MyGetFileTitleW(pRet->strFileName, lp, (int) dwLen);
+		MyRemoveDotsFromPathW(strFile, lp, static_cast<int>(dwLen + 1));
+		MyGetFileTitleW(pRet->strFileName, lp, static_cast<int>(dwLen + 1));
 		pRet->strFileName.ReleaseBuffer();
 	}
 	pRet->strTargetFile = strTarget;
@@ -715,8 +715,8 @@ extern "C" CFTPFileItem* __stdcall PickupDOSFileList(CFTPDirectoryBase* pDirecto
 	{
 		size_t nLen = wcslen(lpszString);
 		LPWSTR lp = pRet->strFileName.GetBuffer((DWORD) nLen);
-		MyRemoveDotsFromPathW(lpszString, lp);
-		MyGetFileTitleW(pRet->strFileName, lp, (int) nLen);
+		MyRemoveDotsFromPathW(lpszString, lp, static_cast<int>(nLen + 1));
+		MyGetFileTitleW(pRet->strFileName, lp, static_cast<int>(nLen + 1));
 		pRet->strFileName.ReleaseBuffer();
 	}
 	pRet->uUID = pRet->uGID = 0;

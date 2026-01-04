@@ -9,7 +9,6 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// Windows API とほぼ同様の処理方法による文字列コピー
 extern "C" int __stdcall MyCopyStringLenA(LPSTR lpszBuffer, LPCSTR lpszString, int nMaxLen)
 {
 	int nLen;
@@ -18,11 +17,12 @@ extern "C" int __stdcall MyCopyStringLenA(LPSTR lpszBuffer, LPCSTR lpszString, i
 		return nLen;
 	if (nLen < nMaxLen)
 	{
-		strcpy(lpszBuffer, lpszString);
+		memcpy(lpszBuffer, lpszString, sizeof(*lpszBuffer) * nLen);
+		lpszBuffer[nLen] = 0;
 		return nLen;
 	}
-	memset(lpszBuffer, 0, sizeof(CHAR) * nMaxLen);
-	strncpy(lpszBuffer, lpszString, (size_t) (nMaxLen - 1));
+	memcpy(lpszBuffer, lpszString, sizeof(*lpszBuffer) * (nMaxLen - 1));
+	lpszBuffer[nMaxLen - 1] = 0;
 	return (int) strlen(lpszBuffer);
 }
 
@@ -34,11 +34,11 @@ extern "C" int __stdcall MyCopyStringLenW(LPWSTR lpszBuffer, LPCWSTR lpszString,
 		return nLen;
 	if (nLen < nMaxLen)
 	{
-		wcscpy(lpszBuffer, lpszString);
+		memcpy(lpszBuffer, lpszString, sizeof(*lpszBuffer) * nLen);
 		return nLen;
 	}
-	memset(lpszBuffer, 0, sizeof(WCHAR) * nMaxLen);
-	wcsncpy(lpszBuffer, lpszString, (size_t) (nMaxLen - 1));
+	memcpy(lpszBuffer, lpszString, sizeof(*lpszBuffer) * (nMaxLen - 1));
+	lpszBuffer[nMaxLen - 1] = 0;
 	return (int) wcslen(lpszBuffer);
 }
 
@@ -288,10 +288,18 @@ extern "C" LPWSTR __stdcall MyFindReturnW(LPCWSTR lpszString)
 	return NULL;
 }
 
-extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput)
+extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput, int nMaxLen)
 {
+	if (!pszOutput || nMaxLen <= 0)
+		return;
+	if (nMaxLen == 1)
+	{
+		pszOutput[0] = 0;
+		return;
+	}
 	CHAR* psz, * p, * p2, * po, * poStart;
 	bool bFirst;
+	int nRemainLen = nMaxLen;
 	//if (!((MyIsWinBackSlashA(pszPath[0]) && MyIsWinBackSlashA(pszPath[1])) || (pszPath[1] == ':' && MyIsBackSlashA(pszPath[2]))))
 	//{
 	//	strcpy(pszOutput, pszPath);
@@ -301,8 +309,14 @@ extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput)
 	if (MyIsWinBackSlashA(psz[0]) && MyIsWinBackSlashA(psz[1]))
 	{
 		pszOutput[0] = psz[0];
+		if (nRemainLen == 2)
+		{
+			pszOutput[1] = 0;
+			return;
+		}
 		pszOutput[1] = psz[1];
 		pszOutput[2] = 0;
+		nRemainLen -= 2;
 		p2 = &psz[2];
 		poStart = &pszOutput[2];
 	}
@@ -310,15 +324,27 @@ extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput)
 	{
 		pszOutput[0] = psz[0];
 		pszOutput[1] = 0;
+		--nRemainLen;
 		p2 = &psz[1];
 		poStart = &pszOutput[1];
 	}
-	else if (psz[1] == ':' && MyIsBackSlashA(psz[2]))
+	else if (psz[0] && psz[1] == ':' && MyIsBackSlashA(psz[2]))
 	{
 		pszOutput[0] = psz[0];
+		if (nRemainLen == 2)
+		{
+			pszOutput[1] = 0;
+			return;
+		}
 		pszOutput[1] = psz[1];
+		if (nRemainLen == 3)
+		{
+			pszOutput[2] = 0;
+			return;
+		}
 		pszOutput[2] = psz[2];
 		pszOutput[3] = 0;
+		nRemainLen -= 3;
 		p2 = &psz[3];
 		poStart = &pszOutput[3];
 	}
@@ -350,12 +376,13 @@ extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput)
 	//	*po++ = *p;
 	//	p2 = p + 1;
 	//}
-	while (*p2)
+	while (*p2 && nRemainLen > 1)
 	{
 		p = p2;
 		if (!bFirst && MyIsBackSlashA(p[0]))
 		{
 			po--;
+			++nRemainLen;
 			goto OnNext;
 		}
 		else if (p[0] == '.')
@@ -363,6 +390,7 @@ extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput)
 			if (p[1] == 0 || MyIsBackSlashA(p[1]))
 			{
 				*po-- = 0;
+				++nRemainLen;
 				p++;
 				goto OnNext;
 			}
@@ -373,13 +401,18 @@ extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput)
 				do
 				{
 					if (po >= poStart + 2 && _ismbblead(*(po - 2)))
+					{
+						++nRemainLen;
 						po--;
+					}
+					++nRemainLen;
 					po--;
 					if (!_ismbblead(*(po - 2)) &&
 						(po <= poStart || MyIsBackSlashA(*(po - 1))))
 						break;
 				} while (true);
 				*po-- = 0;
+				++nRemainLen;
 				p += 2;
 				goto OnNext;
 			}
@@ -390,28 +423,41 @@ extern "C" void __stdcall MyRemoveDotsFromPathA(LPCSTR pszPath, LPSTR pszOutput)
 				p++;
 			p++;
 		}
-		strncpy(po, p2, (p - p2));
-		po += (p - p2);
+		auto len = static_cast<size_t>(p - p2);
+		if (len >= static_cast<size_t>(nRemainLen))
+			len = static_cast<size_t>(nRemainLen - 1);
+		strncpy_s(po, static_cast<size_t>(nRemainLen), p2, len);
+		po += len;
+		nRemainLen -= static_cast<int>(len);
 OnNext:
 		bFirst = false;
 		*po = 0;
 		if (!*p || (MyIsBackSlashA(*p) && !p[1] && (p == psz || p[-1] != ':')))
 			break;
 		*po++ = *p;
+		--nRemainLen;
 		p2 = p + 1;
 	}
 	*po = 0;
 	goto OnFinish;
 OnFail:
-	strcpy(pszOutput, psz);
+	strncpy_s(pszOutput, static_cast<size_t>(nMaxLen), psz, static_cast<size_t>(nMaxLen));
 OnFinish:
 	free(psz);
 }
 
-extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutput)
+extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutput, int nMaxLen)
 {
+	if (!pszOutput || nMaxLen <= 0)
+		return;
+	if (nMaxLen == 1)
+	{
+		pszOutput[0] = 0;
+		return;
+	}
 	WCHAR* psz, * p, * p2, * po, * poStart;
 	bool bFirst;
+	int nRemainLen = nMaxLen;
 	//if (!((MyIsBackSlashW(pszPath[0]) && MyIsBackSlashW(pszPath[1])) || (pszPath[1] == L':' && MyIsBackSlashW(pszPath[2]))))
 	//{
 	//	wcscpy(pszOutput, pszPath);
@@ -421,8 +467,14 @@ extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutpu
 	if (MyIsWinBackSlashW(psz[0]) && MyIsWinBackSlashW(psz[1]))
 	{
 		pszOutput[0] = psz[0];
+		if (nRemainLen == 2)
+		{
+			pszOutput[1] = 0;
+			return;
+		}
 		pszOutput[1] = psz[1];
 		pszOutput[2] = 0;
+		nRemainLen -= 2;
 		p2 = &psz[2];
 		poStart = &pszOutput[2];
 	}
@@ -430,15 +482,27 @@ extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutpu
 	{
 		pszOutput[0] = psz[0];
 		pszOutput[1] = 0;
+		--nRemainLen;
 		p2 = &psz[1];
 		poStart = &pszOutput[1];
 	}
 	else if (psz[1] == L':' && MyIsBackSlashW(psz[2]))
 	{
 		pszOutput[0] = psz[0];
+		if (nRemainLen == 2)
+		{
+			pszOutput[1] = 0;
+			return;
+		}
 		pszOutput[1] = psz[1];
+		if (nRemainLen == 3)
+		{
+			pszOutput[2] = 0;
+			return;
+		}
 		pszOutput[2] = psz[2];
 		pszOutput[3] = 0;
+		nRemainLen -= 3;
 		p2 = &psz[3];
 		poStart = &pszOutput[3];
 	}
@@ -466,12 +530,13 @@ extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutpu
 	//	*po++ = *p;
 	//	p2 = p + 1;
 	//}
-	while (*p2)
+	while (*p2 && nRemainLen > 1)
 	{
 		p = p2;
 		if (!bFirst && MyIsBackSlashW(p[0]))
 		{
 			po--;
+			++nRemainLen;
 			goto OnNext;
 		}
 		else if (p[0] == L'.')
@@ -479,6 +544,7 @@ extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutpu
 			if (p[1] == 0 || MyIsBackSlashW(p[1]))
 			{
 				*po-- = 0;
+				++nRemainLen;
 				p++;
 				goto OnNext;
 			}
@@ -488,31 +554,38 @@ extern "C" void __stdcall MyRemoveDotsFromPathW(LPCWSTR pszPath, LPWSTR pszOutpu
 					goto OnFail;
 				do
 				{
+					++nRemainLen;
 					po--;
 					if (po <= poStart || MyIsBackSlashW(*(po - 1)))
 						break;
 				} while (true);
 				*po-- = 0;
+				++nRemainLen;
 				p += 2;
 				goto OnNext;
 			}
 		}
 		while (*p && !MyIsBackSlashW(*p))
 			p++;
-		wcsncpy(po, p2, (p - p2));
-		po += (p - p2);
+		auto len = static_cast<size_t>(p - p2);
+		if (len >= static_cast<size_t>(nRemainLen))
+			len = static_cast<size_t>(nRemainLen - 1);
+		wcsncpy_s(po, static_cast<size_t>(nRemainLen), p2, len);
+		po += len;
+		nRemainLen -= static_cast<int>(len);
 OnNext:
 		bFirst = false;
 		*po = 0;
 		if (!*p || (MyIsBackSlashW(*p) && !p[1] && (p == psz || p[-1] != L':')))
 			break;
 		*po++ = *p;
+		--nRemainLen;
 		p2 = p + 1;
 	}
 	*po = 0;
 	goto OnFinish;
 OnFail:
-	wcscpy(pszOutput, psz);
+	wcsncpy_s(pszOutput, static_cast<size_t>(nMaxLen), psz, static_cast<size_t>(nMaxLen));
 OnFinish:
 	free(psz);
 }
@@ -662,7 +735,7 @@ extern "C" int __stdcall MyGetAbsolutePathA(LPCSTR lpszRelativePathName, LPCSTR 
 		return MyCopyStringLenA(lpszBuffer, lpszRelativePathName, nMaxLen);
 
 	lp = MyGetFullPath2A(lpszDirectory, lpszRelativePathName);
-	MyRemoveDotsFromPathA(lp, lp);
+	MyRemoveDotsFromPathA(lp, lp, static_cast<int>(strlen(lp) + 1));
 	n = MyCopyStringLenA(lpszBuffer, lp, nMaxLen);
 	free(lp);
 	return n;
@@ -685,7 +758,7 @@ extern "C" int __stdcall MyGetAbsolutePathW(LPCWSTR lpszRelativePathName, LPCWST
 		return MyCopyStringLenW(lpszBuffer, lpszRelativePathName, nMaxLen);
 
 	lp = MyGetFullPath2W(lpszDirectory, lpszRelativePathName);
-	MyRemoveDotsFromPathW(lp, lp);
+	MyRemoveDotsFromPathW(lp, lp, static_cast<int>(wcslen(lp) + 1));
 	n = MyCopyStringLenW(lpszBuffer, lp, nMaxLen);
 	free(lp);
 	return n;
@@ -1228,12 +1301,16 @@ extern "C" DWORD __stdcall MyGetLongPathNameA(LPCSTR lpszPath, LPSTR lpszBuffer,
 	HANDLE hFind;
 	DWORD dwLen;
 	DWORD dwCopied;
+	DWORD dwRemainLen;
 	if (lpszBuffer && dwMaxLen)
-		lpTempBuffer = (LPSTR) malloc(sizeof(CHAR) * (dwMaxLen + 14));
+	{
+		dwRemainLen = dwMaxLen + 14;
+		lpTempBuffer = (LPSTR)malloc(sizeof(CHAR) * dwRemainLen);
+	}
 	else
 	{
 		lpszBuffer = NULL;
-		lpTempBuffer = (LPSTR) malloc(sizeof(CHAR) * (dwMaxLen = MAX_PATH));
+		lpTempBuffer = (LPSTR) malloc(sizeof(CHAR) * (dwMaxLen = dwRemainLen = MAX_PATH));
 	}
 	lpCopy = lpTempBuffer;
 	if (*lpPath == '\\' && lpPath[1] == '\\')
@@ -1256,12 +1333,12 @@ extern "C" DWORD __stdcall MyGetLongPathNameA(LPCSTR lpszPath, LPSTR lpszBuffer,
 		dwLen = (DWORD)((++lp) - lpPath);
 		if (lpszBuffer)
 		{
-			if (dwLen >= dwMaxLen)
+			if (dwLen >= dwRemainLen)
 				goto OnCopyLen;
-			dwMaxLen -= dwLen;
 		}
-		strncpy(lpCopy, lpPath, dwLen);
+		strncpy_s(lpCopy, static_cast<size_t>(dwRemainLen), lpPath, dwLen);
 		lpCopy += dwLen;
+		dwRemainLen -= dwLen;
 		*lpCopy = 0;
 		dwCopied += dwLen;
 		do
@@ -1269,7 +1346,7 @@ extern "C" DWORD __stdcall MyGetLongPathNameA(LPCSTR lpszPath, LPSTR lpszBuffer,
 			dwLen = (DWORD)(lp2 - lp);
 			if (lpszBuffer)
 			{
-				if (dwLen >= dwMaxLen + 13)
+				if (dwRemainLen < 1 || dwLen >= dwRemainLen - 1)
 					goto OnCopyLen;
 				//dwMaxLen -= dwLen;
 			}
@@ -1277,11 +1354,12 @@ extern "C" DWORD __stdcall MyGetLongPathNameA(LPCSTR lpszPath, LPSTR lpszBuffer,
 			{
 				LPSTR lpRe;
 				dwMaxLen += dwLen + 1;
+				dwRemainLen += dwLen + 1;
 				lpRe = (LPSTR) realloc(lpTempBuffer, sizeof(CHAR) * dwMaxLen);
 				lpCopy = (lpRe + (DWORD)(lpCopy - lpTempBuffer));
 				lpTempBuffer = lpRe;
 			}
-			strncpy(lpCopy, lp, dwLen);
+			strncpy_s(lpCopy, static_cast<size_t>(dwRemainLen), lp, dwLen);
 			lpCopy[dwLen] = 0;
 			//lpCopy += dwLen;
 			hFind = ::FindFirstFileA(lpTempBuffer, &wfd);
@@ -1291,38 +1369,39 @@ extern "C" DWORD __stdcall MyGetLongPathNameA(LPCSTR lpszPath, LPSTR lpszBuffer,
 			dwLen = (DWORD) strlen(wfd.cFileName);
 			if (lpszBuffer)
 			{
-				if (dwLen >= dwMaxLen)
+				if (dwLen >= dwRemainLen)
 				{
 					lp = wfd.cFileName;
 					goto OnCopyLen;
 				}
-				dwMaxLen -= dwLen;
 			}
 			else if (dwCopied + dwLen >= dwMaxLen)
 			{
 				LPSTR lpRe;
 				dwMaxLen += dwLen + 2;
+				dwRemainLen += dwLen + 2;
 				lpRe = (LPSTR) realloc(lpTempBuffer, sizeof(CHAR) * dwMaxLen);
 				lpCopy = (lpRe + (DWORD)(lpCopy - lpTempBuffer));
 				lpTempBuffer = lpRe;
 			}
-			strncpy(lpCopy, wfd.cFileName, dwLen);
+			strncpy_s(lpCopy, static_cast<size_t>(dwRemainLen), wfd.cFileName, dwLen);
 			lpCopy += dwLen;
+			dwRemainLen -= dwLen;
 			*lpCopy = 0;
 			dwCopied += dwLen;
 			if (!*lp2)
 				break;
 			if (lpszBuffer)
 			{
-				if (dwMaxLen == 0)
+				if (dwRemainLen == 0)
 				{
 					dwLen = dwCopied;
 					goto OnClean;
 				}
-				dwMaxLen--;
 			}
 			*lpCopy++ = '\\';
 			*lpCopy = 0;
+			dwRemainLen--;
 			dwCopied++;
 			lp = lp2 + 1;
 			lp2 = strchr(lp, '\\');
@@ -1339,10 +1418,16 @@ extern "C" DWORD __stdcall MyGetLongPathNameA(LPCSTR lpszPath, LPSTR lpszBuffer,
 	goto OnClean;
 
 OnCopyLen:
-	strncpy(lpCopy, lp, dwMaxLen);
-	lpCopy[dwMaxLen - 1] = 0;
-	dwCopied += dwMaxLen - 1;
-	dwLen = dwCopied;
+	if (dwRemainLen > 0)
+	{
+		strncpy_s(lpCopy, static_cast<size_t>(dwRemainLen), lp, dwMaxLen);
+		if (dwRemainLen > dwMaxLen)
+			lpCopy[dwMaxLen - 1] = 0;
+		else
+			lpCopy[dwRemainLen - 1] = 0;
+		dwCopied += dwMaxLen - 1;
+		dwLen = dwCopied;
+	}
 	goto OnClean;
 
 OnFailed:
@@ -1355,13 +1440,22 @@ OnNotCopied:
 	dwLen = (DWORD) strlen(lpPath);
 	if (lpszBuffer && dwMaxLen)
 	{
-		strncpy(lpTempBuffer, lpPath, dwMaxLen);
-		dwLen = min(dwLen, dwMaxLen);
+		strncpy_s(lpTempBuffer, static_cast<size_t>(dwMaxLen), lpPath, dwMaxLen);
+		if (dwLen > dwMaxLen)
+			dwLen = dwMaxLen;
 	}
 OnClean:
-	if (lpszBuffer)
+	if (lpszBuffer && dwMaxLen)
 	{
-		memcpy(lpszBuffer, lpTempBuffer, sizeof(CHAR) * (dwLen + 1));
+		if (dwLen < dwMaxLen)
+			dwLen++;
+		else
+			dwLen = dwMaxLen;
+		if (dwLen > 0)
+		{
+			memcpy(lpszBuffer, lpTempBuffer, sizeof(CHAR) * dwLen);
+			lpszBuffer[dwLen - 1] = 0;
+		}
 	}
 	free(lpTempBuffer);
 	free(lpPath);
@@ -1379,12 +1473,16 @@ extern "C" DWORD __stdcall MyGetLongPathNameW(LPCWSTR lpszPath, LPWSTR lpszBuffe
 	HANDLE hFind;
 	DWORD dwLen;
 	DWORD dwCopied;
+	DWORD dwRemainLen;
 	if (lpszBuffer && dwMaxLen)
-		lpTempBuffer = (LPWSTR) malloc(sizeof(WCHAR) * (dwMaxLen + 14));
+	{
+		dwRemainLen = dwMaxLen + 14;
+		lpTempBuffer = (LPWSTR)malloc(sizeof(WCHAR) * dwRemainLen);
+	}
 	else
 	{
 		lpszBuffer = NULL;
-		lpTempBuffer = (LPWSTR) malloc(sizeof(WCHAR) * (dwMaxLen = MAX_PATH));
+		lpTempBuffer = (LPWSTR) malloc(sizeof(WCHAR) * (dwMaxLen = dwRemainLen = MAX_PATH));
 	}
 	lpCopy = lpTempBuffer;
 	if (*lpPath == L'\\' && lpPath[1] == L'\\')
@@ -1407,12 +1505,12 @@ extern "C" DWORD __stdcall MyGetLongPathNameW(LPCWSTR lpszPath, LPWSTR lpszBuffe
 		dwLen = (DWORD)((++lp) - lpPath);
 		if (lpszBuffer)
 		{
-			if (dwLen >= dwMaxLen)
+			if (dwLen >= dwRemainLen)
 				goto OnCopyLen;
-			dwMaxLen -= dwLen;
 		}
-		wcsncpy(lpCopy, lpPath, dwLen);
+		wcsncpy_s(lpCopy, static_cast<size_t>(dwRemainLen), lpPath, dwLen);
 		lpCopy += dwLen;
+		dwRemainLen -= dwLen;
 		*lpCopy = 0;
 		dwCopied += dwLen;
 		do
@@ -1420,7 +1518,7 @@ extern "C" DWORD __stdcall MyGetLongPathNameW(LPCWSTR lpszPath, LPWSTR lpszBuffe
 			dwLen = (DWORD)(lp2 - lp);
 			if (lpszBuffer)
 			{
-				if (dwLen >= dwMaxLen + 13)
+				if (dwRemainLen < 1 || dwLen >= dwRemainLen - 1)
 					goto OnCopyLen;
 				//dwMaxLen -= dwLen;
 			}
@@ -1428,11 +1526,12 @@ extern "C" DWORD __stdcall MyGetLongPathNameW(LPCWSTR lpszPath, LPWSTR lpszBuffe
 			{
 				LPWSTR lpRe;
 				dwMaxLen += dwLen + 1;
+				dwRemainLen += dwLen + 1;
 				lpRe = (LPWSTR) realloc(lpTempBuffer, sizeof(WCHAR) * dwMaxLen);
 				lpCopy = (lpRe + (DWORD)(lpCopy - lpTempBuffer));
 				lpTempBuffer = lpRe;
 			}
-			wcsncpy(lpCopy, lp, dwLen);
+			wcsncpy_s(lpCopy, static_cast<size_t>(dwRemainLen), lp, dwLen);
 			lpCopy[dwLen] = 0;
 			//lpCopy += dwLen;
 			hFind = ::FindFirstFileW(lpTempBuffer, &wfd);
@@ -1442,38 +1541,39 @@ extern "C" DWORD __stdcall MyGetLongPathNameW(LPCWSTR lpszPath, LPWSTR lpszBuffe
 			dwLen = (DWORD) wcslen(wfd.cFileName);
 			if (lpszBuffer)
 			{
-				if (dwLen >= dwMaxLen)
+				if (dwLen >= dwRemainLen)
 				{
 					lp = wfd.cFileName;
 					goto OnCopyLen;
 				}
-				dwMaxLen -= dwLen;
 			}
 			else if (dwCopied + dwLen >= dwMaxLen)
 			{
 				LPWSTR lpRe;
 				dwMaxLen += dwLen + 2;
+				dwRemainLen += dwLen + 2;
 				lpRe = (LPWSTR) realloc(lpTempBuffer, sizeof(WCHAR) * dwMaxLen);
 				lpCopy = (lpRe + (DWORD)(lpCopy - lpTempBuffer));
 				lpTempBuffer = lpRe;
 			}
-			wcsncpy(lpCopy, wfd.cFileName, dwLen);
+			wcsncpy_s(lpCopy, static_cast<size_t>(dwRemainLen), wfd.cFileName, dwLen);
 			lpCopy += dwLen;
+			dwRemainLen -= dwLen;
 			*lpCopy = 0;
 			dwCopied += dwLen;
 			if (!*lp2)
 				break;
 			if (lpszBuffer)
 			{
-				if (dwMaxLen == 0)
+				if (dwRemainLen == 0)
 				{
 					dwLen = dwCopied;
 					goto OnClean;
 				}
-				dwMaxLen--;
 			}
 			*lpCopy++ = L'\\';
 			*lpCopy = 0;
+			dwRemainLen--;
 			dwCopied++;
 			lp = lp2 + 1;
 			lp2 = wcschr(lp, L'\\');
@@ -1490,10 +1590,16 @@ extern "C" DWORD __stdcall MyGetLongPathNameW(LPCWSTR lpszPath, LPWSTR lpszBuffe
 	goto OnClean;
 
 OnCopyLen:
-	wcsncpy(lpCopy, lp, dwMaxLen);
-	lpCopy[dwMaxLen - 1] = 0;
-	dwCopied += dwMaxLen - 1;
-	dwLen = dwCopied;
+	if (dwRemainLen > 0)
+	{
+		wcsncpy_s(lpCopy, static_cast<size_t>(dwRemainLen), lp, dwMaxLen);
+		if (dwRemainLen > dwMaxLen)
+			lpCopy[dwMaxLen - 1] = 0;
+		else
+			lpCopy[dwRemainLen - 1] = 0;
+		dwCopied += dwMaxLen - 1;
+		dwLen = dwCopied;
+	}
 	goto OnClean;
 
 OnFailed:
@@ -1506,13 +1612,22 @@ OnNotCopied:
 	dwLen = (DWORD) wcslen(lpPath);
 	if (lpszBuffer && dwMaxLen)
 	{
-		wcsncpy(lpTempBuffer, lpPath, dwMaxLen);
-		dwLen = min(dwLen, dwMaxLen);
+		wcsncpy_s(lpTempBuffer, static_cast<size_t>(dwMaxLen), lpPath, dwMaxLen);
+		if (dwLen > dwMaxLen)
+			dwLen = dwMaxLen;
 	}
 OnClean:
-	if (lpszBuffer)
+	if (lpszBuffer && dwMaxLen)
 	{
-		memcpy(lpszBuffer, lpTempBuffer, sizeof(WCHAR) * (dwLen + 1));
+		if (dwLen < dwMaxLen)
+			dwLen++;
+		else
+			dwLen = dwMaxLen;
+		if (dwLen > 0)
+		{
+			memcpy(lpszBuffer, lpTempBuffer, sizeof(WCHAR) * dwLen);
+			lpszBuffer[dwLen - 1] = 0;
+		}
 	}
 	free(lpTempBuffer);
 	free(lpPath);
@@ -1684,7 +1799,7 @@ extern "C" int __stdcall MyGetFileTitleA(LPCSTR lpszFile, LPSTR lpszBuffer, int 
 		{
 			if (nMaxLen >= n)
 				nMaxLen = n;
-			strncpy(lpszBuffer, lp, nMaxLen);
+			strncpy_s(lpszBuffer, nMaxLen, lp, nMaxLen);
 			n = nMaxLen;
 		}
 		free(lp);
@@ -1697,7 +1812,7 @@ extern "C" int __stdcall MyGetFileTitleA(LPCSTR lpszFile, LPSTR lpszBuffer, int 
 	{
 		if (nMaxLen > n)
 			nMaxLen = n + 1;
-		strncpy(lpszBuffer, lp2, nMaxLen);
+		strncpy_s(lpszBuffer, nMaxLen, lp2, nMaxLen);
 		lpszBuffer[nMaxLen - 1] = 0;
 	}
 	free(lp);
@@ -1716,7 +1831,7 @@ extern "C" int __stdcall MyGetFileTitleW(LPCWSTR lpszFile, LPWSTR lpszBuffer, in
 		{
 			if (nMaxLen >= n)
 				nMaxLen = n;
-			wcsncpy(lpszBuffer, lp, nMaxLen);
+			wcsncpy_s(lpszBuffer, nMaxLen, lp, nMaxLen);
 			n = nMaxLen;
 		}
 		free(lp);
@@ -1729,7 +1844,7 @@ extern "C" int __stdcall MyGetFileTitleW(LPCWSTR lpszFile, LPWSTR lpszBuffer, in
 	{
 		if (nMaxLen > n)
 			nMaxLen = n + 1;
-		wcsncpy(lpszBuffer, lp2, nMaxLen);
+		wcsncpy_s(lpszBuffer, nMaxLen, lp2, nMaxLen);
 		lpszBuffer[nMaxLen - 1] = 0;
 	}
 	free(lp);
