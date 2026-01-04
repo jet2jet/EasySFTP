@@ -17,10 +17,6 @@ CMySocket::CMySocket(void)
 	m_socket = INVALID_SOCKET;
 	m_pAI = NULL;
 	m_pAddress = NULL;
-	m_nEnable = 1;
-	m_hWndAsync = NULL;
-	m_uMsg = (UINT)-1;
-	m_lEvent = 0;
 }
 
 CMySocket::~CMySocket(void)
@@ -134,19 +130,6 @@ void CMySocket::Close()
 	}
 }
 
-bool CMySocket::AsyncSelect(HWND hWnd, UINT uMsg, long lEvent)
-{
-	if (m_socket == INVALID_SOCKET)
-		return false;
-	if (::WSAAsyncSelect(m_socket, hWnd, uMsg, lEvent) != 0)
-		return false;
-	m_nEnable = 1;
-	m_hWndAsync = hWnd;
-	m_uMsg = uMsg;
-	m_lEvent = lEvent;
-	return true;
-}
-
 bool CMySocket::CanReceive(DWORD dwWaitMilliseconds, bool* pbIsError) const
 {
 	fd_set fset;
@@ -219,65 +202,6 @@ bool CMySocket::IsRemoteClosed() const
 		return false;
 	ret = ::recv(m_socket, (char*)&tv, 1, MSG_PEEK);
 	return ret == 0;
-}
-
-bool CMySocket::EnableAsyncSelect(bool bEnable, bool bUseRefCount)
-{
-	if (m_socket == INVALID_SOCKET || m_uMsg == (UINT)-1)
-		return false;
-	int ne = m_nEnable;
-	if (bUseRefCount)
-	{
-		if (bEnable)
-			ne++;
-		else
-			ne--;
-		bEnable = (ne > 0);
-	}
-	else
-	{
-		ne = bEnable ? 1 : 0;
-	}
-	if ((m_nEnable > 0) == bEnable)
-		return true;
-#ifdef _DEBUG
-	//{
-	//	CMyStringW str;
-	//	str.Format(L"EnableAsyncSelect: socket = 0x%p, bEnable = %s\n", (void*) m_socket, bEnable ? L"true" : L"false");
-	//	OutputDebugString(str);
-	//}
-#endif
-	if (::WSAAsyncSelect(m_socket, m_hWndAsync, m_uMsg, bEnable ? m_lEvent : 0) != 0)
-		return false;
-	if (!bEnable)
-	{
-		ULONG u = 0;
-		::ioctlsocket(m_socket, FIONBIO, &u);
-		// remove all messages whose wParam is equal to m_socket
-		MSG msg;
-		int nCount = 16, i = 0;
-		MSG* pmsgCache = (MSG*)malloc(sizeof(MSG) * nCount);
-		while (::PeekMessage(&msg, m_hWndAsync, m_uMsg, m_uMsg, PM_REMOVE))
-		{
-			if ((SOCKET)msg.wParam != m_socket)
-			{
-				if (i == nCount)
-				{
-					nCount += 16;
-					MSG* pmg = (MSG*)realloc(pmsgCache, sizeof(MSG) * nCount);
-					if (!pmg)
-						break;
-					pmsgCache = pmg;
-				}
-				memcpy(&pmsgCache[i++], &msg, sizeof(MSG));
-			}
-		}
-		while (i--)
-			::PostMessage(pmsgCache[i].hwnd, pmsgCache[i].message, pmsgCache[i].wParam, pmsgCache[i].lParam);
-		free(pmsgCache);
-	}
-	m_nEnable = ne;
-	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

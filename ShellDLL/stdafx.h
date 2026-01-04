@@ -12,6 +12,17 @@
 
 #define EASYSFTP_SHELLDLL
 
+#ifdef _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#endif
+#include <crtdbg.h>
+#ifdef _DEBUG
+#define DEBUG_NEW   new(_CLIENT_BLOCK, __FILE__, __LINE__)
+//#define malloc(size) _malloc_dbg((size), _NORMAL_BLOCK, __FILE__, __LINE__)
+//#define realloc(memory, size) _realloc_dbg((memory), (size), _NORMAL_BLOCK, __FILE__, __LINE__)
+//#define free(memory) _free_dbg((memory), _NORMAL_BLOCK)
+#endif
+
 // Windows ヘッダー ファイル:
 #include <windows.h>
 
@@ -51,18 +62,6 @@ typedef IDataObjectAsyncCapability IAsyncOperation;
 #include <sys/types.h>
 
 #include <type_traits>
-
-#ifdef _DEBUG
-#define _CRTDBG_MAP_ALLOC
-#endif
-#include <crtdbg.h>
-#ifdef _DEBUG
-#define DEBUG_NEW   new(_CLIENT_BLOCK, __FILE__, __LINE__)
-
-//#define malloc(size) _malloc_dbg((size), _NORMAL_BLOCK, __FILE__, __LINE__)
-//#define realloc(memory, size) _realloc_dbg((memory), (size), _NORMAL_BLOCK, __FILE__, __LINE__)
-//#define free(memory) _free_dbg((memory), _NORMAL_BLOCK)
-#endif
 
 // OpenSSL
 #include <openssl/opensslv.h>

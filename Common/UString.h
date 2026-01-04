@@ -125,35 +125,35 @@ private:
 		{
 		}
 	};
-	WINAPIV CMyStringW(_ConstructorWithVarArg, LPCWSTR lpszString, ...);
-	WINAPIV CMyStringW(_ConstructorWithVarArg, LPCSTR lpszString, ...);
+	CMyStringW(_ConstructorWithVarArg, LPCWSTR lpszString, ...);
+	CMyStringW(_ConstructorWithVarArg, LPCSTR lpszString, ...);
 #ifdef ALIGNMENT_MACHINE
-	WINAPIV CMyStringW(_ConstructorWithVarArg, LPCUWSTR lpszString, ...);
+	CMyStringW(_ConstructorWithVarArg, LPCUWSTR lpszString, ...);
 #endif
 #ifndef NO_LOADSTRING
-	WINAPIV CMyStringW(_ConstructorWithVarArg, UINT uID, ...);
+	CMyStringW(_ConstructorWithVarArg, UINT uID, ...);
 #endif
 public:
 	template <typename ...T>
-	explicit inline WINAPIV CMyStringW(LPCWSTR lpszString, T... args)
+	explicit inline CMyStringW(LPCWSTR lpszString, T... args)
 		: CMyStringW(_ConstructorWithVarArg{}, lpszString, args...)
 	{
 	}
 	template <typename ...T>
-	explicit inline WINAPIV CMyStringW(LPCSTR lpszString, T... args)
+	explicit inline CMyStringW(LPCSTR lpszString, T... args)
 		: CMyStringW(_ConstructorWithVarArg{}, lpszString, args...)
 	{
 	}
 #ifdef ALIGNMENT_MACHINE
 	template <typename ...T>
-	explicit inline WINAPIV CMyStringW(LPCUWSTR lpszString, T... args)
+	explicit inline CMyStringW(LPCUWSTR lpszString, T... args)
 		: CMyStringW(_ConstructorWithVarArg{}, lpszString, args...)
 	{
 	}
 #endif
 #ifndef NO_LOADSTRING
 	template <typename ...T>
-	explicit inline WINAPIV CMyStringW(UINT uID, T... args)
+	explicit inline CMyStringW(UINT uID, T... args)
 		: CMyStringW(_ConstructorWithVarArg{}, uID, args...)
 	{
 	}

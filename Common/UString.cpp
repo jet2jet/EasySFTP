@@ -1131,7 +1131,7 @@ CMyStringW::CMyStringW(char ch, size_t nCount, UINT uCodePage)
 		m_lpszData = NULL;
 }
 
-WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCWSTR lpszString, ...)
+CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCWSTR lpszString, ...)
 	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
 {
 	va_list va;
@@ -1140,7 +1140,7 @@ WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCWSTR lpszString, ...)
 	va_end(va);
 }
 
-WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCSTR lpszString, ...)
+CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCSTR lpszString, ...)
 	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
 {
 	va_list va;
@@ -1150,7 +1150,7 @@ WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCSTR lpszString, ...)
 }
 
 #ifdef ALIGNMENT_MACHINE
-WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCUWSTR lpszString, ...)
+CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCUWSTR lpszString, ...)
 	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
 {
 	CMyStringW str(lpszString);
@@ -1162,7 +1162,7 @@ WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, LPCUWSTR lpszString, ...)
 #endif
 
 #ifndef NO_LOADSTRING
-WINAPIV CMyStringW::CMyStringW(_ConstructorWithVarArg, UINT uID, ...)
+CMyStringW::CMyStringW(_ConstructorWithVarArg, UINT uID, ...)
 	: m_lpszData(NULL), m_lpszLast(NULL), m_uCodePage(CP_ACP)
 {
 	CMyStringW str(MAKEINTRESOURCE(uID));

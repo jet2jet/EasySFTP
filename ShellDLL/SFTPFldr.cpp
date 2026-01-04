@@ -1190,7 +1190,6 @@ bool CSFTPFolderSFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasyS
 			return false;
 		}
 
-		//pSocket->AsyncSelect(m_hWnd, MY_WM_SOCKETMESSAGE, FD_READ | FD_CLOSE);
 		m_phase = Phase::First;
 		//m_bFirstAuthenticate = false;
 

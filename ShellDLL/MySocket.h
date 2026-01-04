@@ -48,7 +48,6 @@ public:
 			*pbNeedMoreData = false;
 		return ::recv(m_socket, (char*)lpBuffer, (int)nSize, flags);
 	}
-	bool AsyncSelect(HWND hWnd, UINT uMsg, long lEvent);
 	bool SetSocketOption(int nLevel, int nOptionName, const void* pValue, SIZE_T nLen)
 	{
 		return ::setsockopt(m_socket, nLevel, nOptionName, (const char*)pValue, (int)nLen) == 0;
@@ -64,7 +63,6 @@ public:
 
 	virtual bool CanReceive(DWORD dwWaitMilliseconds = 0, bool* pbIsError = NULL) const;
 	bool IsRemoteClosed() const;
-	bool EnableAsyncSelect(bool bEnable, bool bUseRefCount = false);
 
 	//protected:
 	const addrinfo* GetThisAddrInfo() const { return m_pAI; }
@@ -78,12 +76,6 @@ private:
 	addrinfo* m_pAI;
 	sockaddr* m_pAddress;
 	size_t m_nAddrLen;
-
-protected:
-	int m_nEnable;
-	HWND m_hWndAsync;
-	UINT m_uMsg;
-	long m_lEvent;
 };
 
 class CTextSocket : public CMySocket

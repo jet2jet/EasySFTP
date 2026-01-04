@@ -11,6 +11,17 @@
 #define WIN32_LEAN_AND_MEAN             // Windows ヘッダーから使用されていない部分を除外します。
 #define STRICT_TYPED_ITEMIDS
 
+#ifdef _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#endif
+#include <crtdbg.h>
+#ifdef _DEBUG
+#define DEBUG_NEW   new(_CLIENT_BLOCK, __FILE__, __LINE__)
+ //#define malloc(size) _malloc_dbg((size), _NORMAL_BLOCK, __FILE__, __LINE__)
+ //#define realloc(memory, size) _realloc_dbg((memory), (size), _NORMAL_BLOCK, __FILE__, __LINE__)
+ //#define free(memory) _free_dbg((memory), _NORMAL_BLOCK)
+#endif
+
 // Windows ヘッダー ファイル:
 #include <windows.h>
 #include <tlhelp32.h>
@@ -43,18 +54,6 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#ifdef _DEBUG
-#define _CRTDBG_MAP_ALLOC
-#endif
-#include <crtdbg.h>
-#ifdef _DEBUG
-#define DEBUG_NEW   new(_CLIENT_BLOCK, __FILE__, __LINE__)
-
-//#define malloc(size) _malloc_dbg((size), _NORMAL_BLOCK, __FILE__, __LINE__)
-//#define realloc(memory, size) _realloc_dbg((memory), (size), _NORMAL_BLOCK, __FILE__, __LINE__)
-//#define free(memory) _free_dbg((memory), _NORMAL_BLOCK)
-#endif
 
 //// OpenSSL
 //#include <openssl/opensslv.h>

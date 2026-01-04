@@ -256,7 +256,6 @@ bool CSFTPFolderFTP::Connect(HWND hWnd, LPCWSTR lpszHostName, int nPort, IEasySF
 			m_pUser = NULL;
 		return false;
 	}
-	//m_pSocket->AsyncSelect(m_hWnd, MY_WM_SOCKETMESSAGE, FD_READ | FD_CLOSE);
 	m_nServerSystemType = SVT_UNKNOWN;
 	m_nYearFollows = 0;
 	m_bY2KProblem = false;
