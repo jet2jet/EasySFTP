@@ -114,6 +114,7 @@
       <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
     <Midl>
       <HeaderFileName>EasySFTP_h.h</HeaderFileName>
@@ -172,6 +173,7 @@ exit /b 0
       <SubSystem>Windows</SubSystem>
       <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
     <Manifest />
     <PreBuildEvent>
@@ -216,6 +218,7 @@ exit /b 0
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
+      <IgnoreSpecificDefaultLibraries>libcmtd.lib</IgnoreSpecificDefaultLibraries>
     </Link>
     <Midl>
       <HeaderFileName>EasySFTP_h.h</HeaderFileName>
@@ -278,6 +281,7 @@ exit /b 0
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <ImportLibrary>$(TargetDir)EasySFTP.lib</ImportLibrary>
       <TargetMachine>MachineX64</TargetMachine>
+      <IgnoreSpecificDefaultLibraries>libcmtd.lib</IgnoreSpecificDefaultLibraries>
     </Link>
     <Manifest />
     <PreBuildEvent>
