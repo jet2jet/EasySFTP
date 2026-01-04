@@ -1,5 +1,9 @@
 #pragma once
 
+/* Signature request methods */
+#define SSH_AGENT_RSA_SHA2_256 2
+#define SSH_AGENT_RSA_SHA2_512 4
+
 class __declspec(novtable) CSSHAgent
 {
 public:
@@ -8,6 +12,6 @@ public:
 
 public:
 	int GetKeyList2(LPBYTE* ppKeyList);
-	void* SignSSH2Key(LPCBYTE pszPubKey, LPCBYTE pszData, size_t nDataLen, size_t* pnOutLen);
+	void* SignSSH2Key(LPCBYTE pszPubKey, int flags, LPCBYTE pszData, size_t nDataLen, size_t* pnOutLen);
 	void FreeKeyList(LPBYTE pKeyList);
 };

@@ -351,6 +351,10 @@ bool CAuthentication::CanRetry(IEasySFTPAuthentication* pAuth)
 
 	if (!pAuthSession->lpPageantKeyList)
 		return false;
+
+	if (AssignAgentFlags(pAuthSession))
+		return true;
+
 	pAuthSession->dwKeyIndex++;
 	if (pAuthSession->dwKeyIndex >= pAuthSession->dwKeyCount)
 	{
@@ -363,6 +367,33 @@ bool CAuthentication::CanRetry(IEasySFTPAuthentication* pAuth)
 	pAuthSession->lpCurrentKey += dw + 4;
 	dw = ConvertEndian(*reinterpret_cast<DWORD*>(pAuthSession->lpCurrentKey));
 	pAuthSession->lpCurrentKey += dw + 4;
+	pAuthSession->nPrevFlags = -1;
+	return AssignAgentFlags(pAuthSession);
+}
+
+bool CAuthentication::AssignAgentFlags(CAuthSession* pAuthSession)
+{
+	if (pAuthSession->nPrevFlags == 0)
+		return false;
+	// get key type data (in the head of blob data)
+	DWORD dwKeyTypeLen = ConvertEndian(*((DWORD*)(pAuthSession->lpCurrentKey + 4)));
+	LPCSTR lpszKeyType = (LPCSTR)(pAuthSession->lpCurrentKey + 8);
+
+	if ((dwKeyTypeLen == 7 && memcmp(lpszKeyType, "ssh-rsa", dwKeyTypeLen) == 0) ||
+		(dwKeyTypeLen == 28 && memcmp(lpszKeyType, "ssh-rsa-cert-v01@openssh.com", dwKeyTypeLen) == 0))
+	{
+		// both rsa-sha2-512 and rsa-sha2-256 are supported, so use rsa-sha2-512
+		if (pAuthSession->nPrevFlags < 0)
+			pAuthSession->nPrevFlags = SSH_AGENT_RSA_SHA2_512;
+		else if (pAuthSession->nPrevFlags == SSH_AGENT_RSA_SHA2_512)
+			pAuthSession->nPrevFlags = SSH_AGENT_RSA_SHA2_256;
+		else
+			pAuthSession->nPrevFlags = 0;
+	}
+	else
+	{
+		pAuthSession->nPrevFlags = 0;
+	}
 	return true;
 }
 
@@ -403,47 +434,49 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 		pAuthSession->dwKeyCount = ConvertEndian(*((DWORD*)lpKeyList));
 		pAuthSession->dwKeyIndex = 0;
 		pAuthSession->lpCurrentKey = lpKeyList + 4;
+		pAuthSession->nPrevFlags = -1;
 		if (FAILED(pAuth->put_AuthSession(reinterpret_cast<__int3264>(pAuthSession))))
 		{
 			delete pAuthSession;
 			return AuthReturnType::Error;
 		}
+		AssignAgentFlags(pAuthSession);
 	}
 	LPBYTE p = pAuthSession->lpCurrentKey;
 
-	LPCSTR lpszKeyType;
 	LPCBYTE pBlob;
 	size_t nBlobLen;
-
-	// get key type data (in the head of blob data)
-	DWORD dwKeyTypeLen = ConvertEndian(*((DWORD*)(p + 4)));
-	lpszKeyType = (LPCSTR)(p + 8);
 
 	nBlobLen = (size_t)ConvertEndian(*((DWORD*)p));
 	pBlob = (p + 4);
 	p += nBlobLen + 4;
 
-	// get the comment of key
 	{
+		DWORD dwKeyTypeLen = ConvertEndian(*((DWORD*)(pBlob)));
+		LPCSTR lpszKeyType = (LPCSTR)(pBlob + 4);
+
+		// get the comment of key
 		DWORD dwCommentLen = ConvertEndian(*((DWORD*)p));
 		CMyStringW str;
 		str.SetUTF8String((LPCBYTE)(p + 4), static_cast<size_t>(dwCommentLen));
 		p += dwCommentLen + 4;
-		CMyStringW strType(lpszKeyType), strDebug;
+		CMyStringW strType, strDebug;
+		strType.SetString(lpszKeyType, dwKeyTypeLen);
 		strDebug.Format(L"trying key '%s' (type: %s)", str.operator LPCWSTR(), strType.operator LPCWSTR());
 		theApp.Log(EasySFTPLogLevel::Debug, strDebug, S_OK);
 	}
 
 	void* abstract = pAuthSession;
 	auto ret = libssh2_userauth_publickey(pSession, lpszUser, pBlob, nBlobLen,
-		[](LIBSSH2_SESSION*, LPBYTE* sig, size_t* sig_len, LPCBYTE data, size_t data_len, void** abstract) -> int
+		[](LIBSSH2_SESSION* session, LPBYTE* sig, size_t* sig_len, LPCBYTE data, size_t data_len, void** abstract) -> int
 		{
 			*sig = NULL;
 			*sig_len = 0;
 			CAuthSession* pAuthSession = static_cast<CAuthSession*>(*abstract);
 			LPBYTE lpCurrentKey = pAuthSession->lpCurrentKey;
+
 			size_t nSignedLen;
-			auto buff = pAuthSession->pAgent->SignSSH2Key(lpCurrentKey, data, data_len, &nSignedLen);
+			auto buff = pAuthSession->pAgent->SignSSH2Key(lpCurrentKey, pAuthSession->nPrevFlags, data, data_len, &nSignedLen);
 			LPBYTE pSignedData = static_cast<LPBYTE>(buff);
 			if (nSignedLen < 4 || !buff)
 			{
@@ -505,7 +538,12 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 		return AuthReturnType::Again;
 
 	if (ret != 0)
+	{
+		// trying any flags only needed when error is 'unverified'
+		if (ret != LIBSSH2_ERROR_PUBLICKEY_UNVERIFIED)
+			pAuthSession->nPrevFlags = 0;
 		return AuthReturnType::Error;
+	}
 
 	delete pAuthSession;
 	pAuth->put_AuthSession(reinterpret_cast<__int3264>(nullptr));

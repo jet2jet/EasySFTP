@@ -62,7 +62,7 @@ int CSSHAgent::GetKeyList2(LPBYTE* ppKeyList)
 	return static_cast<int>(nResponseLen) - 5;
 }
 
-void* CSSHAgent::SignSSH2Key(LPCBYTE pszPubKey, LPCBYTE pszData, size_t nDataLen, size_t* pnOutLen)
+void* CSSHAgent::SignSSH2Key(LPCBYTE pszPubKey, int flags, LPCBYTE pszData, size_t nDataLen, size_t* pnOutLen)
 {
 	void* ret;
 
@@ -85,7 +85,7 @@ void* CSSHAgent::SignSSH2Key(LPCBYTE pszPubKey, LPCBYTE pszData, size_t nDataLen
 	// sign data (length + data)
 	request.AppendToBufferWithLenCE(pszData, nDataLen);
 	// flags
-	request.AppendToBufferCE(static_cast<DWORD>(0));
+	request.AppendToBufferCE(static_cast<DWORD>(flags));
 
 	retval = Query(request, nReqLen, (void**)&pResponse, &nResponseLen);
 	if (!retval)

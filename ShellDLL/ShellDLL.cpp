@@ -53,6 +53,13 @@ ITypeInfo* GetTypeInfo(const GUID& guid)
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// workaround (related: https://github.com/openssl/openssl/issues/27701 )
+#if !defined(WIN64)
+extern "C" unsigned _int64 _dtoul3_legacy(double v) { return (unsigned _int64)llround(v); }
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+
 #if !defined(NTDDI_WIN7) || (NTDDI_VERSION < NTDDI_WIN7)
 #define INITGUID
 #include <guiddef.h>
@@ -1232,9 +1239,6 @@ bool CMainDLL::InitInstance()
 
 	// for SSL library
 	SSL_library_init();
-	ERR_load_BIO_strings();
-	ERR_load_CRYPTO_strings();
-	ERR_load_SSL_strings();
 
 	::srand((unsigned int) (time(NULL) * GetTickCount()));
 
@@ -1661,13 +1665,9 @@ int CMainDLL::ExitInstance()
 	::DeleteCriticalSection(&m_csHosts);
 	::DeleteCriticalSection(&m_csRootRefs);
 
-	::ERR_remove_state(0);
 	//::ENGINE_cleanup();
 	//::CONF_modules_unload();
 	//::RAND_cleanup();
-	ERR_free_strings();
-	EVP_cleanup();
-	CRYPTO_cleanup_all_ex_data();
 	libssh2_exit();
 
 	m_TimerThread.Finalize();

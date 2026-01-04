@@ -37,6 +37,7 @@ struct CAuthSession
 	LPBYTE lpCurrentKey;
 	DWORD dwKeyCount;
 	DWORD dwKeyIndex;
+	int nPrevFlags;
 
 	~CAuthSession();
 };
@@ -69,6 +70,7 @@ public:
 	static bool CanRetry(IEasySFTPAuthentication* pAuth);
 
 private:
+	static bool AssignAgentFlags(CAuthSession* pAuthSession);
 	static AuthReturnType SSHAuthenticateWithAgent(IEasySFTPAuthentication* pAuth, CMyStringW& strUserName, LIBSSH2_SESSION* pSession, LPCSTR lpszService, CSSHAgent* (* CreateAgent)());
 
 public:
