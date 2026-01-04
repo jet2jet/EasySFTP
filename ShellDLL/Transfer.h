@@ -28,8 +28,8 @@ public:
 	{
 		ULONGLONG uliCurrent;
 		ULONGLONG uliMax;
-		DWORD dwStartTime;
-		DWORD dwCurrentTime;
+		ULONGLONG dwStartTime;
+		ULONGLONG dwCurrentTime;
 		CMyStringW strDestName;
 		CMyStringW strLocalFileName;
 		int iIconIndex;

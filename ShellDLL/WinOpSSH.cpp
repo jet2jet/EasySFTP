@@ -3,6 +3,7 @@
 #include "WinOpSSH.h"
 
 #include <AclAPI.h>
+#include "OS.h"
 
 // ConvertEndian
 #include "ExBuffer.h"
@@ -111,7 +112,7 @@ bool CWinOpenSSHAgent::Query(const void* dataSend, size_t dataSendSize, void** d
 			}
 		}
 
-		DWORD dwStartTick = ::GetTickCount() + 1000;
+		DWORD dwStartTick = MyGetTick32() + 1000;
 		while (true)
 		{
 			h = ::CreateFile(WIN_OPENSSH_AGENT_PIPE, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -126,7 +127,7 @@ bool CWinOpenSSHAgent::Query(const void* dataSend, size_t dataSendSize, void** d
 				LogWin32LastError(L"CreateFile");
 				return false;
 			}
-			if (::GetTickCount() >= dwStartTick)
+			if (MyGetTick32() >= dwStartTick)
 			{
 				return false;
 			}

@@ -24,3 +24,12 @@ EXTERN_C bool IsUnicodeAvailableOS()
 	}
 	return (s_dwPlatformId != VER_PLATFORM_WIN32_WINDOWS);
 }
+
+EXTERN_C DWORD MyGetTick32()
+{
+#pragma warning(push)
+#pragma warning(disable:28159)
+	// If the caller ensures 32-bit value of tick, we should use GetTickCount safely
+	return GetTickCount();
+#pragma warning(pop)
+}

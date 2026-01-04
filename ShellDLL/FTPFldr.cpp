@@ -3,6 +3,8 @@
 #include "ShellDLL.h"
 #include "FTPFldr.h"
 
+#include "OS.h"
+
 static void __stdcall GetFTPStatusMessage(int nStatus, LPCWSTR lpszMessage, CMyStringW& rstrMessage)
 {
 	CMyStringW strMsg;
@@ -419,7 +421,7 @@ STDMETHODIMP CSFTPFolderFTP::ReadFile(HANDLE hFile, void* outBuffer, DWORD dwSiz
 	auto* pSocket = data->pPassive->pPassive;
 
 	ULONG read = 0;
-	DWORD dwStartTick = GetTickCount();
+	DWORD dwStartTick = MyGetTick32();
 	while (dwSize)
 	{
 		if (pSocket->IsRemoteClosed())
@@ -441,7 +443,7 @@ STDMETHODIMP CSFTPFolderFTP::ReadFile(HANDLE hFile, void* outBuffer, DWORD dwSiz
 		if (!pSocket->CanReceive(0))
 		{
 			::Sleep(1);
-			if (GetTickCount() - dwStartTick >= WAIT_RECEIVE_TIME)
+			if (MyGetTick32() - dwStartTick >= WAIT_RECEIVE_TIME)
 				break;
 			continue;
 		}
@@ -2567,7 +2569,7 @@ bool CSFTPFolderFTP::WaitForReceiveEstablishPassive(bool* pbWaiting, CFTPWaitEst
 
 bool CSFTPFolderFTP::WaitForReceivePassive(bool* pbWaiting, CFTPWaitPassive* pPassive, DWORD dwTimeoutMilliseconds)
 {
-	auto dwEnd = GetTickCount() + dwTimeoutMilliseconds;
+	auto dwEnd = MyGetTick32() + dwTimeoutMilliseconds;
 	while (*pbWaiting)
 	{
 		if (!pPassive->pPassive)
@@ -2628,7 +2630,7 @@ bool CSFTPFolderFTP::WaitForReceivePassive(bool* pbWaiting, CFTPWaitPassive* pPa
 			pPassive->nWaitFlags == CFTPWaitPassive::WaitFlags::Error)
 			break;
 		::Sleep(1);
-		if (dwTimeoutMilliseconds != INFINITE && static_cast<long>(GetTickCount()) - static_cast<long>(dwEnd) >= 0)
+		if (dwTimeoutMilliseconds != INFINITE && static_cast<long>(MyGetTick32()) - static_cast<long>(dwEnd) >= 0)
 			return false;
 	}
 	return true;

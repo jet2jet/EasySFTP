@@ -8,6 +8,8 @@
 #include "ShellDLL.h"
 #include "SFTPStrm.h"
 
+#include "OS.h"
+
 #define CACHE_SIZE  32768
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -21,7 +23,7 @@ bool CSFTPSyncMessenger::WaitForCurrentMessage()
 	if (!m_pChannel->RegisterMessageListener(uRegID, this))
 		return false;
 
-	DWORD dwStart = GetTickCount();
+	DWORD dwStart = MyGetTick32();
 	while (true)
 	{
 		auto hr = m_pProcessor->PumpSocketAndMessage(0);
@@ -38,7 +40,7 @@ bool CSFTPSyncMessenger::WaitForCurrentMessage()
 			bRet = !m_bFailed;
 			break;
 		}
-		if (GetTickCount() - dwStart >= 10000)
+		if (MyGetTick32() - dwStart >= 10000)
 		{
 			bRet = false;
 			break;

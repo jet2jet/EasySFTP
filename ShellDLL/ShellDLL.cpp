@@ -1241,7 +1241,7 @@ bool CMainDLL::InitInstance()
 	// for SSL library
 	SSL_library_init();
 
-	::srand((unsigned int) (time(NULL) * GetTickCount()));
+	::srand(static_cast<unsigned int>(time(NULL)));
 
 	// Check whether we can use Unicode version of GetOpenFileName/GetSaveFileName
 	m_bUseOFNUnicode = IsUnicodeAvailableOS();
@@ -2328,7 +2328,7 @@ UINT_PTR CMainDLL::RegisterTimer(DWORD dwSpan, PFNEASYSFTPTIMERPROC pfnTimerProc
 	pData->pfnTimerProc = pfnTimerProc;
 	pData->lParam = lParam;
 	pData->dwSpan = dwSpan;
-	pData->dwTickStart = GetTickCount();
+	pData->dwTickStart = MyGetTick32();
 	::EnterCriticalSection(&theApp.m_csTimer);
 	m_arrTimers.Add(pData);
 	SetEvent(m_TimerThread.m_hEventChanged);
@@ -2547,7 +2547,7 @@ int CMainDLL::CTimerThread::Run()
 	lastCount = 0;
 	while (!m_bExit)
 	{
-		DWORD dwTick = GetTickCount();
+		DWORD dwTick = MyGetTick32();
 		CMyTimerData* pData = NULL;
 		::EnterCriticalSection(&theApp.m_csTimer);
 		auto newCount = theApp.m_arrTimers.GetCount();

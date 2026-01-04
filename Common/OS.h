@@ -7,3 +7,4 @@
 #pragma once
 
 EXTERN_C bool IsUnicodeAvailableOS();
+EXTERN_C DWORD MyGetTick32();

@@ -68,7 +68,7 @@ CTransferDialog::CTransferItem* CTransferDialog::AddTransferItem(ULONGLONG uliMa
 	pItem->strDestName = lpszDestName;
 	if (lpszLocalFileName)
 		pItem->strLocalFileName = lpszLocalFileName;
-	pItem->dwStartTime = pItem->dwCurrentTime = GetTickCount();
+	pItem->dwStartTime = pItem->dwCurrentTime = GetTickCount64();
 	pItem->bWaiting = bWaiting;
 	pItem->bFinished = false;
 	pItem->bCanceled = false;
@@ -104,7 +104,7 @@ void CTransferDialog::SetTransferItemSize(CTransferItem* pvItem, ULONGLONG uliMa
 	}
 	pvItem->uliMax = uliMax;
 	pvItem->uliCurrent = 0;
-	pvItem->dwCurrentTime = GetTickCount();
+	pvItem->dwCurrentTime = GetTickCount64();
 	if (pvItem->bWaiting)
 	{
 		pvItem->bWaiting = false;
@@ -128,7 +128,7 @@ void CTransferDialog::UpdateTransferItem(CTransferItem* pvItem, ULONGLONG uliPos
 		return;
 	}
 	pvItem->uliCurrent = uliPosition;
-	pvItem->dwCurrentTime = GetTickCount();
+	pvItem->dwCurrentTime = GetTickCount64();
 	if (pvItem->bWaiting)
 	{
 		pvItem->bWaiting = false;
@@ -369,7 +369,7 @@ LRESULT CTransferDialog::OnDrawItem(WPARAM wParam, LPARAM lParam)
 				else
 				{
 					CMyStringW strSizeCur, strSizeRate;
-					DWORD dwPassTime = pItem->dwCurrentTime - pItem->dwStartTime;
+					auto dwPassTime = pItem->dwCurrentTime - pItem->dwStartTime;
 					{
 						ULARGE_INTEGER uli;
 						uli.QuadPart = pItem->uliCurrent;
@@ -392,14 +392,14 @@ LRESULT CTransferDialog::OnDrawItem(WPARAM wParam, LPARAM lParam)
 							uli.QuadPart = 1024;
 						uli.QuadPart = ((pItem->uliMax - pItem->uliCurrent) * 1000 / uli.QuadPart);
 						if (uli.HighPart != 0)
-							dwPassTime = 0xFFFFFFFF;
+							dwPassTime = 0xFFFFFFFFFFFFFFFF;
 						else
 							dwPassTime = uli.LowPart;
 					}
 					{
 						register int nMinute, nSecond;
 						nMinute = (int) (dwPassTime / 60000);
-						nSecond = (int) ((dwPassTime - ((DWORD) nMinute * 60000)) / 1000);
+						nSecond = (int) ((dwPassTime - (static_cast<decltype(dwPassTime)>(nMinute) * 60000)) / 1000);
 						strTransfer.Format(IDS_TRANSFER_RATE, (LPCWSTR) strSizeCur, (LPCWSTR) strSizeMax,
 							nMinute, nSecond, (LPCWSTR) strSizeRate);
 					}
