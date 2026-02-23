@@ -376,8 +376,8 @@ bool CAuthentication::AssignAgentFlags(CAuthSession* pAuthSession)
 	if (pAuthSession->nPrevFlags == 0)
 		return false;
 	// get key type data (in the head of blob data)
-	DWORD dwKeyTypeLen = ConvertEndian(*((DWORD*)(pAuthSession->lpCurrentKey + 4)));
-	LPCSTR lpszKeyType = (LPCSTR)(pAuthSession->lpCurrentKey + 8);
+	DWORD dwKeyTypeLen = ConvertEndian(*reinterpret_cast<DWORD*>(pAuthSession->lpCurrentKey + 4));
+	LPCSTR lpszKeyType = reinterpret_cast<LPCSTR>(pAuthSession->lpCurrentKey + 8);
 
 	if ((dwKeyTypeLen == 7 && memcmp(lpszKeyType, "ssh-rsa", dwKeyTypeLen) == 0) ||
 		(dwKeyTypeLen == 28 && memcmp(lpszKeyType, "ssh-rsa-cert-v01@openssh.com", dwKeyTypeLen) == 0))
@@ -431,7 +431,7 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 		pAuthSession->dwSignature = AUTH_SESSION_SIGNATURE;
 		pAuthSession->pAgent = pAgent;
 		pAuthSession->lpPageantKeyList = lpKeyList;
-		pAuthSession->dwKeyCount = ConvertEndian(*((DWORD*)lpKeyList));
+		pAuthSession->dwKeyCount = ConvertEndian(*reinterpret_cast<DWORD*>(lpKeyList));
 		pAuthSession->dwKeyIndex = 0;
 		pAuthSession->lpCurrentKey = lpKeyList + 4;
 		pAuthSession->nPrevFlags = -1;
@@ -447,18 +447,18 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 	LPCBYTE pBlob;
 	size_t nBlobLen;
 
-	nBlobLen = (size_t)ConvertEndian(*((DWORD*)p));
+	nBlobLen = static_cast<size_t>(ConvertEndian(*reinterpret_cast<DWORD*>(p)));
 	pBlob = (p + 4);
 	p += nBlobLen + 4;
 
 	{
-		DWORD dwKeyTypeLen = ConvertEndian(*((DWORD*)(pBlob)));
-		LPCSTR lpszKeyType = (LPCSTR)(pBlob + 4);
+		DWORD dwKeyTypeLen = ConvertEndian(*reinterpret_cast<const DWORD*>(pBlob));
+		LPCSTR lpszKeyType = reinterpret_cast<LPCSTR>(pBlob + 4);
 
 		// get the comment of key
-		DWORD dwCommentLen = ConvertEndian(*((DWORD*)p));
+		DWORD dwCommentLen = ConvertEndian(*reinterpret_cast<DWORD*>(p));
 		CMyStringW str;
-		str.SetUTF8String((LPCBYTE)(p + 4), static_cast<size_t>(dwCommentLen));
+		str.SetUTF8String(reinterpret_cast<LPCBYTE>(p + 4), static_cast<size_t>(dwCommentLen));
 		p += dwCommentLen + 4;
 		CMyStringW strType, strDebug;
 		strType.SetString(lpszKeyType, dwKeyTypeLen);
@@ -485,7 +485,7 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 				return LIBSSH2_ERROR_AGENT_PROTOCOL;
 			}
 			// skip signature length
-			auto entireLen = ConvertEndian(*((DWORD*)pSignedData));
+			auto entireLen = ConvertEndian(*reinterpret_cast<DWORD*>(pSignedData));
 			pSignedData += 4;
 			nSignedLen -= 4;
 			// skip signing method
@@ -494,7 +494,7 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 				free(buff);
 				return LIBSSH2_ERROR_AGENT_PROTOCOL;
 			}
-			auto methodLen = ConvertEndian(*((DWORD*)pSignedData));
+			auto methodLen = ConvertEndian(*reinterpret_cast<DWORD*>(pSignedData));
 			pSignedData += 4;
 			nSignedLen -= 4;
 			if (nSignedLen < methodLen)
@@ -511,7 +511,7 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 				free(buff);
 				return LIBSSH2_ERROR_AGENT_PROTOCOL;
 			}
-			auto signatureLen = ConvertEndian(*((DWORD*)pSignedData));
+			auto signatureLen = ConvertEndian(*reinterpret_cast<DWORD*>(pSignedData));
 			pSignedData += 4;
 			nSignedLen -= 4;
 			if (nSignedLen < signatureLen)
