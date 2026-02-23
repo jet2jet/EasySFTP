@@ -452,7 +452,7 @@ AuthReturnType CAuthentication::SSHAuthenticateWithAgent(IEasySFTPAuthentication
 	p += nBlobLen + 4;
 
 	{
-		DWORD dwKeyTypeLen = ConvertEndian(*reinterpret_cast<DWORD*>(pBlob));
+		DWORD dwKeyTypeLen = ConvertEndian(*reinterpret_cast<const DWORD*>(pBlob));
 		LPCSTR lpszKeyType = reinterpret_cast<LPCSTR>(pBlob + 4);
 
 		// get the comment of key
