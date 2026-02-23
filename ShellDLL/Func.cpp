@@ -60,7 +60,7 @@ extern "C" int __stdcall MyMessageBoxW(HWND hWnd, LPCWSTR lpszText, LPCWSTR lpsz
 		lpszText = strText;
 	}
 	if (lpszCaption == NULL)
-		lpszCaption = (LPCWSTR) IDS_APP_TITLE;
+		lpszCaption = MAKEINTRESOURCEW(IDS_APP_TITLE);
 	if (HIWORD(lpszCaption) == 0 && lpszCaption != NULL)
 	{
 		strCaption.LoadString((UINT) LOWORD(lpszCaption));
