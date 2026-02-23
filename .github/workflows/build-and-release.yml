@@ -3,7 +3,7 @@ name: Build and Release EasySFTP
 on:
   push:
     branches:
-      - '*'
+      - '**'
     tags:
       - 'v*'
   workflow_dispatch:
