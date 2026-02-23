@@ -2,8 +2,10 @@ name: Build and Release EasySFTP
 
 on:
   push:
+    branches:
+      - '*'
     tags:
-      - 'v*' # v1.2.3.4 のようなタグが push されたら発火
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -49,7 +51,6 @@ jobs:
           echo "❌ Required deps cache was not found. Aborting."
           exit 1
 
-      # --- Common.user.props の生成 ---
       - name: Generate Common.user.props
         shell: pwsh
         run: |
@@ -107,7 +108,7 @@ jobs:
           path: dist/
 
       - name: Create zip archive
-        if: github.event_name != 'workflow_dispatch'
+        if: startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch'
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}" # 例: v1.2.3.4
@@ -115,7 +116,7 @@ jobs:
           Compress-Archive -Path dist\* -DestinationPath "EasySFTP-$version.zip"
 
       - name: Extract release notes from CHANGELOG.md
-        if: github.event_name != 'workflow_dispatch'
+        if: startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch'
         id: changelog
         shell: pwsh
         run: |
@@ -139,7 +140,7 @@ jobs:
           }
 
       - name: Upload release asset
-        if: github.event_name != 'workflow_dispatch'
+        if: startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
